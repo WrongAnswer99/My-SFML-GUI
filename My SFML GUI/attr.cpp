@@ -1,15 +1,15 @@
+//Author : WrongAnswer99
 #include <string>
 namespace attr {
 #define obj(x) namespace x
 #define tag(x) const std::string x=#x;
 	//obj(player) {tag(hp)tag(weapon) }
 	namespace gui {
-		enum Style { normalStyle = 0, overStyle = 1, focusStyle = 2 };
+		enum Statu { normal = 0, over = 1, focus = 2 };
 		enum TextJustification { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
 		tag(AreaPath);
 		tag(ButtonId);
 		tag(InputId);
-		tag(ScrollMousePos);
 		tag(MouseButton);
 
 		tag(ButtonPressed);

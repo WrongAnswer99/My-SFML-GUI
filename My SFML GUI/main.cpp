@@ -1,3 +1,4 @@
+//Author : WrongAnswer99
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <iostream>
@@ -10,13 +11,14 @@
 #include <unordered_map>
 #include <queue>
 #include "mainBase.cpp"
+
 template <typename T>
-sf::Rect<T> operator+(sf::Rect<T> rect, sf::Vector2<T> vec) {
+inline sf::Rect<T> operator+(sf::Rect<T> rect, sf::Vector2<T> vec) {
 	rect.position += vec;
 	return rect;
 }
 template <typename T>
-sf::Rect<T> operator-(sf::Rect<T> rect, sf::Vector2<T> vec) {
+inline sf::Rect<T> operator-(sf::Rect<T> rect, sf::Vector2<T> vec) {
 	rect.position -= vec;
 	return rect;
 }
@@ -67,26 +69,65 @@ inline BinaryFStream& operator<<(BinaryFStream& fout, const sf::Rect<T>& x) {
 	fout << x.position << x.size;
 	return fout;
 }
-BinaryFStream& operator>>(BinaryFStream& fin, sf::String& x) {
+inline BinaryFStream& operator>>(BinaryFStream& fin, sf::String& x) {
 	string s;
 	fin >> s;
 	x = sf::String::fromUtf8(s.begin(), s.end());
 	return fin;
 }
-BinaryFStream& operator<<(BinaryFStream& fout, const sf::String& x) {
+inline BinaryFStream& operator<<(BinaryFStream& fout, const sf::String& x) {
 	for (uint8_t& elem : x.toUtf8())
 		fout << elem;
 	return fout;
 }
-BinaryFStream f("D:\\1.bin");
 namespace game {
 	namespace gui {
 		class WindowManager:public EventManager {
 		private:
 			Statu focus,overFocus;
 			bool mousePressed=false;
-			unsigned int tick = 0;
-			const unsigned int cursorSpeed = 60;
+			unsigned int cursorBlinkTick = 0;
+			//cursorBlinkRate : how many ticks the cursor blinks
+			const unsigned int cursorBlinkRate = 30;
+			const float scrollResistance=50.f;
+			template<typename T,int size>
+			class RollArray {
+				T array[size];
+				int realSize = 0;
+				int backPos = 0;
+			public:
+				inline void emplace_back() {
+					if (realSize < size) {
+						realSize++;
+						backPos = realSize - 1;
+					}
+					else {
+						backPos = (backPos + 1) % size;
+					}
+				}
+				inline T& front() {
+					if (realSize < size) {
+						return array[0];
+					}
+					else {
+						return array[(backPos + 1) % size];
+					}
+				}
+				inline T& back() {
+					return array[backPos];
+				}
+				inline bool copy_back() {
+					emplace_back();
+					array[backPos] = array[(backPos - 1 + size) % size];
+					return true;
+				}
+			};
+			//scroll sensitivity = 6 tick = 0.1 s (60 FPS)
+			RollArray<sf::Vector2f,6>mousePos;
+			sf::Vector2f mouseVelocity() {
+				return mousePos.back() - mousePos.front();
+			}
+			//noncopyable
 			WindowManager& operator=(const WindowManager& _w)const {}
 		public:
 			void clear() {
@@ -117,10 +158,10 @@ namespace game {
 					_letterSpacing.assignTo(letterSpacing);
 					_lineSpacing.assignTo(lineSpacing);
 				}
-				friend BinaryFStream& operator>>(BinaryFStream& fin, Style& x) {
+				friend inline BinaryFStream& operator>>(BinaryFStream& fin, Style& x) {
 					return fin.structIn(x.backgroundColor, x.outlineColor, x.outlineThickness, x.textColor, x.font, x.characterSize, x.letterSpacing, x.lineSpacing);
 				}
-				friend BinaryFStream& operator<<(BinaryFStream& fout,const Style& x) {
+				friend inline BinaryFStream& operator<<(BinaryFStream& fout,const Style& x) {
 					return fout.structOut(x.backgroundColor, x.outlineColor, x.outlineThickness, x.textColor, x.font, x.characterSize, x.letterSpacing, x.lineSpacing);
 				}
 			};
@@ -131,16 +172,16 @@ namespace game {
 				string id;
 				sf::FloatRect posRect=sf::FloatRect(sf::Vector2f(),sf::Vector2f(1.f,1.f));
 				Style styles[3];
-				int currentStyle=attr::gui::normalStyle;
+				int currentStatu=attr::gui::Statu::normal;
 				void drawBase(sf::RenderTarget& r, sf::FloatRect displayArea) {
 					if (!posRect.findIntersection(displayArea))return;
 					Display::Draw::Rect(
 						r,
 						posRect.position - displayArea.position,
 						posRect.position - displayArea.position + posRect.size,
-						styles[currentStyle].backgroundColor,
-						styles[currentStyle].outlineColor,
-						styles[currentStyle].outlineThickness
+						styles[currentStatu].backgroundColor,
+						styles[currentStatu].outlineColor,
+						styles[currentStatu].outlineThickness
 					);
 				}
 			public:
@@ -157,37 +198,80 @@ namespace game {
 					return *this;
 				}
 				ObjBase& setStyle(Skipable<Style>_normalStyle, Skipable<Style>_overStyle, Skipable<Style>_focusStyle) {
-					_normalStyle.assignTo(styles[0]);
-					_overStyle.assignTo(styles[1]);
-					_focusStyle.assignTo(styles[2]);
+					_normalStyle.assignTo(styles[attr::gui::Statu::normal]);
+					_overStyle.assignTo(styles[attr::gui::Statu::over]);
+					_focusStyle.assignTo(styles[attr::gui::Statu::focus]);
 					return *this;
+				}
+				Style& style(int id) {
+					return styles[id];
+				}
+				ObjBase& setGeneralStyle(Skipable<sf::Color> _backgroundColor, Skipable<sf::Color>_outlineColor, Skipable<float>_outlineThickness, Skipable<sf::Color>_textColor, Skipable<string>_font, Skipable<unsigned int>_characterSize, Skipable<float>_letterSpacing, Skipable<float>_lineSpacing) {
+					_backgroundColor.assignTo(styles[attr::gui::Statu::normal].backgroundColor);
+					_outlineColor.assignTo(styles[attr::gui::Statu::normal].outlineColor);
+					_outlineThickness.assignTo(styles[attr::gui::Statu::normal].outlineThickness);
+					_textColor.assignTo(styles[attr::gui::Statu::normal].textColor);
+					_font.assignTo(styles[attr::gui::Statu::normal].font);
+					_characterSize.assignTo(styles[attr::gui::Statu::normal].characterSize);
+					_letterSpacing.assignTo(styles[attr::gui::Statu::normal].letterSpacing);
+					_lineSpacing.assignTo(styles[attr::gui::Statu::normal].lineSpacing);
+
+					_backgroundColor.assignTo(styles[attr::gui::Statu::over].backgroundColor);
+					_outlineColor.assignTo(styles[attr::gui::Statu::over].outlineColor);
+					_outlineThickness.assignTo(styles[attr::gui::Statu::over].outlineThickness);
+					_textColor.assignTo(styles[attr::gui::Statu::over].textColor);
+					_font.assignTo(styles[attr::gui::Statu::over].font);
+					_characterSize.assignTo(styles[attr::gui::Statu::over].characterSize);
+					_letterSpacing.assignTo(styles[attr::gui::Statu::over].letterSpacing);
+					_lineSpacing.assignTo(styles[attr::gui::Statu::over].lineSpacing);
+
+					_backgroundColor.assignTo(styles[attr::gui::Statu::focus].backgroundColor);
+					_outlineColor.assignTo(styles[attr::gui::Statu::focus].outlineColor);
+					_outlineThickness.assignTo(styles[attr::gui::Statu::focus].outlineThickness);
+					_textColor.assignTo(styles[attr::gui::Statu::focus].textColor);
+					_font.assignTo(styles[attr::gui::Statu::focus].font);
+					_characterSize.assignTo(styles[attr::gui::Statu::focus].characterSize);
+					_letterSpacing.assignTo(styles[attr::gui::Statu::focus].letterSpacing);
+					_lineSpacing.assignTo(styles[attr::gui::Statu::focus].lineSpacing);
+					return *this;
+				}
+				int getStatu() {
+					return currentStatu;
 				}
 			};
 		public:
 			class TextObj:public ObjBase{
 				friend class WindowManager;
-				sf::String text="";
+			public:
+				TextObj() {
+					styles[attr::gui::Statu::normal].set(Skip, Skip, Skip, sf::Color::Black, Skip, Skip, Skip, Skip);
+					styles[attr::gui::Statu::over].set(Skip, Skip, Skip, sf::Color::Black, Skip, Skip, Skip, Skip);
+					styles[attr::gui::Statu::focus].set(Skip, Skip, Skip, sf::Color::Black, Skip, Skip, Skip, Skip);
+				}
 			protected:
-				sf::Text textObj{ fontManager[styles[attr::gui::normalStyle].font] };
+				sf::String text="";
+				sf::Text textObj{ fontManager[styles[attr::gui::Statu::normal].font] };
 				sf::FloatRect textRect;
 				sf::Vector2i justification = { attr::gui::Mid,attr::gui::Mid };
 				float yFix = 0.f;
 				void draw(sf::RenderTarget& r, sf::FloatRect displayArea) {
 					drawBase(r, displayArea);
 
+					//render text
 					textObj.setString("_");
-					textObj.setFont(game::fontManager[styles[currentStyle].font]);
-					textObj.setCharacterSize(styles[currentStyle].characterSize);
-					textObj.setLineSpacing(styles[currentStyle].lineSpacing);
-					textObj.setLetterSpacing(styles[currentStyle].letterSpacing);
-					textObj.setFillColor(styles[currentStyle].textColor);
+					textObj.setFont(game::fontManager[styles[currentStatu].font]);
+					textObj.setCharacterSize(styles[currentStatu].characterSize);
+					textObj.setLineSpacing(styles[currentStatu].lineSpacing);
+					textObj.setLetterSpacing(styles[currentStatu].letterSpacing);
+					textObj.setFillColor(styles[currentStatu].textColor);
 					textObj.setPosition({ 0,0 });
+					//fix Yposition offset
 					yFix = textObj.getGlobalBounds().position.y+ textObj.getGlobalBounds().size.y- textObj.getGlobalBounds().position.y;
 
 					textObj.setString(text);
 					textRect = textObj.getGlobalBounds();
 					textRect.position.y = yFix;
-					textRect.size.y = textObj.findCharacterPos(textObj.getString().getSize()).y + styles[currentStyle].characterSize;
+					textRect.size.y = textObj.findCharacterPos(textObj.getString().getSize()).y + styles[currentStatu].characterSize;
 					textObj.setPosition(posRect.position - textRect.position + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
 					textRect.position = posRect.position + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification));
 					if (!textRect.findIntersection(displayArea))return;
@@ -196,16 +280,16 @@ namespace game {
 						r,
 						textRect.position - displayArea.position,
 						textRect.position - displayArea.position + textRect.size,
-						styles[currentStyle].backgroundColor
+						styles[currentStatu].backgroundColor
 					);
 					r.draw(textObj);
 				}
 				/*
-				friend BinaryFStream& operator>>(BinaryFStream& fin, TextObj& x) {
+				friend inline BinaryFStream& operator>>(BinaryFStream& fin, TextObj& x) {
 					fin >> x.text;
 					return fin.structIn(x.id,x.posRect,x.styles, x.text,x.justification);
 				}
-				friend BinaryFStream& operator<<(BinaryFStream& fout, const TextObj& x) {
+				friend inline BinaryFStream& operator<<(BinaryFStream& fout, const TextObj& x) {
 					return fout.structOut();
 				}*/
 			public:
@@ -224,35 +308,65 @@ namespace game {
 			};
 			class ButtonObj :public TextObj {
 				friend class WindowManager;
+			public:
+				ButtonObj() {
+					styles[attr::gui::Statu::normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2, sf::Color::Black, Skip, Skip, Skip, Skip);
+					styles[attr::gui::Statu::over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2, sf::Color::Black, Skip, Skip, Skip, Skip);
+					styles[attr::gui::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2, sf::Color::Black, Skip, Skip, Skip, Skip);
+				}
 			private:
-				void updatePress(const optional<sf::Event>& sfEvent, string& path, WindowManager& windowManager) {
+				void updatePress(string& path, WindowManager& windowManager) {
 					//按下按钮控件
-					currentStyle = attr::gui::Style::focusStyle;
+					currentStatu = attr::gui::Statu::focus;
 					windowManager.focus = { attr::gui::AreaPath, path,
-											attr::gui::ButtonId, id,
-											attr::gui::ScrollMousePos, sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position) };
+											attr::gui::ButtonId, id };
 					windowManager.overFocus = { attr::gui::AreaPath, path,
 												attr::gui::ButtonId, id };
 				}
-				void updateOver(const optional<sf::Event>& sfEvent, string& path, WindowManager& windowManager) {
-					//移动到按钮控件
-					if (currentStyle != attr::gui::Style::focusStyle) {
-						currentStyle = attr::gui::Style::overStyle;
+				void updateOverMouseUnpressed(string& path, WindowManager& windowManager) {
+					//未按下鼠标时移动到按钮控件
+					if (currentStatu != attr::gui::Statu::focus) {
+						currentStatu = attr::gui::Statu::over;
 						windowManager.overFocus = { attr::gui::AreaPath, path,
 													attr::gui::ButtonId, id };
 					}
 				}
-				void updateRelease(const optional<sf::Event>& sfEvent, string& path, WindowManager& windowManager) {
+				void updateOverMousePressed(string& path, WindowManager& windowManager) {
+					//窗口不滚动且移动到按钮控件
+					if (windowManager.focus.count(attr::gui::ButtonId) &&
+						windowManager.focus[attr::gui::AreaPath].cast<string>() == path &&
+						windowManager.focus[attr::gui::ButtonId].cast<string>() == id) {
+						currentStatu = attr::gui::Statu::focus;
+					}
+					else {
+						if (windowManager.focus.count(attr::gui::ButtonId)) {
+							windowManager.operator[](windowManager.focus[attr::gui::AreaPath].cast<string>())
+								.button(windowManager.focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
+						}
+						if (windowManager.focus.count(attr::gui::InputId)) {
+							windowManager.operator[](windowManager.focus[attr::gui::AreaPath].cast<string>())
+								.input(windowManager.focus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::over;
+						}
+					}
+				}
+				void updateRelease(string& path, WindowManager& windowManager) {
 					//释放按钮控件
-					currentStyle = attr::gui::Style::overStyle;
+					currentStatu = attr::gui::Statu::over;
 					windowManager.overFocus = { attr::gui::AreaPath, path,
 												attr::gui::ButtonId, id };
-					if (windowManager.focus.count(attr::gui::ButtonId) && windowManager.focus[attr::gui::AreaPath].cast<string>() == path&& windowManager.focus[attr::gui::ButtonId].cast<string>()==id)
+					if (windowManager.focus.count(attr::gui::ButtonId) && windowManager.focus[attr::gui::AreaPath].cast<string>() == path && windowManager.focus[attr::gui::ButtonId].cast<string>() == id) {
 						windowManager.eventList.push(game::Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,path + '_' + id }));
+					}
 				}
 			};
 			class InputObj :public TextObj{
 				friend class WindowManager;
+			public:
+				InputObj() {
+					styles[attr::gui::Statu::normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2, sf::Color::Black, Skip, Skip, Skip, Skip);
+					styles[attr::gui::Statu::over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2, sf::Color::Black, Skip, Skip, Skip, Skip);
+					styles[attr::gui::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2, sf::Color::Black, Skip, Skip, Skip, Skip);
+				}
 			protected:
 				bool oneLineLimit = false;
 				size_t sizeLimit=0;
@@ -261,38 +375,37 @@ namespace game {
 					TextObj::draw(r, displayArea);
 					sf::Vector2f cursorPos = textObj.findCharacterPos(cursor);
 					cursorPos.y += yFix;
-					if (currentStyle == attr::gui::Style::focusStyle && (windowManager.tick >= 0 && windowManager.tick < windowManager.cursorSpeed/2)) {
+					if (currentStatu == attr::gui::Statu::focus && (windowManager.cursorBlinkTick >= 0 && windowManager.cursorBlinkTick < windowManager.cursorBlinkRate/2)) {
 						Display::Draw::Line(
 							r,
 							cursorPos,
-							cursorPos + sf::Vector2f(0, (float)styles[currentStyle].characterSize),
-							styles[currentStyle].textColor,
+							cursorPos + sf::Vector2f(0, (float)styles[currentStatu].characterSize),
+							styles[currentStatu].textColor,
 							2.0f
 						);
 					}
 				}
 			private:
-				void updatePress(const optional<sf::Event>& sfEvent, string& path, WindowManager& windowManager) {
+				void updatePress(string& path, WindowManager& windowManager) {
 					//按下输入框控件
-					currentStyle = attr::gui::Style::focusStyle;
+					currentStatu = attr::gui::Statu::focus;
 					windowManager.focus = { attr::gui::AreaPath, path,
-											attr::gui::InputId, id,
-											attr::gui::ScrollMousePos, sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position) };
+											attr::gui::InputId, id };
 					windowManager.overFocus = { attr::gui::AreaPath, path,
 												attr::gui::InputId, id };
 				}
-				void updateOver(const optional<sf::Event>& sfEvent, string& path, WindowManager& windowManager) {
-					//移动到输入框控件
-					if (currentStyle != attr::gui::Style::focusStyle) {
-						currentStyle = attr::gui::Style::overStyle;
+				void updateOverMouseUnpressed(string& path, WindowManager& windowManager) {
+					//未按下鼠标时移动到输入框控件
+					if (currentStatu != attr::gui::Statu::focus) {
+						currentStatu = attr::gui::Statu::over;
 						windowManager.overFocus = { attr::gui::AreaPath, path,
 													attr::gui::InputId, id };
 					}
 				}
 			public:
-				InputObj& setLimit(bool _oneLineLimit = false, int _sizeLimit = 0) {
-					oneLineLimit = _oneLineLimit;
-					sizeLimit = _sizeLimit;
+				InputObj& setLimit(Skipable<bool> _oneLineLimit, Skipable<int> _sizeLimit) {
+					_oneLineLimit.assignTo(oneLineLimit);
+					_sizeLimit.assignTo(sizeLimit);
 					return *this;
 				}
 				InputObj& setText(sf::String _text) {
@@ -306,12 +419,18 @@ namespace game {
 			protected:
 				sf::Vector2f scroll;
 				bool scrollable=true;
+				sf::Vector2f scrollVelocity;
 				unordered_map<string, int>areaId, textId, buttonId, inputId;
 				vector<AreaObj>areaData;
 				vector<TextObj>textData;
 				vector<ButtonObj>buttonData;
 				vector<InputObj>inputData;
 			public:
+				AreaObj() {
+					styles[attr::gui::Statu::normal].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip, Skip, Skip, Skip, Skip);
+					styles[attr::gui::Statu::over].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip, Skip, Skip, Skip, Skip);
+					styles[attr::gui::Statu::focus].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip, Skip, Skip, Skip, Skip);
+				}
 				AreaObj& area(string id) {
 					if (!areaId.count(id)) {
 						areaData.emplace_back();
@@ -349,87 +468,127 @@ namespace game {
 					return *this;
 				}
 			private:
-				void updatePress(const optional<sf::Event>& sfEvent, string& path, WindowManager& windowManager, sf::Vector2f origin = { 0,0 }) {
+				void updatePress(string& path, WindowManager& windowManager, sf::Vector2f origin = { 0,0 }) {
 					if (path == "")
 						path = id;
 					else path =path+ '_' + id;
-					sf::Vector2f mousePos = sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position);
+
+					//update inertial scroll stop
+					scrollVelocity = sf::Vector2f();
+
 					for (auto& elem : areaData) {
-						if (elem.posRect.contains(mousePos - scroll - origin)) {
-							elem.updatePress(sfEvent, path, windowManager, origin + elem.posRect.position + scroll);
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updatePress(path, windowManager, origin + elem.posRect.position + scroll);
 							return;
 						}
 					}
 					for (auto& elem : buttonData) {
-						if (elem.posRect.contains(mousePos - scroll - origin)) {
-							elem.updatePress(sfEvent, path, windowManager);
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updatePress(path, windowManager);
 							return;
 						}
 					}
 					for (auto& elem : inputData) {
-						if (elem.posRect.contains(mousePos - scroll - origin)) {
-							elem.updatePress(sfEvent, path, windowManager);
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updatePress(path, windowManager);
 							return;
 						}
 					}
 					//在当前的区域，但是不在控件上
-					currentStyle = attr::gui::Style::focusStyle;
-					windowManager.focus = { attr::gui::AreaPath, path,
-											attr::gui::ScrollMousePos, mousePos };
+					currentStatu = attr::gui::Statu::focus;
+					windowManager.focus = { attr::gui::AreaPath, path};
 					windowManager.overFocus = { attr::gui::AreaPath, path };
 				}
-				void updateOver(const optional<sf::Event>& sfEvent, string& path, WindowManager& windowManager, sf::Vector2f origin = { 0,0 }) {
+				void updateOverMouseUnpressed(string& path, WindowManager& windowManager, sf::Vector2f origin = { 0,0 }) {
 					if (path == "")
 						path = id;
 					else path = path + '_' + id;
-					sf::Vector2f mousePos = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);
 					for (auto& elem : areaData) {
-						if (elem.posRect.contains(mousePos - scroll - origin)) {
-							elem.updateOver(sfEvent, path, windowManager, origin + elem.posRect.position + scroll);
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updateOverMouseUnpressed(path, windowManager, origin + elem.posRect.position + scroll);
 							return;
 						}
 					}
 					for (auto& elem : buttonData) {
-						if (elem.posRect.contains(mousePos - scroll - origin)) {
-							elem.updateOver(sfEvent, path, windowManager);
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updateOverMouseUnpressed(path, windowManager);
 							return;
 						}
 					}
 					for (auto& elem : inputData) {
-						if (elem.posRect.contains(mousePos - scroll - origin)) {
-							elem.updateOver(sfEvent, path, windowManager);
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updateOverMouseUnpressed(path, windowManager);
 							return;
 						}
 					}
 					//在当前的区域，但是不在控件上
-					if (currentStyle != attr::gui::Style::focusStyle) {
-						currentStyle = attr::gui::Style::overStyle;
+					if (currentStatu != attr::gui::Statu::focus) {
+						currentStatu = attr::gui::Statu::over;
 						windowManager.overFocus = { attr::gui::AreaPath, path };
 					}
 				}
-				void updateRelease(const optional<sf::Event>& sfEvent, string& path, WindowManager& windowManager, sf::Vector2f origin = { 0,0 }) {
+				void updateOverMousePressed(string& path, WindowManager& windowManager, sf::Vector2f origin = { 0,0 }) {
 					if (path == "")
 						path = id;
 					else path = path + '_' + id;
-					sf::Vector2f mousePos = sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonReleased>()->position);
 					for (auto& elem : areaData) {
-						if (elem.posRect.contains(mousePos - scroll - origin)) {
-							elem.updateRelease(sfEvent, path, windowManager, origin + elem.posRect.position + scroll);
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updateOverMousePressed(path, windowManager, origin + elem.posRect.position + scroll);
 							return;
 						}
 					}
 					for (auto& elem : buttonData) {
-						if (elem.posRect.contains(mousePos - scroll - origin)) {
-							elem.updateRelease(sfEvent, path, windowManager);
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updateOverMousePressed(path, windowManager);
 							return;
 						}
 					}
 					//在当前的区域，但是不在控件上
-					currentStyle = attr::gui::Style::overStyle;
+					if (windowManager.focus.count(attr::gui::ButtonId)) {
+						windowManager.operator[](windowManager.focus[attr::gui::AreaPath].cast<string>())
+							.button(windowManager.focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
+					}
+
+				}
+				void updateRelease(string& path, WindowManager& windowManager, sf::Vector2f origin = { 0,0 }) {
+					if (path == "")
+						path = id;
+					else path = path + '_' + id;
+					for (auto& elem : areaData) {
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updateRelease(path, windowManager, origin + elem.posRect.position + scroll);
+							return;
+						}
+					}
+					for (auto& elem : buttonData) {
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
+							elem.updateRelease(path, windowManager);
+							return;
+						}
+					}
+					//在当前的区域，但是不在控件上
+					currentStatu = attr::gui::Statu::over;
 					windowManager.overFocus = { attr::gui::AreaPath, path };
 				}
+				void updateScroll(WindowManager& windowManager) {
+					if (scrollable) {
+						if (scrollVelocity.lengthSquared() < windowManager.scrollResistance* windowManager.scrollResistance) {
+							scrollVelocity = sf::Vector2f();
+						}
+						else {
+							scrollVelocity -= scrollVelocity
+								.componentWiseDiv(sf::Vector2f(scrollVelocity.length(), scrollVelocity.length()))
+								.componentWiseMul(sf::Vector2f(windowManager.scrollResistance, windowManager.scrollResistance));
+						}
+						scroll += scrollVelocity;
+					}
+					for (auto& elem : areaData) {
+						elem.updateScroll(windowManager);
+					}
+				}
 				void draw(sf::RenderTarget& r,sf::FloatRect displayArea, WindowManager& windowManager) {
-					if (!posRect.findIntersection(displayArea))return;
+					if (!posRect.findIntersection(displayArea))
+						return;
 					drawBase(r, displayArea);
 					sf::FloatRect displayAreaCur(-scroll, posRect.size);
 					sf::RenderTexture rCur(static_cast<sf::Vector2u>(posRect.size));
@@ -508,73 +667,97 @@ namespace game {
 				return *res;
 			}
 			bool update(const optional<sf::Event>& sfEvent) {
-				if (!focus.count(attr::gui::AreaPath) && focus.count(attr::gui::InputId)) {
-					cout << "wtf\n";
-				}
 				if (windowData.size() == 0)
 					return false;
-				//updateMousePressedStatu
+				//update mouse press statu
 				if (sfEvent->is<sf::Event::MouseButtonPressed>())
 					mousePressed = true;
 				if (sfEvent->is<sf::Event::MouseButtonReleased>())
 					mousePressed = false;
 				//sf::Event::MouseButtonPressed
-				//updateFocus
+				//update focus
+				//after updating focus ,varible 'focus' & 'overFocus' must have a value
 				string path="";
 				if (sfEvent->is<sf::Event::MouseButtonPressed>()) {
 					if (focus.count(attr::gui::ButtonId)) {
 						operator[](focus[attr::gui::AreaPath].cast<string>())
-							.button(focus[attr::gui::ButtonId].cast<string>()).currentStyle = attr::gui::normalStyle;
+							.button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::normal;
 						focus.erase(attr::gui::ButtonId);
 					}
 					if (focus.count(attr::gui::InputId)) {
 						operator[](focus[attr::gui::AreaPath].cast<string>())
-							.input(focus[attr::gui::InputId].cast<string>()).currentStyle = attr::gui::normalStyle;
+							.input(focus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::normal;
 						focus.erase(attr::gui::InputId);
 					}
-					windowData[windowData.size() - 1].updatePress(sfEvent, path, *this);
+					mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position);//update mousePos
+					windowData[windowData.size() - 1].updatePress(path, *this);
 					return true;
 				}
 				//sf::Event::MouseMoved
 				if (sfEvent->is<sf::Event::MouseMoved>()) {
-					//updateScroll
+					//update scroll
 					if (mousePressed) {
 						AreaObj& tar = operator[](focus[attr::gui::AreaPath].cast<string>());
 						if (tar.scrollable) {
 							if (focus.count(attr::gui::ButtonId)) {
 								operator[](focus[attr::gui::AreaPath].cast<string>())
-									.button(focus[attr::gui::ButtonId].cast<string>()).currentStyle = attr::gui::overStyle;
+									.button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
 								focus.erase(attr::gui::ButtonId);
 							}
 							if (focus.count(attr::gui::InputId)) {
 								operator[](focus[attr::gui::AreaPath].cast<string>())
-									.input(focus[attr::gui::InputId].cast<string>()).currentStyle = attr::gui::overStyle;
+									.input(focus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::over;
 								focus.erase(attr::gui::InputId);
 							}
-							tar.scroll += sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position) - focus[attr::gui::ScrollMousePos].cast<sf::Vector2f>();
-							focus[attr::gui::ScrollMousePos].cast<sf::Vector2f>() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);
+							//tar.scroll += mouseVelocity();//wrong
+							//consider the case of two continuous sf::Event::MouseMoved event
+							tar.scroll += sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position) - mousePos.back();
+							mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
+						}
+						else {
+							mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
+							windowData[windowData.size() - 1].updateOverMousePressed(path, *this);
 						}
 					}
-					//updateOver
+					//update over
+					//after updating over ,varible 'focus' will not be changed
 					else {
 						if (overFocus.count(attr::gui::ButtonId)) {
 							operator[](overFocus[attr::gui::AreaPath].cast<string>())
-								.button(overFocus[attr::gui::ButtonId].cast<string>()).currentStyle = attr::gui::normalStyle;
+								.button(overFocus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::normal;
 						}
 						else if (overFocus.count(attr::gui::InputId)) {
 							operator[](overFocus[attr::gui::AreaPath].cast<string>())
-								.input(overFocus[attr::gui::InputId].cast<string>()).currentStyle = attr::gui::normalStyle;
+								.input(overFocus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::normal;
 						}
 						else if (overFocus.count(attr::gui::AreaPath)) {
-							operator[](overFocus[attr::gui::AreaPath].cast<string>()).currentStyle = attr::gui::normalStyle;
+							operator[](overFocus[attr::gui::AreaPath].cast<string>()).currentStatu = attr::gui::Statu::normal;
 						}
-						windowData[windowData.size() - 1].updateOver(sfEvent, path, *this);
+						mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
+						windowData[windowData.size() - 1].updateOverMouseUnpressed(path, *this);
 					}
 					return true;
 				}
 				//sf::Event::MouseButtonReleased
+				//update release
+				//after updating release ,varible 'focus' will not be changed
 				if (sfEvent->is<sf::Event::MouseButtonReleased>()) {
-					windowData[windowData.size() - 1].updateRelease(sfEvent, path, *this);
+					//re-update over before update release
+					if (overFocus.count(attr::gui::ButtonId)) {
+						operator[](overFocus[attr::gui::AreaPath].cast<string>())
+							.button(overFocus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::normal;
+					}
+					else if (overFocus.count(attr::gui::AreaPath)) {
+						operator[](overFocus[attr::gui::AreaPath].cast<string>()).currentStatu = attr::gui::Statu::normal;
+					}
+
+					mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonReleased>()->position);//update mousePos
+					windowData[windowData.size() - 1].updateRelease(path, *this);
+					//update inertial scroll start
+					if (focus.count(attr::gui::AreaPath)) {
+						if (operator[](focus[attr::gui::AreaPath].cast<string>()).scrollable)
+							operator[](focus[attr::gui::AreaPath].cast<string>()).scrollVelocity = mouseVelocity();
+					}
 					return true;
 				}
 				if (sfEvent->is<sf::Event::TextEntered>()) {
@@ -607,7 +790,7 @@ namespace game {
 								InputTar.cursor++;
 							}
 						}
-						tick = 0;
+						cursorBlinkTick = 0;
 					}
 					return true;
 				}
@@ -631,19 +814,24 @@ namespace game {
 								text.erase(InputTar.cursor);
 							}
 						}
-						tick = 0;
+						cursorBlinkTick = 0;
 					}
 					return true;
 				}
 				return false;
 			}
+			//draw all objects to drawTarget
+			//update cursor tick
+			//update inertial scroll
 			void draw(sf::RenderTarget& drawTarget) {
 				if (focus.count(attr::gui::InputId)) {
-					tick++;
-					tick %= cursorSpeed;
+					cursorBlinkTick++;
+					cursorBlinkTick %= cursorBlinkRate;
 				}
-				else tick = 0;
+				else cursorBlinkTick = 0;
+				mousePos.copy_back();//update mousePos
 				for (auto& elem : windowData) {
+					elem.updateScroll(*this);
 					elem.draw(drawTarget, sf::FloatRect(sf::Vector2f(), static_cast<sf::Vector2f>(drawTarget.getSize())),*this);
 				}
 			}
@@ -662,16 +850,56 @@ void init() {
 	style["stdbn"].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2, sf::Color::Black, "ht", 50, Skip, Skip);
 	style["stdbo"].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2, sf::Color::Black, "ht", 50, Skip, Skip);
 	style["stdbf"].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2, sf::Color::Black, "ht", 50, Skip, Skip);
-	style["stdt"].set(Skip,Skip,Skip, sf::Color::Black, "ht", 50, Skip, Skip);
+
+	window["main"]
+		.setScrollable(false)
+		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setPosition(sf::Vector2f(0, 0))
+		.setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
 	
-	window["main"].setStyle(style["stda1"], style["stda1"], style["stda1"]).setPosition(sf::Vector2f(0, 0)).setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
-	window["main"].button("button").setText(L"按钮").setStyle(style["stdbn"], style["stdbo"], style["stdbf"]).setPosition(sf::Vector2f(650,500)).setSize(sf::Vector2f(100,50));
-	window["main"].text("text").setText(L"这是外层窗口，可拖动").setStyle(style["stdt"], style["stdt"], style["stdt"]).setPosition(sf::Vector2f(400, 25)).setCenter();
-	window["main"].area("area").text("text").setText(L"这是内层窗口，可拖动").setStyle(style["stdt"], style["stdt"], style["stdt"]).setPosition(sf::Vector2f(350, 25)).setCenter();
-	window["main"].area("area").setStyle(style["stda2"], style["stda2"], style["stda2"]).setPosition(sf::Vector2f(50, 50)).setSize(sf::Vector2f(700, 450));
-	window["main"].text("text2").setText(L"当按下按钮时拖动，\n操作将转化为拖动，\n且不会触发按钮\n(文本框同理)").setStyle(style["stdt"], style["stdt"], style["stdt"]).setPosition(sf::Vector2f(400, 700)).setCenter();
-	window["main"].area("area").input("input").setText(L"这是一个文本框").setJustification(attr::gui::Left,attr::gui::Top)
-				  .setStyle(style["stdbn"], style["stdbo"], style["stdbf"]).setPosition(sf::Vector2f(350, 225)).setSize(sf::Vector2f(400, 50)).setCenter();
+	window["main"].button("button")
+		.setText(L"按钮")
+		.setGeneralStyle(Skip, Skip, Skip, Skip, "ht", 50, Skip, Skip)
+		.setPosition(sf::Vector2f(650, 500))
+		.setSize(sf::Vector2f(100, 50));
+	
+	window["main"].text("text")
+		.setText(L"这是外层窗口，被设置为不可拖动")
+		.setGeneralStyle(Skip, Skip, Skip, Skip, "ht", 50, Skip, Skip)
+		.setPosition(sf::Vector2f(400, 25))
+		.setCenter();
+
+	window["main"].area("area").text("text2")
+		.setText(L"↓↓↓向下滑↓↓↓\n当按下按钮时拖动，\n操作将转化为拖动，\n且不会触发按钮\n(文本框同理)")
+		.setGeneralStyle(Skip, Skip, Skip, Skip, "ht", 50, Skip, Skip)
+		.setPosition(sf::Vector2f(350, 500))
+		.setCenter();
+
+	window["main"].area("area")
+		.setScrollable(true)
+		.setStyle(style["stda2"], style["stda2"], style["stda2"])
+		.setPosition(sf::Vector2f(50, 50))
+		.setSize(sf::Vector2f(700, 450));
+	
+	window["main"].area("area").text("text")
+		.setText(L"这是内层窗口，被设置为可拖动\n     现已支持惯性滑动")
+		.setGeneralStyle(Skip, Skip, Skip, Skip, "ht", 50, Skip, Skip)
+		.setPosition(sf::Vector2f(350, 100))
+		.setCenter();
+	
+	window["main"].area("area").input("input")
+		.setText(L"这是一个文本框").setJustification(attr::gui::Mid, attr::gui::Top)
+		.setGeneralStyle(Skip, Skip, Skip, Skip, "ht", 50, Skip, Skip)
+		.setPosition(sf::Vector2f(350, 225))
+		.setSize(sf::Vector2f(400, 50))
+		.setCenter();
+
+	window["main"].area("area").button("button")
+		.setText(L"按钮").setJustification(attr::gui::Mid, attr::gui::Top)
+		.setGeneralStyle(Skip, Skip, Skip, Skip, "ht", 50, Skip, Skip)
+		.setPosition(sf::Vector2f(350, 275))
+		.setSize(sf::Vector2f(100, 50))
+		.setCenter();
 }
 game::gui::WindowManager windowManager;
 game::Event evt;
