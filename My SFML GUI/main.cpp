@@ -89,7 +89,7 @@ namespace game {
 			unsigned int cursorBlinkTick = 0;
 			//cursorBlinkRate : how many ticks the cursor blinks
 			const unsigned int cursorBlinkRate = 30;
-			const float scrollResistance=50.f;
+			const float scrollResistance=30.f;
 			template<typename T,int size>
 			class RollArray {
 				T array[size];
@@ -369,7 +369,7 @@ namespace game {
 				}
 			protected:
 				bool oneLineLimit = false;
-				size_t sizeLimit=0;
+				size_t sizeLimit = INT_MAX;
 				size_t cursor = 0;
 				void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
 					TextObj::draw(r, displayArea);
@@ -418,7 +418,7 @@ namespace game {
 				friend class WindowManager;
 			protected:
 				sf::Vector2f scroll;
-				bool scrollable=true;
+				sf::Vector2f scrollable;
 				sf::Vector2f scrollVelocity;
 				unordered_map<string, int>areaId, textId, buttonId, inputId;
 				vector<AreaObj>areaData;
@@ -463,8 +463,8 @@ namespace game {
 					}
 					return inputData[inputId[id]];
 				}
-				AreaObj& setScrollable(bool _scrollable) {
-					scrollable = _scrollable;
+				AreaObj& setScrollable(bool scrollableX,bool scrollableY) {
+					scrollable = sf::Vector2f(scrollableX, scrollableY);
 					return *this;
 				}
 			private:
@@ -571,7 +571,7 @@ namespace game {
 					windowManager.overFocus = { attr::gui::AreaPath, path };
 				}
 				void updateScroll(WindowManager& windowManager) {
-					if (scrollable) {
+					if (scrollable!=sf::Vector2f()) {
 						if (scrollVelocity.lengthSquared() < windowManager.scrollResistance* windowManager.scrollResistance) {
 							scrollVelocity = sf::Vector2f();
 						}
@@ -698,7 +698,7 @@ namespace game {
 					//update scroll
 					if (mousePressed) {
 						AreaObj& tar = operator[](focus[attr::gui::AreaPath].cast<string>());
-						if (tar.scrollable) {
+						if (tar.scrollable != sf::Vector2f()) {
 							if (focus.count(attr::gui::ButtonId)) {
 								operator[](focus[attr::gui::AreaPath].cast<string>())
 									.button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
@@ -711,7 +711,7 @@ namespace game {
 							}
 							//tar.scroll += mouseVelocity();//wrong
 							//consider the case of two continuous sf::Event::MouseMoved event
-							tar.scroll += sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position) - mousePos.back();
+							tar.scroll += (sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position) - mousePos.back()).componentWiseMul(tar.scrollable);
 							mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
 						}
 						else {
@@ -755,8 +755,8 @@ namespace game {
 					windowData[windowData.size() - 1].updateRelease(path, *this);
 					//update inertial scroll start
 					if (focus.count(attr::gui::AreaPath)) {
-						if (operator[](focus[attr::gui::AreaPath].cast<string>()).scrollable)
-							operator[](focus[attr::gui::AreaPath].cast<string>()).scrollVelocity = mouseVelocity();
+						if (operator[](focus[attr::gui::AreaPath].cast<string>()).scrollable != sf::Vector2f())
+							operator[](focus[attr::gui::AreaPath].cast<string>()).scrollVelocity = mouseVelocity().componentWiseMul(operator[](focus[attr::gui::AreaPath].cast<string>()).scrollable);
 					}
 					return true;
 				}
@@ -765,27 +765,36 @@ namespace game {
 						char32_t ch = sfEvent->getIf<sf::Event::TextEntered>()->unicode;
 						InputObj& InputTar = operator[](focus[attr::gui::AreaPath].cast<string>()).input(focus[attr::gui::InputId].cast<string>());
 						sf::String& text = InputTar.text;
+						//backspace key
 						if (ch == 8) {
 							if (text.getSize() > 0 && InputTar.cursor > 0) {
 								text.erase(InputTar.cursor - 1);
 								InputTar.cursor--;
 							}
 						}
+						//ctrl+v
 						else if (ch == 22) {
 							sf::String clipboardTemp = sf::Clipboard::getString();
+							if (InputTar.oneLineLimit) {
+								clipboardTemp.replace("\n", "");
+							}
+							clipboardTemp.replace("\r", "");
 							if (InputTar.sizeLimit - text.getSize() > 0) {
-								text.insert(InputTar.cursor, clipboardTemp.substring(0, InputTar.sizeLimit - text.getSize()));
-								InputTar.cursor += min(InputTar.sizeLimit - text.getSize(), clipboardTemp.getSize());
+								size_t remainSize = InputTar.sizeLimit - text.getSize();
+								text.insert(InputTar.cursor, clipboardTemp.substring(0, remainSize));
+								InputTar.cursor += min(remainSize, clipboardTemp.getSize());
 							}
 						}
+						//enter key
 						else if (ch == 13) {
 							if (!InputTar.oneLineLimit) {
 								text.insert(InputTar.cursor, '\n');
 								InputTar.cursor++;
 							}
 						}
+						//other keys
 						else {
-							if (text.getSize() < InputTar.sizeLimit||InputTar.sizeLimit<=0) {
+							if (text.getSize() < InputTar.sizeLimit) {
 								text.insert(InputTar.cursor, ch);
 								InputTar.cursor++;
 							}
@@ -797,17 +806,20 @@ namespace game {
 				if (sfEvent->is<sf::Event::KeyPressed>()) {
 					if (focus.count(attr::gui::InputId)) {
 						InputObj& InputTar = operator[](focus[attr::gui::AreaPath].cast<string>()).input(focus[attr::gui::InputId].cast<string>());
+						//left arrow
 						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Left) {
 							if (InputTar.cursor > 0) {
 								InputTar.cursor--;
 							}
 						}
+						//right arrow
 						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Right) {
 							sf::String& text = InputTar.text;
 							if (InputTar.cursor < text.getSize()) {
 								InputTar.cursor++;
 							}
 						}
+						//delete key
 						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Delete) {
 							sf::String& text = InputTar.text;
 							if (text.getSize() > 0 && InputTar.cursor < text.getSize()) {
@@ -852,7 +864,7 @@ void init() {
 	style["stdbf"].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2, sf::Color::Black, "ht", 50, Skip, Skip);
 
 	window["main"]
-		.setScrollable(false)
+		.setScrollable(false,false)
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(0, 0))
 		.setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
@@ -876,7 +888,7 @@ void init() {
 		.setCenter();
 
 	window["main"].area("area")
-		.setScrollable(true)
+		.setScrollable(false,true)
 		.setStyle(style["stda2"], style["stda2"], style["stda2"])
 		.setPosition(sf::Vector2f(50, 50))
 		.setSize(sf::Vector2f(700, 450));
