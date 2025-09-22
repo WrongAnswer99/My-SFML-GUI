@@ -76,6 +76,7 @@ inline BinaryFStream& operator>>(BinaryFStream& fin, sf::String& x) {
 	return fin;
 }
 inline BinaryFStream& operator<<(BinaryFStream& fout, const sf::String& x) {
+	fout << x.toUtf8().size();
 	for (uint8_t& elem : x.toUtf8())
 		fout << elem;
 	return fout;
@@ -174,15 +175,16 @@ namespace game {
 				Style styles[3];
 				int currentStatu=attr::gui::Statu::normal;
 				void drawBase(sf::RenderTarget& r, sf::FloatRect displayArea) {
-					if (!posRect.findIntersection(displayArea))return;
-					Display::Draw::Rect(
-						r,
-						posRect.position - displayArea.position,
-						posRect.position - displayArea.position + posRect.size,
-						styles[currentStatu].backgroundColor,
-						styles[currentStatu].outlineColor,
-						styles[currentStatu].outlineThickness
-					);
+					if (posRect.findIntersection(displayArea)) {
+						Display::Draw::Rect(
+							r,
+							posRect.position - displayArea.position,
+							posRect.position - displayArea.position + posRect.size,
+							styles[currentStatu].backgroundColor,
+							styles[currentStatu].outlineColor,
+							styles[currentStatu].outlineThickness
+						);
+					}
 				}
 			public:
 				ObjBase& setPosition(sf::Vector2f _pos) {
@@ -253,7 +255,6 @@ namespace game {
 				sf::Text textObj{ fontManager[styles[attr::gui::Statu::normal].font] };
 				sf::FloatRect textRect;
 				sf::Vector2i justification = { attr::gui::Mid,attr::gui::Mid };
-				float yFix = 0.f;
 				void draw(sf::RenderTarget& r, sf::FloatRect displayArea) {
 					drawBase(r, displayArea);
 
@@ -265,24 +266,26 @@ namespace game {
 					textObj.setLetterSpacing(styles[currentStatu].letterSpacing);
 					textObj.setFillColor(styles[currentStatu].textColor);
 					textObj.setPosition({ 0,0 });
-					//fix Yposition offset
-					yFix = textObj.getGlobalBounds().position.y+ textObj.getGlobalBounds().size.y- textObj.getGlobalBounds().position.y;
-
+					//fix position offset
+					sf::Vector2f offsetFix;
+					offsetFix.x = textObj.getGlobalBounds().position.x;
+					offsetFix.y = textObj.getGlobalBounds().position.y + textObj.getGlobalBounds().size.y - styles[currentStatu].characterSize;
 					textObj.setString(text);
-					textRect = textObj.getGlobalBounds();
-					textRect.position.y = yFix;
+					textRect.size.x = textObj.getGlobalBounds().size.x;
 					textRect.size.y = textObj.findCharacterPos(textObj.getString().getSize()).y + styles[currentStatu].characterSize;
-					textObj.setPosition(posRect.position - textRect.position + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
+					textObj.setPosition(posRect.position - offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
 					textRect.position = posRect.position + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification));
-					if (!textRect.findIntersection(displayArea))return;
-
-					Display::Draw::Rect(
-						r,
-						textRect.position - displayArea.position,
-						textRect.position - displayArea.position + textRect.size,
-						styles[currentStatu].backgroundColor
-					);
-					r.draw(textObj);
+					if (textRect.findIntersection(displayArea)) {
+						//debug
+						/*Display::Draw::Rect(
+							r,
+							textRect.position - displayArea.position,
+							textRect.position - displayArea.position + textRect.size,
+							sf::Color::Red
+							//styles[currentStatu].backgroundColor
+						);*/
+						r.draw(textObj);
+					}
 				}
 				/*
 				friend inline BinaryFStream& operator>>(BinaryFStream& fin, TextObj& x) {
@@ -371,19 +374,88 @@ namespace game {
 				bool oneLineLimit = false;
 				size_t sizeLimit = INT_MAX;
 				size_t cursor = 0;
+				sf::Vector2f scroll;
 				void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
-					TextObj::draw(r, displayArea);
-					sf::Vector2f cursorPos = textObj.findCharacterPos(cursor);
-					cursorPos.y += yFix;
-					if (currentStatu == attr::gui::Statu::focus && (windowManager.cursorBlinkTick >= 0 && windowManager.cursorBlinkTick < windowManager.cursorBlinkRate/2)) {
-						Display::Draw::Line(
-							r,
-							cursorPos,
-							cursorPos + sf::Vector2f(0, (float)styles[currentStatu].characterSize),
-							styles[currentStatu].textColor,
-							2.0f
-						);
+					if (posRect.findIntersection(displayArea)) {
+						drawBase(r, displayArea);
+						sf::FloatRect displayAreaCur(-scroll, posRect.size);
+						sf::RenderTexture rCur(static_cast<sf::Vector2u>(posRect.size));
+						//draw text
+
+						//render text
+						textObj.setString("_");
+						textObj.setFont(game::fontManager[styles[currentStatu].font]);
+						textObj.setCharacterSize(styles[currentStatu].characterSize);
+						textObj.setLineSpacing(styles[currentStatu].lineSpacing);
+						textObj.setLetterSpacing(styles[currentStatu].letterSpacing);
+						textObj.setFillColor(styles[currentStatu].textColor);
+						textObj.setPosition({ 0,0 });
+						//fix position offset
+						sf::Vector2f offsetFix;
+						offsetFix.x = textObj.getGlobalBounds().position.x;
+						offsetFix.y = textObj.getGlobalBounds().position.y + textObj.getGlobalBounds().size.y - styles[currentStatu].characterSize;
+						textObj.setString(text);
+						textRect.size.x = 0;
+						for (int i = 0; i <= text.getSize(); i++) {
+							if (textObj.findCharacterPos(i).x > textRect.size.x)
+								textRect.size.x = textObj.findCharacterPos(i).x;
+						}
+						textRect.size.y = textObj.findCharacterPos(textObj.getString().getSize()).y + styles[currentStatu].characterSize;
+						textObj.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayAreaCur.position);
+						textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification));
+						sf::Vector2f cursorPos = textObj.findCharacterPos(cursor);
+						cursorPos += offsetFix;
+						if (textRect.size.x > posRect.size.x) {
+							if (cursorPos.x < 0)
+								scroll.x += 0 - cursorPos.x;
+							else if (cursorPos.x > posRect.size.x)
+								scroll.x += posRect.size.x - cursorPos.x;
+							if (textRect.position.x + scroll.x + textRect.size.x < posRect.size.x)
+								scroll.x += posRect.size.x - (textRect.position.x + scroll.x + textRect.size.x);
+							if (textRect.position.x + scroll.x > 0)
+								scroll.x += 0 - (textRect.position.x + scroll.x);
+						}
+						else scroll.x = 0;
+						if (textRect.size.y > posRect.size.y) {
+							if (cursorPos.y < 0)
+								scroll.y += 0 - cursorPos.y;
+							else if (cursorPos.y + styles[currentStatu].characterSize > posRect.size.y)
+								scroll.y += posRect.size.y - (cursorPos.y + styles[currentStatu].characterSize);
+							if (textRect.position.y + scroll.y + textRect.size.y < posRect.size.y)
+								scroll.y += posRect.size.y - (textRect.position.y + scroll.y + textRect.size.y);
+							if (textRect.position.y + scroll.y > 0)
+								scroll.y += 0 - (textRect.position.y + scroll.y);
+						}
+						else scroll.y = 0;
+						//debug
+						/*Display::Draw::Rect(
+							rCur,
+							textRect.position - displayAreaCur.position,
+							textRect.position - displayAreaCur.position + textRect.size,
+							sf::Color::Red
+							//styles[currentStatu].backgroundColor
+						);*/
+						rCur.draw(textObj);
+
+						//draw cursor
+						if (currentStatu == attr::gui::Statu::focus && (windowManager.cursorBlinkTick >= 0 && windowManager.cursorBlinkTick < windowManager.cursorBlinkRate / 2)) {
+							Display::Draw::Line(
+								rCur,
+								cursorPos,
+								cursorPos + sf::Vector2f(0, (float)styles[currentStatu].characterSize),
+								styles[currentStatu].textColor,
+								2.0f
+							);
+						}
+						rCur.display();
+						sf::Sprite s(rCur.getTexture());
+						s.setPosition(posRect.position - displayArea.position);
+						r.draw(s);
 					}
+
+				}
+				void drawText(sf::RenderTarget& rCur, sf::FloatRect displayAreaCur, WindowManager& windowManager) {
+					
 				}
 			private:
 				void updatePress(string& path, WindowManager& windowManager) {
@@ -900,14 +972,14 @@ void init() {
 		.setCenter();
 	
 	window["main"].area("area").input("input")
-		.setText(L"这是一个文本框").setJustification(attr::gui::Mid, attr::gui::Top)
+		.setText(L"这是一个文本框").setJustification(attr::gui::Mid, attr::gui::Mid)
 		.setGeneralStyle(Skip, Skip, Skip, Skip, "ht", 50, Skip, Skip)
 		.setPosition(sf::Vector2f(350, 225))
 		.setSize(sf::Vector2f(400, 50))
 		.setCenter();
 
 	window["main"].area("area").button("button")
-		.setText(L"按钮").setJustification(attr::gui::Mid, attr::gui::Top)
+		.setText(L"按钮").setJustification(attr::gui::Mid, attr::gui::Mid)
 		.setGeneralStyle(Skip, Skip, Skip, Skip, "ht", 50, Skip, Skip)
 		.setPosition(sf::Vector2f(350, 275))
 		.setSize(sf::Vector2f(100, 50))
