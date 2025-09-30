@@ -796,7 +796,11 @@ namespace game {
 				windowId[id] = (int)windowData.size()-1;
 				return true;
 			}
+			bool topWindowIs(string id) {
+				return windowData[windowData.size() - 1].id == id;
+			}
 			bool closeTopWindow() {
+				overFocus = {}; focus = {};
 				if (windowData.size() > 0) {
 					windowId.erase(windowData[windowData.size() - 1].id);
 					windowData.pop_back();
