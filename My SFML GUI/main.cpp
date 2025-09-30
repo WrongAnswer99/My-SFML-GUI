@@ -268,7 +268,7 @@ namespace game {
 					textObj.setString(text);
 					posRect.size.x = 0;
 					for (int i = 0; i <= text.getSize(); i++) {
-						if (textObj.findCharacterPos(i).x > textRect.size.x)
+						if (textObj.findCharacterPos(i).x > posRect.size.x)
 							posRect.size.x = textObj.findCharacterPos(i).x;
 					}
 					posRect.size.y = textObj.findCharacterPos(textObj.getString().getSize()).y + styles[currentStatu].characterSize;
