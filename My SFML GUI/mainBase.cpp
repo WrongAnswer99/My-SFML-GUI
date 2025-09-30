@@ -10,7 +10,7 @@
 #include <fstream>
 #include "attr.cpp"
 using namespace std;
-bool isBigEndianCheck() {
+static bool isBigEndianCheck() {
 	uint16_t num = 0x01;
 	return *reinterpret_cast<uint8_t*>(&num) != 0x01;
 }
@@ -159,7 +159,7 @@ public:
 	template<typename T, typename = std::enable_if_t<standardizedSize<std::decay_t<T>>() != 0>>
 	inline BinaryFStream& operator>>(T& x) {
 		prepareInMode();
-		standardizedType<std::decay_t<T>> std_x;
+		standardizedType<std::decay_t<T>> std_x{};
 		fileIn.read(reinterpret_cast<char*>(&std_x), sizeof(std_x));
 		x = isBigEndian ?
 			changeEndian(static_cast<T>(std_x)) :
@@ -238,7 +238,7 @@ class Skip_t {};
 template<typename T>
 class Skipable {
 private:
-	T val;
+	T val{};
 	bool isSkip=true;
 public:
 	template<typename U>
