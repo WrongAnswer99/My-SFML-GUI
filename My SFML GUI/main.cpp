@@ -864,6 +864,8 @@ namespace game {
 					if (mousePressed) {
 						AreaObj& tar = operator[](focus[attr::gui::AreaPath].cast<string>());
 						if (tar.scrollable != sf::Vector2f()) {
+							//It seems that do not cancel the focus when scrolling makes the GUI easier to use
+							/*
 							if (focus.count(attr::gui::ButtonId)) {
 								operator[](focus[attr::gui::AreaPath].cast<string>())
 									.button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
@@ -874,15 +876,13 @@ namespace game {
 									.input(focus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::over;
 								focus.erase(attr::gui::InputId);
 							}
+							*/
 							//tar.scroll += mouseVelocity();//wrong
 							//consider the case of two continuous sf::Event::MouseMoved event
 							tar.scroll += (sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position) - mousePos.back()).componentWiseMul(tar.scrollable);
-							mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
 						}
-						else {
-							mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
-							topWindow.updateOverMousePressed(path, *this, topWindow.posRect.position);
-						}
+						mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
+						topWindow.updateOverMousePressed(path, *this, topWindow.posRect.position);
 					}
 					//update over
 					//after updating over ,varible 'focus' will not be changed
@@ -1047,7 +1047,8 @@ static void init() {
 		.setCenter();
 
 	window["main"].area("area").text("text2")
-		.setText(L"↓↓↓向下滑↓↓↓\n当按下按钮时拖动，\n操作将转化为拖动，\n且不会触发按钮\n(文本框同理)")
+		//.setText(L"↓↓↓向下滑↓↓↓\n当按下按钮时拖动，\n操作将转化为拖动，\n且不会触发按钮\n(文本框同理)")
+		.setText(L"↓↓↓向下滑↓↓↓\n当按下按钮时拖动，\n将保持按下按钮的状态拖动\n(文本框同理)")
 		.setGeneralStyle(Skip, Skip, Skip, Skip, "ht", 50, Skip, Skip)
 		.setPosition(sf::Vector2f(350, 500))
 		.setSize(sf::Vector2f(700, 260))
