@@ -247,6 +247,14 @@ namespace game {
 				int getStatu() const {
 					return currentStatu;
 				}
+			protected:
+				void loseOver() {
+					if (currentStatu ==attr::gui::over)
+						currentStatu = attr::gui::normal;
+				}
+				void loseFocus() {
+					currentStatu = attr::gui::normal;
+				}
 			};
 		public:
 			class TextObj:public ObjBase{
@@ -355,29 +363,31 @@ namespace game {
 					windowManager.overFocus = { attr::gui::AreaPath, path,
 												attr::gui::ButtonId, id };
 				}
-				void updateOverMouseUnpressed(string& path, WindowManager& windowManager) {
-					//未按下鼠标时移动到按钮控件
-					if (currentStatu != attr::gui::Statu::focus) {
-						currentStatu = attr::gui::Statu::over;
-						windowManager.overFocus = { attr::gui::AreaPath, path,
-													attr::gui::ButtonId, id };
-					}
-				}
-				void updateOverMousePressed(string& path, WindowManager& windowManager) {
-					//窗口不滚动且移动到按钮控件
-					if (windowManager.focus.count(attr::gui::ButtonId) &&
-						windowManager.focus[attr::gui::AreaPath].cast<string>() == path &&
-						windowManager.focus[attr::gui::ButtonId].cast<string>() == id) {
-						currentStatu = attr::gui::Statu::focus;
+				void updateOver(string& path, WindowManager& windowManager) {
+					if (windowManager.mousePressed) {
+						//窗口不滚动且移动到按钮控件
+						if (windowManager.focus.count(attr::gui::ButtonId) &&
+							windowManager.focus[attr::gui::AreaPath].cast<string>() == path &&
+							windowManager.focus[attr::gui::ButtonId].cast<string>() == id) {
+							currentStatu = attr::gui::Statu::focus;
+						}
+						else {
+							if (windowManager.focus.count(attr::gui::ButtonId)) {
+								windowManager.operator[](windowManager.focus[attr::gui::AreaPath].cast<string>())
+									.button(windowManager.focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
+							}
+							if (windowManager.focus.count(attr::gui::InputId)) {
+								windowManager.operator[](windowManager.focus[attr::gui::AreaPath].cast<string>())
+									.input(windowManager.focus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::over;
+							}
+						}
 					}
 					else {
-						if (windowManager.focus.count(attr::gui::ButtonId)) {
-							windowManager.operator[](windowManager.focus[attr::gui::AreaPath].cast<string>())
-								.button(windowManager.focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
-						}
-						if (windowManager.focus.count(attr::gui::InputId)) {
-							windowManager.operator[](windowManager.focus[attr::gui::AreaPath].cast<string>())
-								.input(windowManager.focus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::over;
+						//未按下鼠标时移动到按钮控件
+						if (currentStatu != attr::gui::Statu::focus) {
+							currentStatu = attr::gui::Statu::over;
+							windowManager.overFocus = { attr::gui::AreaPath, path,
+														attr::gui::ButtonId, id };
 						}
 					}
 				}
@@ -492,12 +502,14 @@ namespace game {
 					windowManager.overFocus = { attr::gui::AreaPath, path,
 												attr::gui::InputId, id };
 				}
-				void updateOverMouseUnpressed(string& path, WindowManager& windowManager) {
-					//未按下鼠标时移动到输入框控件
-					if (currentStatu != attr::gui::Statu::focus) {
-						currentStatu = attr::gui::Statu::over;
-						windowManager.overFocus = { attr::gui::AreaPath, path,
-													attr::gui::InputId, id };
+				void updateOver(string& path, WindowManager& windowManager) {
+					if (!windowManager.mousePressed) {
+						//未按下鼠标时移动到输入框控件
+						if (currentStatu != attr::gui::Statu::focus) {
+							currentStatu = attr::gui::Statu::over;
+							windowManager.overFocus = { attr::gui::AreaPath, path,
+														attr::gui::InputId, id };
+						}
 					}
 				}
 			public:
@@ -658,56 +670,41 @@ namespace game {
 					windowManager.focus = { attr::gui::AreaPath, path};
 					windowManager.overFocus = { attr::gui::AreaPath, path };
 				}
-				void updateOverMouseUnpressed(string& path, WindowManager& windowManager, sf::Vector2f origin) {
+				void updateOver(string& path, WindowManager& windowManager, sf::Vector2f origin) {
 					if (path == "")
 						path = id;
 					else path = path + '_' + id;
 					for (auto& elem : areaData) {
 						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
-							elem.updateOverMouseUnpressed(path, windowManager, origin + elem.posRect.position + scroll);
+							elem.updateOver(path, windowManager, origin + elem.posRect.position + scroll);
 							return;
 						}
 					}
 					for (auto& elem : buttonData) {
 						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
-							elem.updateOverMouseUnpressed(path, windowManager);
+							elem.updateOver(path, windowManager);
 							return;
 						}
 					}
 					for (auto& elem : inputData) {
 						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
-							elem.updateOverMouseUnpressed(path, windowManager);
+							elem.updateOver(path, windowManager);
 							return;
 						}
 					}
 					//在当前的区域，但是不在控件上
-					if (currentStatu != attr::gui::Statu::focus) {
-						currentStatu = attr::gui::Statu::over;
-						windowManager.overFocus = { attr::gui::AreaPath, path };
-					}
-				}
-				void updateOverMousePressed(string& path, WindowManager& windowManager, sf::Vector2f origin) {
-					if (path == "")
-						path = id;
-					else path = path + '_' + id;
-					for (auto& elem : areaData) {
-						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
-							elem.updateOverMousePressed(path, windowManager, origin + elem.posRect.position + scroll);
-							return;
+					if (windowManager.mousePressed) {
+						if (windowManager.focus.count(attr::gui::ButtonId)) {
+							windowManager.operator[](windowManager.focus[attr::gui::AreaPath].cast<string>())
+								.button(windowManager.focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
 						}
 					}
-					for (auto& elem : buttonData) {
-						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
-							elem.updateOverMousePressed(path, windowManager);
-							return;
+					else {
+						if (currentStatu != attr::gui::Statu::focus) {
+							currentStatu = attr::gui::Statu::over;
+							windowManager.overFocus = { attr::gui::AreaPath, path };
 						}
 					}
-					//在当前的区域，但是不在控件上
-					if (windowManager.focus.count(attr::gui::ButtonId)) {
-						windowManager.operator[](windowManager.focus[attr::gui::AreaPath].cast<string>())
-							.button(windowManager.focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
-					}
-
 				}
 				void updateRelease(string& path, WindowManager& windowManager, sf::Vector2f origin) {
 					if (path == "")
@@ -722,6 +719,11 @@ namespace game {
 					for (auto& elem : buttonData) {
 						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
 							elem.updateRelease(path, windowManager);
+							return;
+						}
+					}
+					for (auto& elem : inputData) {
+						if (elem.posRect.contains(windowManager.mousePos.back() - scroll - origin)) {
 							return;
 						}
 					}
@@ -846,12 +848,12 @@ namespace game {
 				if (sfEvent->is<sf::Event::MouseButtonPressed>()) {
 					if (focus.count(attr::gui::ButtonId)) {
 						operator[](focus[attr::gui::AreaPath].cast<string>())
-							.button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::normal;
+							.button(focus[attr::gui::ButtonId].cast<string>()).loseFocus();
 						focus.erase(attr::gui::ButtonId);
 					}
 					if (focus.count(attr::gui::InputId)) {
 						operator[](focus[attr::gui::AreaPath].cast<string>())
-							.input(focus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::normal;
+							.input(focus[attr::gui::InputId].cast<string>()).loseFocus();
 						focus.erase(attr::gui::InputId);
 					}
 					mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position);//update mousePos
@@ -881,26 +883,24 @@ namespace game {
 							//consider the case of two continuous sf::Event::MouseMoved event
 							tar.scroll += (sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position) - mousePos.back()).componentWiseMul(tar.scrollable);
 						}
-						mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
-						topWindow.updateOverMousePressed(path, *this, topWindow.posRect.position);
 					}
 					//update over
 					//after updating over ,varible 'focus' will not be changed
 					else {
 						if (overFocus.count(attr::gui::ButtonId)) {
 							operator[](overFocus[attr::gui::AreaPath].cast<string>())
-								.button(overFocus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::normal;
+								.button(overFocus[attr::gui::ButtonId].cast<string>()).loseOver();
 						}
 						else if (overFocus.count(attr::gui::InputId)) {
 							operator[](overFocus[attr::gui::AreaPath].cast<string>())
-								.input(overFocus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::normal;
+								.input(overFocus[attr::gui::InputId].cast<string>()).loseOver();
 						}
 						else if (overFocus.count(attr::gui::AreaPath)) {
-							operator[](overFocus[attr::gui::AreaPath].cast<string>()).currentStatu = attr::gui::Statu::normal;
+							operator[](overFocus[attr::gui::AreaPath].cast<string>()).loseOver();
 						}
-						mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
-						topWindow.updateOverMouseUnpressed(path, *this, topWindow.posRect.position);
 					}
+					mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
+					topWindow.updateOver(path, *this, topWindow.posRect.position);
 					return true;
 				}
 				//sf::Event::MouseButtonReleased
