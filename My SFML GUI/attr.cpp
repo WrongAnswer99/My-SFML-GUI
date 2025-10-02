@@ -14,6 +14,11 @@ namespace attr {
 
 		tag(ButtonPressed);
 		tag(ButtonPath);
+
+		tag(InputGainFocus);
+		tag(InputPath);
+
+		tag(InputLoseFocus);
 	}
 	namespace ani {
 		tag(AnimationEnd);

@@ -496,6 +496,7 @@ namespace game {
 			private:
 				void updatePress(string& path, WindowManager& windowManager) {
 					//按下输入框控件
+					windowManager.eventList.push(game::Event(attr::gui::InputGainFocus, { attr::gui::InputPath,path + '_' + id }));
 					currentStatu = attr::gui::Statu::focus;
 					windowManager.focus = { attr::gui::AreaPath, path,
 											attr::gui::InputId, id };
@@ -854,6 +855,7 @@ namespace game {
 					if (focus.count(attr::gui::InputId)) {
 						operator[](focus[attr::gui::AreaPath].cast<string>())
 							.input(focus[attr::gui::InputId].cast<string>()).loseFocus();
+						eventList.push(game::Event(attr::gui::InputLoseFocus, { attr::gui::InputPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::InputId].cast<string>() }));
 						focus.erase(attr::gui::InputId);
 					}
 					mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position);//update mousePos
@@ -1117,7 +1119,13 @@ int main() {
 		}
 		while (windowManager.pollEvent(evt)) {
 			if (evt.eventId == attr::gui::ButtonPressed) {
-				cout << evt[attr::gui::ButtonPath].cast<string>()<<endl;
+				cout << "Button pressed : " << evt[attr::gui::ButtonPath].cast<string>() << endl;
+			}
+			if (evt.eventId == attr::gui::InputGainFocus) {
+				cout << "Input gain focus : " << evt[attr::gui::InputPath].cast<string>() << endl;
+			}
+			if (evt.eventId == attr::gui::InputLoseFocus) {
+				cout << "Input lose focus : " << evt[attr::gui::InputPath].cast<string>() << endl;
 			}
 		}
 		game::window.clear();
