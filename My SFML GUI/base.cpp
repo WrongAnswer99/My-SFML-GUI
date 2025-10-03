@@ -393,8 +393,9 @@ namespace game {
 		}
 	};
 	class EventManager {
-	public:
+	protected:
 		queue<Event> eventList;
+	public:
 		bool pollEvent(Event& event) {
 			if (!eventList.empty()) {
 				event = eventList.front();
