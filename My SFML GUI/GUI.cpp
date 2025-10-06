@@ -10,65 +10,106 @@ inline sf::Rect<T> operator-(sf::Rect<T> rect, sf::Vector2<T> vec) {
 	rect.position -= vec;
 	return rect;
 }
+template<typename T,typename U>
+inline static BinaryFStream& operator>>(BinaryFStream& bf, pair<T,U>& x) {
+	bf >> x.first >> x.second;
+	return bf;
+}
+template<typename T,typename U>
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const pair<T,U>& x) {
+	bf << x.first << x.second;
+	return bf;
+}
 template<typename T, typename U>
-inline static BinaryFStream& operator>>(BinaryFStream& fin, unordered_map<T, U>& x) {
+inline static BinaryFStream& operator>>(BinaryFStream& bf, unordered_map<T, U>& x) {
 	size_t size;
-	fin >> size;
-	T t{}; U u{};
-	for (int i = 0; i < size; i++) {
-		fin >> t >> u;
-		x.emplace(t, u);
+	bf >> size;
+	x.clear();
+	x.reserve(size);
+	T t{};
+	U u{};
+	for (size_t i = 0; i < size; ++i) {
+		bf >> t >> u;
+		x.emplace(std::move(t), std::move(u));
+		t = T{};
+		u = U{};
 	}
-	return fin;
+	return bf;
 }
 template<typename T, typename U>
-inline static BinaryFStream& operator<<(BinaryFStream& fout, const unordered_map<T, U> x) {
-	fout << x.size();
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const unordered_map<T, U>& x) {
+	bf << x.size();
 	for (auto& elem : x) {
-		fout << elem.first << elem.second;
+		bf << elem.first << elem.second;
 	}
-	return fout;
-}
-inline static BinaryFStream& operator>>(BinaryFStream& fin, sf::Color& x) {
-	fin >> x.r >> x.g >> x.b >> x.a;
-	return fin;
-}
-inline static BinaryFStream& operator<<(BinaryFStream& fout, const sf::Color& x) {
-	fout << x.r << x.g << x.b << x.a;
-	return fout;
+	return bf;
 }
 template<typename T>
-inline static BinaryFStream& operator>>(BinaryFStream& fin, sf::Vector2<T>& x) {
-	fin >> x.x >> x.y;
-	return fin;
+inline static BinaryFStream& operator>>(BinaryFStream& bf, vector<T>& x) {
+	size_t size;
+	bf >> size;
+	T t{};
+	x.clear();
+	x.reserve(size);
+	for (size_t i = 0; i < size; ++i) {
+		bf >> t;
+		x.emplace_back(std::move(t));
+		t = T{};
+	}
+	return bf;
 }
 template<typename T>
-inline static BinaryFStream& operator<<(BinaryFStream& fout, const sf::Vector2<T>& x) {
-	fout << x.x << x.y;
-	return fout;
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const vector<T>& x) {
+	bf << x.size();
+	for (auto& elem : x) {
+		bf << elem;
+	}
+	return bf;
+}
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Color& x) {
+	bf >> x.r >> x.g >> x.b >> x.a;
+	return bf;
+}
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Color& x) {
+	bf << x.r << x.g << x.b << x.a;
+	return bf;
 }
 template<typename T>
-inline static BinaryFStream& operator>>(BinaryFStream& fin, sf::Rect<T>& x) {
-	fin >> x.position >> x.size;
-	return fin;
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Vector2<T>& x) {
+	bf >> x.x >> x.y;
+	return bf;
 }
 template<typename T>
-inline static BinaryFStream& operator<<(BinaryFStream& fout, const sf::Rect<T>& x) {
-	fout << x.position << x.size;
-	return fout;
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Vector2<T>& x) {
+	bf << x.x << x.y;
+	return bf;
 }
-inline static BinaryFStream& operator>>(BinaryFStream& fin, sf::String& x) {
+template<typename T>
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Rect<T>& x) {
+	bf >> x.position >> x.size;
+	return bf;
+}
+template<typename T>
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Rect<T>& x) {
+	bf << x.position << x.size;
+	return bf;
+}
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::String& x) {
 	string s;
-	fin >> s;
+	bf >> s;
 	x = sf::String::fromUtf8(s.begin(), s.end());
-	return fin;
+	return bf;
 }
-inline static BinaryFStream& operator<<(BinaryFStream& fout, const sf::String& x) {
-	fout << x.toUtf8().size();
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::String& x) {
+	bf << x.toUtf8().size();
 	for (uint8_t& elem : x.toUtf8())
-		fout << elem;
-	return fout;
+		bf << elem;
+	return bf;
 }
+#ifdef LET_ME_SEE_SEE
+#define private public
+#define protected public
+#endif
 namespace game {
 	namespace gui {
 		class WindowManager :public EventManager {
@@ -78,9 +119,10 @@ namespace game {
 			unsigned int cursorBlinkTick = 0;
 			//cursorBlinkRate : how many ticks the cursor blinks
 			const unsigned int cursorBlinkRate = 30;
-			const float scrollResistance = 30.f;
+			const float scrollResistance = 10.f;
 			template<typename T, int size>
 			class RollArray {
+			private:
 				T array[size];
 				int realSize = 0;
 				int backPosition = 0;
@@ -163,11 +205,11 @@ namespace game {
 						_outlineThickness.assignTo(outlineThickness);
 						_textColor.assignTo(textColor);
 					}
-					friend inline BinaryFStream& operator>>(BinaryFStream& fin, Style& x) {
-						return fin.structIn(x.backgroundColor, x.outlineColor, x.outlineThickness, x.textColor);
+					friend inline BinaryFStream& operator>>(BinaryFStream& bf, Style& x) {
+						return bf.structIn(x.backgroundColor, x.outlineColor, x.outlineThickness, x.textColor);
 					}
-					friend inline BinaryFStream& operator<<(BinaryFStream& fout, const Style& x) {
-						return fout.structOut(x.backgroundColor, x.outlineColor, x.outlineThickness, x.textColor);
+					friend inline BinaryFStream& operator<<(BinaryFStream& bf, const Style& x) {
+						return bf.structOut(x.backgroundColor, x.outlineColor, x.outlineThickness, x.textColor);
 					}
 				};
 			protected:
@@ -212,6 +254,12 @@ namespace game {
 				}
 				int getStatu() const {
 					return currentStatu;
+				}
+				friend inline BinaryFStream& operator>>(BinaryFStream& bf, ObjBase& x) {
+					return bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+				}
+				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ObjBase& x) {
+					return bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
 				}
 			protected:
 				void loseOver() {
@@ -296,14 +344,6 @@ namespace game {
 						r.draw(textObj);
 					}
 				}
-				/*
-				friend inline BinaryFStream& operator>>(BinaryFStream& fin, TextObj& x) {
-					fin >> x.text;
-					return fin.structIn(x.id,x.posRect,x.styles, x.text,x.justification);
-				}
-				friend inline BinaryFStream& operator<<(BinaryFStream& fout, const TextObj& x) {
-					return fout.structOut();
-				}*/
 			public:
 				TextObj& setFont(string _font) {
 					font = _font;
@@ -318,7 +358,7 @@ namespace game {
 					_lineSpacing.assignTo(lineSpacing);
 					return *this;
 				}
-				TextObj& setJustification(Skipable<int> xJus, Skipable<int> yJus) {
+				TextObj& setJustification(Skipable<attr::gui::TextJustification> xJus, Skipable<attr::gui::TextJustification> yJus) {
 					xJus.assignTo(justification.x);
 					yJus.assignTo(justification.y);
 					return *this;
@@ -330,6 +370,16 @@ namespace game {
 				sf::String getText() {
 					return text;
 				}
+				friend inline BinaryFStream& operator>>(BinaryFStream& bf, TextObj& x) {
+					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structIn(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					return bf;
+				}
+				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const TextObj& x) {
+					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structOut(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					return bf;
+				}
 			};
 			class ButtonObj :public TextObj {
 				friend class WindowManager;
@@ -338,6 +388,16 @@ namespace game {
 					styles[attr::gui::Statu::normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2, sf::Color::Black);
 					styles[attr::gui::Statu::over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2, sf::Color::Black);
 					styles[attr::gui::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2, sf::Color::Black);
+				}
+				friend inline BinaryFStream& operator>>(BinaryFStream& bf, ButtonObj& x) {
+					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structIn(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					return bf;
+				}
+				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ButtonObj& x) {
+					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structOut(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					return bf;
 				}
 			};
 			class InputObj :public TextObj {
@@ -349,8 +409,48 @@ namespace game {
 					styles[attr::gui::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2, sf::Color::Black);
 				}
 			protected:
-				bool oneLineLimit = false;
+				int typeLimit = attr::gui::InputTypeLimit::String;
 				size_t sizeLimit = INT_MAX;
+				class InputLimit {
+					bool isAllowList = false;
+					vector<char32_t>single;
+					vector<pair<char32_t, char32_t>>range;
+				public:
+					void set(bool _isAllowList, initializer_list<char32_t> _single,initializer_list<pair<char32_t, char32_t>> _range) {
+						isAllowList = _isAllowList;
+						single = _single;
+						range = _range;
+						for (auto& elem : range)
+							if (elem.first > elem.second)
+								swap(elem.first, elem.second);
+					}
+					bool isLegal(char32_t ch) {
+						for (auto& elem : single)
+							if (ch == elem)return isAllowList;
+						for (auto& elem : range)
+							if (ch >= elem.first && ch <= elem.second)return isAllowList;
+						return !isAllowList;
+					}
+					size_t legalize(sf::String& st) {
+						size_t pos=0;
+						for (size_t i = 0; i < st.getSize();i++) {
+							if (isLegal(st[i])) {
+								if (pos != i)
+									st[pos] = st[i];
+								pos++;
+							}
+						}
+						return pos;
+					}
+					friend inline BinaryFStream& operator>>(BinaryFStream& bf, InputLimit& x) {
+						bf.structIn(x.isAllowList, x.single, x.range);
+						return bf;
+					}
+					friend inline BinaryFStream& operator<<(BinaryFStream& bf, const InputLimit& x) {
+						bf.structOut(x.isAllowList, x.single, x.range);
+						return bf;
+					}
+				}inputLimit;
 				size_t cursor = 0;
 				sf::Vector2f scroll;
 				void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
@@ -431,18 +531,104 @@ namespace game {
 						s.setPosition(posRect.position - displayArea.position);
 						r.draw(s);
 					}
-
+				}
+				inline void insert(char32_t ch) {
+					if (text.getSize() >= sizeLimit)return;
+					if (typeLimit == attr::gui::InputTypeLimit::Int) {
+						if ((ch == '-' && cursor == 0 && ensure(text.getSize() > 0, text[0] != '-')) ||
+							(ch >= '0' && ch <= '9' && ensure(text.getSize() > 0, ensure(text[0] == '-', cursor != 0)))) {
+							text.insert(cursor, ch);
+							cursor++;
+						}
+					}
+					else if (typeLimit == attr::gui::InputTypeLimit::Float) {
+						if ((ch == '-' && cursor == 0 && ensure(text.getSize() > 0, text[0] != '-')) ||
+							(ch >= '0' && ch <= '9' && ensure(text.getSize() > 0, ensure(text[0] == '-', cursor != 0)))||
+							(ch =='.'&& ensure(text.getSize() > 0, ensure(text[0] == '-', cursor != 0))&&text.find('.')==sf::String::InvalidPos)) {
+							text.insert(cursor, ch);
+							cursor++;
+						}
+					}
+					else {
+						if (inputLimit.isLegal(ch)) {
+							text.insert(cursor, ch);
+							cursor++;
+						}
+					}
+				}
+				inline void insert(sf::String st) {
+					if (typeLimit == attr::gui::InputTypeLimit::Int || typeLimit == attr::gui::InputTypeLimit::Float) {
+						for (auto& elem : st) {
+							if (text.getSize() >= sizeLimit)return;
+							insert(elem);
+						}
+					}
+					else {
+						size_t remainSize = sizeLimit - text.getSize();
+						st.replace('\r', "");
+						size_t realSize = inputLimit.legalize(st);
+						if (sizeLimit - text.getSize() > 0) {
+							text.insert(cursor, st.substring(0, min(remainSize,realSize)));
+							cursor += min(remainSize, realSize);
+						}
+					}
+				}
+				inline void erase(bool isForward) {
+					if (isForward) {
+						if (text.getSize() > 0 && cursor > 0) {
+							text.erase(cursor - 1);
+							cursor--;
+						}
+					}
+					else {
+						if (text.getSize() > 0 && cursor < text.getSize()) {
+							text.erase(cursor);
+						}
+					}
+				}
+				inline void moveCursor(bool isForward) {
+					if (isForward) {
+						if (cursor > 0) {
+							cursor--;
+						}
+					}
+					else {
+						if (cursor < text.getSize()) {
+							cursor++;
+						}
+					}
 				}
 			public:
-				InputObj& setLimit(Skipable<bool> _oneLineLimit, Skipable<int> _sizeLimit) {
-					_oneLineLimit.assignTo(oneLineLimit);
-					_sizeLimit.assignTo(sizeLimit);
+				InputObj& setSizeLimit(int _sizeLimit) {
+					sizeLimit = _sizeLimit;
+					return *this;
+				}
+				InputObj& setTypeLimit(attr::gui::InputTypeLimit _typeLimit) {
+					typeLimit = _typeLimit;
+					return *this;
+				}
+				InputObj& setStringTypeLimit(bool _isAllowList, initializer_list<char32_t> _single, initializer_list<pair<char32_t, char32_t>> _range) {
+					typeLimit = attr::gui::InputTypeLimit::String;
+					inputLimit.set(_isAllowList, _single, _range);
 					return *this;
 				}
 				InputObj& setText(sf::String _text) {
 					text = _text;
 					cursor = text.getSize();
 					return *this;
+				}
+				friend inline BinaryFStream& operator>>(BinaryFStream& bf, InputObj& x) {
+					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structIn(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf.structIn(x.sizeLimit,x.typeLimit, x.inputLimit);
+					x.cursor = x.text.getSize();
+					return bf;
+				}
+				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const InputObj& x) {
+					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structOut(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf.structOut(x.sizeLimit, x.typeLimit, x.inputLimit);
+					return bf;
 				}
 			};
 			class AreaObj :public ObjBase {
@@ -544,6 +730,18 @@ namespace game {
 					}
 					scrollLimit.size -= posRect.size;
 					return *this;
+				}
+				friend inline BinaryFStream& operator>>(BinaryFStream& bf, AreaObj& x) {
+					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structIn(x.areaId, x.areaData, x.textId, x.textData, x.buttonId, x.buttonData, x.inputId, x.inputData);
+					bf.structIn(x.scrollable, x.scrollLimit);
+					return bf;
+				}
+				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const AreaObj& x) {
+					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structOut(x.areaId, x.areaData, x.textId, x.textData, x.buttonId, x.buttonData, x.inputId, x.inputData);
+					bf.structOut(x.scrollable, x.scrollLimit);
+					return bf;
 				}
 			private:
 				void ensureScrollLimit() {
@@ -843,41 +1041,13 @@ namespace game {
 					if (focus.count(attr::gui::InputId)) {
 						char32_t ch = sfEvent->getIf<sf::Event::TextEntered>()->unicode;
 						InputObj& InputTar = area(focus[attr::gui::AreaPath].cast<string>()).input(focus[attr::gui::InputId].cast<string>());
-						sf::String& text = InputTar.text;
-						//backspace key
-						if (ch == 8) {
-							if (text.getSize() > 0 && InputTar.cursor > 0) {
-								text.erase(InputTar.cursor - 1);
-								InputTar.cursor--;
-							}
-						}
-						//ctrl+v
-						else if (ch == 22) {
-							sf::String clipboardTemp = sf::Clipboard::getString();
-							if (InputTar.oneLineLimit) {
-								clipboardTemp.replace("\n", "");
-							}
-							clipboardTemp.replace("\r", "");
-							if (InputTar.sizeLimit - text.getSize() > 0) {
-								size_t remainSize = InputTar.sizeLimit - text.getSize();
-								text.insert(InputTar.cursor, clipboardTemp.substring(0, remainSize));
-								InputTar.cursor += min(remainSize, clipboardTemp.getSize());
-							}
-						}
-						//enter key
-						else if (ch == 13) {
-							if (!InputTar.oneLineLimit) {
-								text.insert(InputTar.cursor, '\n');
-								InputTar.cursor++;
-							}
-						}
-						//other keys
-						else {
-							if (text.getSize() < InputTar.sizeLimit) {
-								text.insert(InputTar.cursor, ch);
-								InputTar.cursor++;
-							}
-						}
+						if (ch == 8)//backspace key
+							InputTar.erase(true);
+						else if (ch == 13)//enter key
+							InputTar.insert('\n');
+						else if (ch == 22)//ctrl+v
+							InputTar.insert(sf::Clipboard::getString());
+						else InputTar.insert(ch);//other keys
 						cursorBlinkTick = 0;
 					}
 					return true;
@@ -885,26 +1055,12 @@ namespace game {
 				if (sfEvent->is<sf::Event::KeyPressed>()) {
 					if (focus.count(attr::gui::InputId)) {
 						InputObj& InputTar = area(focus[attr::gui::AreaPath].cast<string>()).input(focus[attr::gui::InputId].cast<string>());
-						//left arrow
-						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Left) {
-							if (InputTar.cursor > 0) {
-								InputTar.cursor--;
-							}
-						}
-						//right arrow
-						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Right) {
-							sf::String& text = InputTar.text;
-							if (InputTar.cursor < text.getSize()) {
-								InputTar.cursor++;
-							}
-						}
-						//delete key
-						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Delete) {
-							sf::String& text = InputTar.text;
-							if (text.getSize() > 0 && InputTar.cursor < text.getSize()) {
-								text.erase(InputTar.cursor);
-							}
-						}
+						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Left)//left arrow
+							InputTar.moveCursor(true);
+						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Right)//right arrow
+							InputTar.moveCursor(false);
+						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Delete)//delete key
+							InputTar.erase(false);
 						cursorBlinkTick = 0;
 					}
 					return true;
@@ -929,3 +1085,7 @@ namespace game {
 		};
 	}
 }
+#ifdef LET_ME_SEE_SEE
+#undef private
+#undef protected
+#endif

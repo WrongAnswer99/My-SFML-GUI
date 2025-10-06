@@ -7,6 +7,7 @@ namespace attr {
 	namespace gui {
 		enum Statu { normal = 0, over = 1, focus = 2 };
 		enum TextJustification { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
+		enum InputTypeLimit { String = 0, Int = 1, Float = 2 };
 		tag(AreaPath);
 		tag(ButtonId);
 		tag(InputId);

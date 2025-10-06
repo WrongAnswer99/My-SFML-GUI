@@ -8,8 +8,8 @@
 #include <vector>
 #include <unordered_map>
 #include <queue>
+//#define LET_ME_SEE_SEE
 #include "GUI.cpp"
-
 unordered_map<string, game::gui::WindowManager::AreaObj>window;
 unordered_map<string, game::gui::WindowManager::ObjBase::Style>style;
 
@@ -72,6 +72,10 @@ static void init() {
 		.setCenter();
 	
 	window["main"].area("area").input("input")
+		//.setSizeLimit(10)
+		//.setTypeLimit(attr::gui::Float)
+		//.setTypeLimit(attr::gui::Int)
+		//.setStringTypeLimit(true, { L'_' }, { {L'A',L'Z'},{L'a',L'z'}})
 		.setText(L"这是一个文本框")
 		.setJustification(attr::gui::Mid, attr::gui::Mid)
 		.setFont("ht")
@@ -101,11 +105,11 @@ static void init() {
 	window["main"].area("area")
 		.setScrollLimitAuto();
 }
-game::gui::WindowManager wm;
+game::gui::WindowManager windowManager;
 game::Event evt;
 int main() {
 	init();
-	wm.newWindow("main",window["main"]);
+	windowManager.newWindow("main",window["main"]);
 	game::window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"测试", sf::Style::Close, sf::State::Windowed);
 	game::window.setFramerateLimit(60);
 	while (true) {
@@ -114,11 +118,11 @@ int main() {
 				exit(0);
 			}
 			else {
-				wm.update(sfEvt);
+				windowManager.update(sfEvt);
 			}
 		}
 		//windowManager.button("main_area_button").getStatu()
-		while (wm.pollEvent(evt)) {
+		while (windowManager.pollEvent(evt)) {
 			if (evt.eventId == attr::gui::ButtonPressed) {
 				cout << "Button pressed : " << evt[attr::gui::ButtonPath].cast<string>() << endl;
 			}
@@ -130,7 +134,7 @@ int main() {
 			}
 		}
 		game::window.clear();
-		wm.draw(game::window);
+		windowManager.draw(game::window);
 		game::window.display();
 	}
 	return 0;

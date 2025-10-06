@@ -10,6 +10,9 @@
 #include <fstream>
 #include "attr.cpp"
 using namespace std;
+//if exist then check condition
+#define ensure(existCondition,condition) (!(existCondition)||((existCondition)&&(condition)))
+
 static bool isBigEndianCheck() {
 	uint16_t num = 0x01;
 	return *reinterpret_cast<uint8_t*>(&num) != 0x01;
