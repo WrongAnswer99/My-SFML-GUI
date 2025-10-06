@@ -43,12 +43,12 @@ static void init() {
 		.setCenter();
 
 	window["main"].area("area").text("text2")
-		//.setText(L"↓↓↓向下滑↓↓↓\n当按下按钮时拖动，\n操作将转化为拖动，\n且不会触发按钮\n(文本框同理)")
-		.setText(L"↓↓↓向下滑↓↓↓\n当按下按钮时拖动，\n将保持按下按钮的状态拖动\n(文本框同理)")
+		.setText(L"↓↓↓向下滑↓↓↓\n当按下按钮时拖动，\n操作将转化为拖动，\n且不会触发按钮")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 500))
-		.setSize(sf::Vector2f(700, 260))
+		.setPosition(sf::Vector2f(350, 500));
+	window["main"].area("area").text("text2")
+		.setSizeSyncText()
 		.setCenter();
 
 	window["main"].area("area")

@@ -979,28 +979,20 @@ namespace game {
 					if (mousePressed) {
 						AreaObj& areaPtr = area(focus[attr::gui::AreaPath].cast<string>());
 						if (areaPtr.scrollable != sf::Vector2f()) {
-							//It seems that do not cancel the focus when scrolling makes the GUI easier to use
-							/*
-							if (focus.count(attr::gui::ButtonId)) {
-								area(focus[attr::gui::AreaPath].cast<string>())
-									.button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
-								focus.erase(attr::gui::ButtonId);
-							}
-							if (focus.count(attr::gui::InputId)) {
-								area(focus[attr::gui::AreaPath].cast<string>())
-									.input(focus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::over;
-								focus.erase(attr::gui::InputId);
-							}
-							*/
 							//tar.scroll += mouseVelocity();//wrong
 							//consider the case of two continuous sf::Event::MouseMoved event
 							if (mousePos.Size()>1)
-							areaPtr.scroll += (mousePos.back()-mousePos[mousePos.backPos()-1]).componentWiseMul(areaPtr.scrollable);
+								areaPtr.scroll += (mousePos.back()-mousePos[mousePos.backPos()-1]).componentWiseMul(areaPtr.scrollable);
+							if (focus.count(attr::gui::ButtonId)) {
+								area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
+							}
 						}
-						if (focus.count(attr::gui::ButtonId)) {
-							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
-								area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::focus;
-							else area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
+						else {
+							if (focus.count(attr::gui::ButtonId)) {
+								if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
+									area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::focus;
+								else area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
+							}
 						}
 					}
 					//update over
@@ -1024,8 +1016,9 @@ namespace game {
 
 					if (focus.count(attr::gui::ButtonId)) {
 						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>())) {
+							if (area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu==attr::gui::Statu::focus)
+								eventList.push(game::Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::ButtonId].cast<string>() }));
 							area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
-							eventList.push(game::Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::ButtonId].cast<string>() }));
 						}
 						else area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::normal;
 					}
