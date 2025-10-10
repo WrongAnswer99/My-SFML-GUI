@@ -119,7 +119,9 @@ namespace game {
 			unsigned int cursorBlinkTick = 0;
 			//cursorBlinkRate : how many ticks the cursor blinks
 			const unsigned int cursorBlinkRate = 30;
-			const float scrollResistance = 10.f;
+			const float scrollResistance = 3.f;
+			static constexpr int scrollSensitivity = 6;
+			const float mouseWheelScrollRate = 50.f;
 			template<typename T, int size>
 			class RollArray {
 			private:
@@ -171,7 +173,7 @@ namespace game {
 				}
 			};
 			//scroll sensitivity = 6 tick = 0.1 s (60 FPS)
-			RollArray<sf::Vector2f, 6>mousePos;
+			RollArray<sf::Vector2f, scrollSensitivity>mousePos;
 			sf::Vector2f mouseVelocity() {
 				return mousePos.back() - mousePos.front();
 			}
@@ -187,6 +189,8 @@ namespace game {
 			}
 			class ObjBase {
 				friend class WindowManager;
+				template <typename T>
+				friend class LargeObjUMap;
 			protected:
 				string id;
 				sf::FloatRect posRect = sf::FloatRect(sf::Vector2f(), sf::Vector2f(1.f, 1.f));
@@ -284,7 +288,7 @@ namespace game {
 				}
 				//use this setter
 				//before : setCenter()
-				//after : setStyle() , setGeneralStyle() , setText()
+				//after : setStyle() , setText()
 				TextObj& setSizeSyncText() {
 					textObj.setFont(game::fontManager[font]);
 					textObj.setCharacterSize(characterSize);
@@ -635,58 +639,25 @@ namespace game {
 				friend class WindowManager;
 			protected:
 				sf::Vector2f scroll;
-				sf::Vector2f scrollable;
+				sf::Vector2i scrollable;
 				sf::Vector2f scrollVelocity;
 				sf::FloatRect scrollLimit;
-				unordered_map<string, int>areaId, textId, buttonId, inputId;
-				vector<AreaObj>areaData;
-				vector<TextObj>textData;
-				vector<ButtonObj>buttonData;
-				vector<InputObj>inputData;
 			public:
 				AreaObj() {
 					styles[attr::gui::Statu::normal].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip);
 					styles[attr::gui::Statu::over].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip);
 					styles[attr::gui::Statu::focus].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip);
 				}
-				AreaObj& area(string id) {
-					if (!areaId.count(id)) {
-						areaData.emplace_back();
-						areaData[areaData.size() - 1].id = id;
-						areaId[id] = (int)areaData.size() - 1;
-					}
-					return areaData[areaId[id]];
-				}
-				TextObj& text(string id) {
-					if (!textId.count(id)) {
-						textData.emplace_back();
-						textData[textData.size() - 1].id = id;
-						textId[id] = (int)textData.size() - 1;
-					}
-					return textData[textId[id]];
-				}
-				ButtonObj& button(string id) {
-					if (!buttonId.count(id)) {
-						buttonData.emplace_back();
-						buttonData[buttonData.size() - 1].id = id;
-						buttonId[id] = (int)buttonData.size() - 1;
-					}
-					return buttonData[buttonId[id]];
-				}
-				InputObj& input(string id) {
-					if (!inputId.count(id)) {
-						inputData.emplace_back();
-						inputData[inputData.size() - 1].id = id;
-						inputId[id] = (int)inputData.size() - 1;
-					}
-					return inputData[inputId[id]];
-				}
+				LargeObjUMap<AreaObj>area;
+				LargeObjUMap<TextObj>text;
+				LargeObjUMap<ButtonObj>button;
+				LargeObjUMap<InputObj>input;
 				AreaObj& setScrollable(bool scrollableX, bool scrollableY) {
-					scrollable = sf::Vector2f(scrollableX, scrollableY);
+					scrollable = sf::Vector2i(scrollableX, scrollableY);
 					return *this;
 				}
-			private:
-				inline void addPoint(sf::FloatRect& rect, sf::Vector2f point) {
+			protected:
+				static inline void addPoint(sf::FloatRect& rect, sf::Vector2f point) {
 					if (point.x < rect.position.x) {
 						rect.size.x += rect.position.x - point.x;
 						rect.position.x = point.x;
@@ -712,19 +683,19 @@ namespace game {
 				}
 				AreaObj& setScrollLimitAuto() {
 					scrollLimit = sf::FloatRect(sf::Vector2f(), posRect.size);
-					for (auto& elem : areaData) {
+					for (auto& elem : area.iterate()) {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
-					for (auto& elem : textData) {
+					for (auto& elem : text.iterate()) {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
-					for (auto& elem : buttonData) {
+					for (auto& elem : button.iterate()) {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
-					for (auto& elem : inputData) {
+					for (auto& elem : input.iterate()) {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
@@ -733,17 +704,17 @@ namespace game {
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, AreaObj& x) {
 					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structIn(x.areaId, x.areaData, x.textId, x.textData, x.buttonId, x.buttonData, x.inputId, x.inputData);
+					bf.structIn(x.area, x.text, x.button, x.input);
 					bf.structIn(x.scrollable, x.scrollLimit);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const AreaObj& x) {
 					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structOut(x.areaId, x.areaData, x.textId, x.textData, x.buttonId, x.buttonData, x.inputId, x.inputData);
+					bf.structOut(x.area, x.text, x.button, x.input);
 					bf.structOut(x.scrollable, x.scrollLimit);
 					return bf;
 				}
-			private:
+			protected:
 				void ensureScrollLimit() {
 					if (-scroll.x < scrollLimit.position.x) {
 						scroll.x = -(scrollLimit.position.x);
@@ -759,7 +730,7 @@ namespace game {
 					}
 				}
 				void updateScroll(WindowManager& windowManager) {
-					if (scrollable != sf::Vector2f()) {
+					if (scrollable != sf::Vector2i()) {
 						if (scrollVelocity.lengthSquared() < windowManager.scrollResistance * windowManager.scrollResistance) {
 							scrollVelocity = sf::Vector2f();
 						}
@@ -771,7 +742,7 @@ namespace game {
 						scroll += scrollVelocity;
 						ensureScrollLimit();
 					}
-					for (auto& elem : areaData) {
+					for (auto& elem : area.iterate()) {
 						elem.updateScroll(windowManager);
 					}
 				}
@@ -783,16 +754,16 @@ namespace game {
 					sf::RenderTexture rCur(static_cast<sf::Vector2u>(posRect.size));
 					rCur.clear(sf::Color::Transparent);
 					//clear
-					for (auto& elem : areaData) {
+					for (auto& elem : area.iterate()) {
 						elem.draw(rCur, displayAreaCur, windowManager);
 					}
-					for (auto& elem : buttonData) {
+					for (auto& elem : button.iterate()) {
 						elem.draw(rCur, displayAreaCur);
 					}
-					for (auto& elem : textData) {
+					for (auto& elem : text.iterate()) {
 						elem.draw(rCur, displayAreaCur);
 					}
-					for (auto& elem : inputData) {
+					for (auto& elem : input.iterate()) {
 						elem.draw(rCur, displayAreaCur, windowManager);
 					}
 					rCur.display();
@@ -804,45 +775,37 @@ namespace game {
 			};
 		private:
 			unordered_map<string, int>windowId;
-			vector <AreaObj>windowData;
+			vector<AreaObj>windowData;
 		public:
-			bool newWindow(string id) {
-				if (windowId.count(id)) {
-					//窗口名称重复
-					return false;
-				}
-				windowData.emplace_back();
-				windowData[windowData.size() - 1].id = id;
-				windowId[id] = (int)windowData.size() - 1;
-				return true;
+			LargeObjUMap<AreaObj>preset;
+			void readPreset(BinaryFStream & bf) {
+				bf >> preset;
 			}
-			bool newWindow(string id, AreaObj& w) {
-				if (windowId.count(id)) {
-					//窗口名称重复
-					return false;
-				}
-				windowData.push_back(w);
+			void newWindow(string id) {
+				if (windowId.count(id))
+					throw invalid_argument("[WindowManager::newWindow] Window ID already exists 窗口ID重复 : " + id);
+				if (preset.count(id))
+					windowData.push_back(preset[id]);
+				else windowData.emplace_back();
 				windowData[windowData.size() - 1].id = id;
 				windowId[id] = (int)windowData.size() - 1;
-				return true;
 			}
 			bool topWindowIs(string id) {
-				return windowData[windowData.size() - 1].id == id;
+				return windowData.size() > 0 && windowData.back().id == id;
 			}
-			bool closeTopWindow() {
-				overFocus = {}; focus = {};
+			void closeTopWindow() {
 				if (windowData.size() > 0) {
-					windowId.erase(windowData[windowData.size() - 1].id);
+					windowId.erase(windowData.back().id);
 					windowData.pop_back();
-					return true;
 				}
-				return false;
+				else throw runtime_error("[WindowManager::closeTopWindow] No window to close 无窗口，无法关闭");
 			}
 			AreaObj& window(string id) {
 				if (windowId.count(id))
 					return windowData[windowId[id]];
-				throw std::out_of_range("WindowManager::window: 未找到指定窗口ID: " + id);
+				else throw std::out_of_range("[WindowManager::window] Window ID not found 未找到指定窗口ID : " + id);
 			}
+		private:
 			template<typename F>
 			auto& visit(string path, F func) {
 				AreaObj* areaPtr = nullptr;
@@ -851,47 +814,55 @@ namespace game {
 					if (path[i] == '_') {
 						if (areaPtr == nullptr)
 							areaPtr = &window(temp);
-						else areaPtr = &(areaPtr->area(temp));
+						else areaPtr = &(areaPtr->area[temp]);
 						temp = "";
 					}
 					else temp.push_back(path[i]);
 				}
 				return func(areaPtr, temp);
 			}
+		public:
+			//通过路径访问area
 			AreaObj& area(string path) {
 				return visit(path, [this](AreaObj* areaPtr, const string& name)->AreaObj& {
 					if (areaPtr == nullptr)
 						areaPtr = &window(name);
-					else areaPtr = &(areaPtr->area(name));
+					else areaPtr = &(areaPtr->area[name]);
 					return *areaPtr;
 					});
 			}
+			//通过路径访问text
 			TextObj& text(string path) {
 				return visit(path, [this](AreaObj* areaPtr, const string& name)->TextObj& {
-					return areaPtr->text(name);
+					return areaPtr->text[name];
 					});
 			}
+			//通过路径访问button
 			ButtonObj& button(string path) {
 				return visit(path, [this](AreaObj* areaPtr, const string& name)->ButtonObj& {
-					return areaPtr->button(name);
+					return areaPtr->button[name];
 					});
 			}
+			//通过路径访问input
 			InputObj& input(string path) {
 				return visit(path, [this](AreaObj* areaPtr, const string& name)->InputObj& {
-					return areaPtr->input(name);
+					return areaPtr->input[name];
 					});
 			}
-			AreaObj* updateOver(AreaObj* areaPtr,bool stopScroll=false) {
-				if (overFocus.count(attr::gui::ButtonId)) {
-					area(overFocus[attr::gui::AreaPath].cast<string>())
-						.button(overFocus[attr::gui::ButtonId].cast<string>()).loseOver();
-				}
-				else if (overFocus.count(attr::gui::InputId)) {
-					area(overFocus[attr::gui::AreaPath].cast<string>())
-						.input(overFocus[attr::gui::InputId].cast<string>()).loseOver();
-				}
-				else if (overFocus.count(attr::gui::AreaPath)) {
-					area(overFocus[attr::gui::AreaPath].cast<string>()).loseOver();
+		private:
+			inline AreaObj* updateOver(AreaObj* areaPtr,bool stopScroll=false) {
+				if (exist(overFocus)) {
+					if (overFocus.count(attr::gui::ButtonId)) {
+						area(overFocus[attr::gui::AreaPath].cast<string>())
+							.button[overFocus[attr::gui::ButtonId].cast<string>()].loseOver();
+					}
+					else if (overFocus.count(attr::gui::InputId)) {
+						area(overFocus[attr::gui::AreaPath].cast<string>())
+							.input[overFocus[attr::gui::InputId].cast<string>()].loseOver();
+					}
+					else if (overFocus.count(attr::gui::AreaPath)) {
+						area(overFocus[attr::gui::AreaPath].cast<string>()).loseOver();
+					}
 				}
 				sf::Vector2f origin = areaPtr->posRect.position;
 				overFocus = {};
@@ -902,7 +873,7 @@ namespace game {
 					if (path == "")
 						path = areaPtr->id;
 					else path = path + '_' + areaPtr->id;
-					for (auto& elem : areaPtr->areaData) {
+					for (auto& elem : areaPtr->area.iterate()) {
 						if (elem.posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
 							origin += elem.posRect.position + areaPtr->scroll;
 							areaPtr = &elem;
@@ -912,15 +883,14 @@ namespace game {
 					break;
 					L_continue:;
 				}
-				//debug;
 				overFocus[attr::gui::AreaPath] = path;
-				for (auto& elem : areaPtr->buttonData) {
+				for (auto& elem : areaPtr->button.iterate()) {
 					if (elem.posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
 						overFocus[attr::gui::ButtonId] = elem.id;
 						goto L_return;
 					}
 				}
-				for (auto& elem : areaPtr->inputData) {
+				for (auto& elem : areaPtr->input.iterate()) {
 					if (elem.posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
 						overFocus[attr::gui::InputId] = elem.id;
 						goto L_return;
@@ -929,6 +899,42 @@ namespace game {
 				L_return:;
 				return areaPtr;
 			}
+			inline bool exist(Statu& statu) {
+				AreaObj* areaPtr = nullptr;
+				string temp = "";
+				if (!statu.count(attr::gui::AreaPath)) {
+					return false;
+				}
+				string& path = statu[attr::gui::AreaPath].cast<string>();
+				for (int i = 0; i < path.size(); i++) {
+					if (path[i] == '_') {
+						if (areaPtr == nullptr) {
+							if (!windowId.count(temp))return false;
+							areaPtr = &window(temp);
+						}
+						else {
+							if (!areaPtr->area.count(temp))return false;
+							areaPtr = &(areaPtr->area[temp]);
+						}
+						temp = "";
+					}
+					else temp.push_back(path[i]);
+				}
+				if (areaPtr == nullptr) {
+					if (!windowId.count(temp))return false;
+					areaPtr = &window(temp);
+				}
+				else {
+					if (!areaPtr->area.count(temp))return false;
+					areaPtr = &(areaPtr->area[temp]);
+				}
+				if (statu.count(attr::gui::ButtonId))
+					return areaPtr->button.count(statu[attr::gui::ButtonId].cast<string>());
+				if (statu.count(attr::gui::InputId))
+					return areaPtr->input.count(statu[attr::gui::InputId].cast<string>());
+				return true;
+			}
+		public:
 			bool update(const optional<sf::Event>& sfEvent) {
 				if (windowData.size() == 0)
 					return false;
@@ -937,12 +943,14 @@ namespace game {
 					mousePressed = true;
 				if (sfEvent->is<sf::Event::MouseButtonReleased>())
 					mousePressed = false;
+				string path = "";
+				AreaObj* topWindow = &windowData.back();
+				AreaObj* areaOverPtr;
+				if (!exist(focus))
+					focus = {};
 				//sf::Event::MouseButtonPressed
 				//update focus
 				//after updating focus ,varible 'focus' & 'overFocus' must have a value
-				string path = "";
-				AreaObj* topWindow = &windowData[windowData.size() - 1];
-				AreaObj* areaOverPtr;
 				if (sfEvent->is<sf::Event::MouseButtonPressed>()) {
 					mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position);//update mousePos
 					areaOverPtr = updateOver(topWindow,true);
@@ -953,17 +961,17 @@ namespace game {
 
 					if (focus.count(attr::gui::ButtonId))
 						area(focus[attr::gui::AreaPath].cast<string>())
-							.button(focus[attr::gui::ButtonId].cast<string>()).loseFocus();
+							.button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
 					else if (focus.count(attr::gui::InputId))
 						area(focus[attr::gui::AreaPath].cast<string>())
-							.input(focus[attr::gui::InputId].cast<string>()).loseFocus();
+							.input[focus[attr::gui::InputId].cast<string>()].loseFocus();
 					else if (focus.count(attr::gui::AreaPath))
 						area(focus[attr::gui::AreaPath].cast<string>()).loseFocus();
 
 					if (overFocus.count(attr::gui::ButtonId))
-						areaOverPtr->button(overFocus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::focus;
+						areaOverPtr->button[overFocus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::focus;
 					else if (overFocus.count(attr::gui::InputId))
-						areaOverPtr->input(overFocus[attr::gui::InputId].cast<string>()).currentStatu = attr::gui::Statu::focus;
+						areaOverPtr->input[overFocus[attr::gui::InputId].cast<string>()].currentStatu = attr::gui::Statu::focus;
 					//update inertial scroll stop
 					else if (overFocus.count(attr::gui::AreaPath))
 						areaOverPtr->currentStatu = attr::gui::Statu::focus;
@@ -978,20 +986,20 @@ namespace game {
 					//update scroll
 					if (mousePressed) {
 						AreaObj& areaPtr = area(focus[attr::gui::AreaPath].cast<string>());
-						if (areaPtr.scrollable != sf::Vector2f()) {
+						if (areaPtr.scrollable != sf::Vector2i()) {
 							//tar.scroll += mouseVelocity();//wrong
 							//consider the case of two continuous sf::Event::MouseMoved event
 							if (mousePos.Size()>1)
-								areaPtr.scroll += (mousePos.back()-mousePos[mousePos.backPos()-1]).componentWiseMul(areaPtr.scrollable);
+								areaPtr.scroll += (mousePos.back()-mousePos[mousePos.backPos()-1]).componentWiseMul(static_cast<sf::Vector2f>(areaPtr.scrollable));
 							if (focus.count(attr::gui::ButtonId)) {
-								area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
+								area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::over;
 							}
 						}
 						else {
 							if (focus.count(attr::gui::ButtonId)) {
 								if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
-									area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::focus;
-								else area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
+									area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::focus;
+								else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::over;
 							}
 						}
 					}
@@ -999,9 +1007,9 @@ namespace game {
 					//after updating over ,varible 'focus' will not be changed
 					else {
 						if (overFocus.count(attr::gui::ButtonId))
-							areaOverPtr->button(overFocus[attr::gui::ButtonId].cast<string>()).gainOver();
+							areaOverPtr->button[overFocus[attr::gui::ButtonId].cast<string>()].gainOver();
 						else if (overFocus.count(attr::gui::InputId))
-							areaOverPtr->input(overFocus[attr::gui::InputId].cast<string>()).gainOver();
+							areaOverPtr->input[overFocus[attr::gui::InputId].cast<string>()].gainOver();
 						else if (overFocus.count(attr::gui::AreaPath))
 							areaOverPtr->gainOver();
 					}
@@ -1016,24 +1024,26 @@ namespace game {
 
 					if (focus.count(attr::gui::ButtonId)) {
 						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>())) {
-							if (area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu==attr::gui::Statu::focus)
+							if (area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu==attr::gui::Statu::focus)
 								eventList.push(game::Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::ButtonId].cast<string>() }));
-							area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::over;
+							area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::over;
 						}
-						else area(focus[attr::gui::AreaPath].cast<string>()).button(focus[attr::gui::ButtonId].cast<string>()).currentStatu = attr::gui::Statu::normal;
+						else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::normal;
 					}
 
 					//update inertial scroll start
 					if (focus.count(attr::gui::AreaPath)) {
-						if (area(focus[attr::gui::AreaPath].cast<string>()).scrollable != sf::Vector2f())
-							area(focus[attr::gui::AreaPath].cast<string>()).scrollVelocity = mouseVelocity().componentWiseMul(area(focus[attr::gui::AreaPath].cast<string>()).scrollable);
+						if (area(focus[attr::gui::AreaPath].cast<string>()).scrollable != sf::Vector2i())
+							area(focus[attr::gui::AreaPath].cast<string>()).scrollVelocity = mouseVelocity()
+								.componentWiseMul(static_cast<sf::Vector2f>(area(focus[attr::gui::AreaPath].cast<string>()).scrollable))
+								.componentWiseDiv(sf::Vector2f(scrollSensitivity,scrollSensitivity));
 					}
 					return true;
 				}
 				if (sfEvent->is<sf::Event::TextEntered>()) {
 					if (focus.count(attr::gui::InputId)) {
 						char32_t ch = sfEvent->getIf<sf::Event::TextEntered>()->unicode;
-						InputObj& InputTar = area(focus[attr::gui::AreaPath].cast<string>()).input(focus[attr::gui::InputId].cast<string>());
+						InputObj& InputTar = area(focus[attr::gui::AreaPath].cast<string>()).input[focus[attr::gui::InputId].cast<string>()];
 						if (ch == 8)//backspace key
 							InputTar.erase(true);
 						else if (ch == 13)//enter key
@@ -1047,7 +1057,7 @@ namespace game {
 				}
 				if (sfEvent->is<sf::Event::KeyPressed>()) {
 					if (focus.count(attr::gui::InputId)) {
-						InputObj& InputTar = area(focus[attr::gui::AreaPath].cast<string>()).input(focus[attr::gui::InputId].cast<string>());
+						InputObj& InputTar = area(focus[attr::gui::AreaPath].cast<string>()).input[focus[attr::gui::InputId].cast<string>()];
 						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Left)//left arrow
 							InputTar.moveCursor(true);
 						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Right)//right arrow
@@ -1057,6 +1067,19 @@ namespace game {
 						cursorBlinkTick = 0;
 					}
 					return true;
+				}
+				if (sfEvent->is<sf::Event::MouseWheelScrolled>()) {
+					areaOverPtr = updateOver(topWindow);
+					float delta = sfEvent->getIf<sf::Event::MouseWheelScrolled>()->delta;
+					if (areaOverPtr->scrollable == sf::Vector2i(1, 0))
+						areaOverPtr->scrollVelocity = sf::Vector2f(delta*mouseWheelScrollRate,0);
+					if (areaOverPtr->scrollable == sf::Vector2i(0, 1))
+						areaOverPtr->scrollVelocity = sf::Vector2f(0, delta * mouseWheelScrollRate);
+					if (areaOverPtr->scrollable == sf::Vector2i(1, 1)) {
+						if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LShift) || sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::RShift))
+							areaOverPtr->scrollVelocity = sf::Vector2f(delta * mouseWheelScrollRate, 0);
+						else areaOverPtr->scrollVelocity = sf::Vector2f(0, delta * mouseWheelScrollRate);
+					}
 				}
 				return false;
 			}

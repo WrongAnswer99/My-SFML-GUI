@@ -260,6 +260,67 @@ public:
 		}
 	}
 };
+//使用时确保.id不被修改
+template <typename T>
+class LargeObjUMap {
+private:
+	unordered_map<string, unsigned int>idMap;
+	vector<T>data;
+public:
+	T& operator[](const string& key) {
+		if (!idMap.count(key)) {
+			data.emplace_back();
+			data.back().id = key;
+			idMap[key] = static_cast<unsigned int>(data.size() - 1);
+		}
+		return data[idMap[key]];
+	}
+	//确保.id不被修改
+	inline vector<T>& iterate() {
+		return data;
+	}
+	size_t count(const string &key) {
+		return idMap.count(key);
+	}
+	void erase(const string& key) {
+		if (idMap.count(key)) {
+			if (data.size() > 1) {
+				int pos = idMap[key];
+				swap(data[pos], data.back());
+				idMap[data[pos].id] = pos;
+				idMap.erase(key);
+				data.pop_back();
+			}
+			else {
+				idMap.clear();
+				data.clear();
+			}
+		}
+	}
+	friend inline BinaryFStream& operator>>(BinaryFStream& bf, LargeObjUMap<T>& x) {
+		size_t size;
+		bf >> size;
+		x.idMap.clear(); x.data.clear();
+		x.idMap.reserve(size); x.data.reserve(size);
+		string st{};
+		T t{};
+		for (size_t i = 0; i < size; i++) {
+			bf >> st >> t;
+			x.data.emplace_back(std::move(t));
+			x.idMap.emplace(std::move(st), static_cast<unsigned int>(i));
+			st = string{};
+			t = T{};
+		}
+		return bf;
+	}
+	friend inline BinaryFStream& operator<<(BinaryFStream& bf, const LargeObjUMap<T>& x) {
+		bf << x.idMap.size();
+		for (auto& elem : x.idMap) {
+			bf << elem.first << x.data[elem.second];
+		}
+		return bf;
+	}
+};
 namespace game {
 	//statu = {"name1", value1, "name2", value2, ...};
 	//statu["name"] = value;
