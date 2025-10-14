@@ -13,12 +13,6 @@ using namespace std;
 //if exist then check condition
 #define ensure(existCondition,condition) (!(existCondition)||((existCondition)&&(condition)))
 
-static bool isBigEndianCheck() {
-	uint16_t num = 0x01;
-	return *reinterpret_cast<uint8_t*>(&num) != 0x01;
-}
-//不使用 constexpr编译期确定 或 std::endian 是因为需要检测运行时的电脑是否为大端,而非编译时的电脑
-const bool isBigEndian = isBigEndianCheck();
 //跨平台二进制文件输入输出
 //标准化类型大小
 //统一小端存储
@@ -74,30 +68,6 @@ private:
 	//灵感来自 enable_if_t<>=enable_if<>::type
 	template<typename T>
 	using standardizedType = standardizedTypeEnum<standardizedSize<T>()>::type;
-	template<typename T>
-	inline T changeEndian(T x) {
-		if constexpr (sizeof(x) == 1)
-			return x;
-		if constexpr (sizeof(x) == 2) {
-			char* ptr = reinterpret_cast<char*>(&x);
-			std::swap(*ptr, *(ptr + 1));
-			return x;
-		}
-		if constexpr (sizeof(x) == 4) {
-			char* ptr = reinterpret_cast<char*>(&x);
-			std::swap(*ptr, *(ptr + 3));
-			std::swap(*(ptr + 1), *(ptr + 2));
-			return x;
-		}
-		if constexpr (sizeof(x) == 8) {
-			char* ptr = reinterpret_cast<char*>(&x);
-			std::swap(*ptr, *(ptr + 7));
-			std::swap(*(ptr + 1), *(ptr + 6));
-			std::swap(*(ptr + 2), *(ptr + 5));
-			std::swap(*(ptr + 3), *(ptr + 4));
-			return x;
-		}
-	}
 	inline void prepareInMode() {
 		if (fileOut.is_open()) {
 			fileOut.close();
@@ -164,9 +134,7 @@ public:
 		prepareInMode();
 		standardizedType<std::decay_t<T>> std_x{};
 		fileIn.read(reinterpret_cast<char*>(&std_x), sizeof(std_x));
-		x = isBigEndian ?
-			changeEndian(static_cast<T>(std_x)) :
-			static_cast<T>(std_x);
+		x = static_cast<T>(std_x);
 		return *this;
 	}
 	inline BinaryFStream& operator>>(std::string& x) {
@@ -179,9 +147,7 @@ public:
 	template<typename T, typename = std::enable_if_t<standardizedSize<std::decay_t<T>>() != 0>>
 	inline BinaryFStream& operator<<(const T& x) {
 		prepareOutMode();
-		standardizedType<std::decay_t<T>> std_x = isBigEndian ?
-			changeEndian(static_cast<standardizedType<std::decay_t<T>>>(x)) :
-			static_cast<standardizedType<std::decay_t<T>>>(x);
+		standardizedType<std::decay_t<T>> std_x = static_cast<standardizedType<std::decay_t<T>>>(x);
 		fileOut.write(reinterpret_cast<const char*>(&std_x), sizeof(std_x));
 		return *this;
 	}
