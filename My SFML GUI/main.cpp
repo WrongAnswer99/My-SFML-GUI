@@ -7,8 +7,6 @@ unordered_map<string, game::gui::WindowManager::ObjBase::Style>style;
 int windowWidth = 800, windowHeight = 600;
 game::gui::WindowManager windowManager;
 static void init() {
-	game::fontManager.loadFont("ht", "FZHTJW.TTF");
-	
 	style["stda1"].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip);
 	style["stda2"].set(sf::Color(240,240,240), sf::Color(200, 200, 200), 2, Skip);
 	style["stdbn"].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2, sf::Color::Black);
@@ -171,7 +169,10 @@ static void init() {
 }
 game::Event evt;
 int main() {
-	init();
+	game::fontManager.loadFont("ht", "FZHTJW.TTF");
+	//init();
+	BinaryFStream bf("D:\\1.bin");
+	windowManager.readPreset(bf);
 	windowManager.newWindow("main");
 	game::window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"≤‚ ‘", sf::Style::Close, sf::State::Windowed);
 	game::window.setFramerateLimit(60);

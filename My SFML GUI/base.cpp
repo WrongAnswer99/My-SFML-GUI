@@ -475,6 +475,8 @@ namespace game {
 	class FontManager {
 	private:
 		unordered_map<string, sf::Font>font;
+		//noncopyable
+		FontManager& operator=(const FontManager& _f)const {}
 	public:
 		bool loadFont(string name, string filename) {
 			return font[name].openFromFile(filename);
@@ -617,6 +619,7 @@ namespace game {
 			}
 		}
 	};
+	/*
 	class EntityManager {
 		//¡¥ Ω«∞œÚ–«
 		struct point {
@@ -681,7 +684,7 @@ namespace game {
 			}
 			return ret;
 		}
-	}entityManager;
+	}entityManager;*/
 
 
 	namespace Data {

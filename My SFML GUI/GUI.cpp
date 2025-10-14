@@ -120,8 +120,10 @@ namespace game {
 			//cursorBlinkRate : how many ticks the cursor blinks
 			const unsigned int cursorBlinkRate = 30;
 			const float scrollResistance = 3.f;
+			//scroll sensitivity = 6 tick = 0.1 s (60 FPS)
 			static constexpr int scrollSensitivity = 6;
 			const float mouseWheelScrollRate = 50.f;
+			const float scrollThreshold = 10;
 			template<typename T, int size>
 			class RollArray {
 			private:
@@ -172,8 +174,8 @@ namespace game {
 					return realSize;
 				}
 			};
-			//scroll sensitivity = 6 tick = 0.1 s (60 FPS)
 			RollArray<sf::Vector2f, scrollSensitivity>mousePos;
+			sf::Vector2f mouseLastPressPos;
 			sf::Vector2f mouseVelocity() {
 				return mousePos.back() - mousePos.front();
 			}
@@ -939,8 +941,10 @@ namespace game {
 				if (windowData.size() == 0)
 					return false;
 				//update mouse press statu
-				if (sfEvent->is<sf::Event::MouseButtonPressed>())
+				if (sfEvent->is<sf::Event::MouseButtonPressed>()) {
 					mousePressed = true;
+					mouseLastPressPos = static_cast<sf::Vector2f>(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position);
+				}
 				if (sfEvent->is<sf::Event::MouseButtonReleased>())
 					mousePressed = false;
 				string path = "";
@@ -989,10 +993,13 @@ namespace game {
 						if (areaPtr.scrollable != sf::Vector2i()) {
 							//tar.scroll += mouseVelocity();//wrong
 							//consider the case of two continuous sf::Event::MouseMoved event
-							if (mousePos.Size()>1)
-								areaPtr.scroll += (mousePos.back()-mousePos[mousePos.backPos()-1]).componentWiseMul(static_cast<sf::Vector2f>(areaPtr.scrollable));
-							if (focus.count(attr::gui::ButtonId)) {
+							if (focus.count(attr::gui::ButtonId) && (mouseLastPressPos - mousePos.back()).lengthSquared() >= scrollThreshold * scrollThreshold) {
 								area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::over;
+							}
+							if (ensure(focus.count(attr::gui::ButtonId), area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu == attr::gui::Statu::over)){
+								if (mousePos.Size() > 1)
+									areaPtr.scroll += (mousePos.back() - mousePos[mousePos.backPos() - 1]).componentWiseMul(static_cast<sf::Vector2f>(areaPtr.scrollable));
+								
 							}
 						}
 						else {
