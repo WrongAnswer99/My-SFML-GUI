@@ -2,16 +2,16 @@
 
 //#define LET_ME_SEE_SEE
 #include "GUI.cpp"
-unordered_map<string, game::gui::WindowManager::ObjBase::Style>style;
+unordered_map<string, game::gui::WindowManager::Style>style;
 
 int windowWidth = 800, windowHeight = 600;
 game::gui::WindowManager windowManager;
 static void init() {
-	style["stda1"].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip);
-	style["stda2"].set(sf::Color(240,240,240), sf::Color(200, 200, 200), 2, Skip);
-	style["stdbn"].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2, sf::Color::Black);
-	style["stdbo"].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2, sf::Color::Black);
-	style["stdbf"].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2, sf::Color::Black);
+	style["stda1"].set(sf::Color::White, sf::Color(200, 200, 200), 2);
+	style["stda2"].set(sf::Color(240,240,240), sf::Color(200, 200, 200), 2);
+	style["stdbn"].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
+	style["stdbo"].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
+	style["stdbf"].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
 
 	windowManager.preset["main"]
 		.setScrollable(false,false)
@@ -44,7 +44,7 @@ static void init() {
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 500));
 	windowManager.preset["main"].area["area"].text["text2"]
-		.setSizeSyncText()
+		.setSizeAuto()
 		.setCenter();
 
 	
@@ -74,7 +74,7 @@ static void init() {
 		.setPosition(sf::Vector2f(350, 225))
 		.setSize(sf::Vector2f(400, 50));
 	windowManager.preset["main"].area["area"].input["input"]
-		.setSizeSyncText()
+		.setSizeAuto()
 		.setCenter();
 
 	windowManager.preset["main"].area["area"].button["button"]
@@ -170,9 +170,9 @@ static void init() {
 game::Event evt;
 int main() {
 	game::fontManager.loadFont("ht", "FZHTJW.TTF");
-	//init();
-	BinaryFStream bf("D:\\1.bin");
-	windowManager.readPreset(bf);
+	init();
+	/*BinaryFStream bf("D:\\1.bin");
+	windowManager.readPreset(bf);*/
 	windowManager.newWindow("main");
 	game::window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"≤‚ ‘", sf::Style::Close, sf::State::Windowed);
 	game::window.setFramerateLimit(60);

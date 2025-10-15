@@ -115,6 +115,7 @@ namespace game {
 		class WindowManager :public EventManager {
 		private:
 			Statu focus, overFocus;
+			bool isScrolling = false;
 			bool mousePressed = false;
 			unsigned int cursorBlinkTick = 0;
 			//cursorBlinkRate : how many ticks the cursor blinks
@@ -189,6 +190,25 @@ namespace game {
 				windowData.clear();
 				windowId.clear();
 			}
+			class Style {
+				friend class WindowManager;
+			private:
+				sf::Color backgroundColor = sf::Color(0, 0, 0, 0), outlineColor = sf::Color(0, 0, 0, 0);
+				float outlineThickness = 1;
+			public:
+				Style() {}
+				void set(Skipable<sf::Color> _backgroundColor, Skipable<sf::Color>_outlineColor, Skipable<float>_outlineThickness) {
+					_backgroundColor.assignTo(backgroundColor);
+					_outlineColor.assignTo(outlineColor);
+					_outlineThickness.assignTo(outlineThickness);
+				}
+				friend inline BinaryFStream& operator>>(BinaryFStream& bf, Style& x) {
+					return bf.structIn(x.backgroundColor, x.outlineColor, x.outlineThickness);
+				}
+				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const Style& x) {
+					return bf.structOut(x.backgroundColor, x.outlineColor, x.outlineThickness);
+				}
+			};
 			class ObjBase {
 				friend class WindowManager;
 				template <typename T>
@@ -196,32 +216,9 @@ namespace game {
 			protected:
 				string id;
 				sf::FloatRect posRect = sf::FloatRect(sf::Vector2f(), sf::Vector2f(1.f, 1.f));
-			public:
-				class Style {
-					friend class WindowManager;
-				private:
-					sf::Color backgroundColor = sf::Color(0, 0, 0, 0), outlineColor = sf::Color(0, 0, 0, 0);
-					float outlineThickness = 1;
-					sf::Color textColor = sf::Color(0, 0, 0, 0);
-				public:
-					Style() {}
-					void set(Skipable<sf::Color> _backgroundColor, Skipable<sf::Color>_outlineColor, Skipable<float>_outlineThickness, Skipable<sf::Color>_textColor) {
-						_backgroundColor.assignTo(backgroundColor);
-						_outlineColor.assignTo(outlineColor);
-						_outlineThickness.assignTo(outlineThickness);
-						_textColor.assignTo(textColor);
-					}
-					friend inline BinaryFStream& operator>>(BinaryFStream& bf, Style& x) {
-						return bf.structIn(x.backgroundColor, x.outlineColor, x.outlineThickness, x.textColor);
-					}
-					friend inline BinaryFStream& operator<<(BinaryFStream& bf, const Style& x) {
-						return bf.structOut(x.backgroundColor, x.outlineColor, x.outlineThickness, x.textColor);
-					}
-				};
-			protected:
 				Style styles[3];
 				int currentStatu = attr::gui::Statu::normal;
-				void drawBase(sf::RenderTarget& r, sf::FloatRect displayArea) {
+				void draw(sf::RenderTarget& r, sf::FloatRect displayArea) {
 					if (posRect.findIntersection(displayArea)) {
 						Display::Draw::Rect(
 							r,
@@ -268,30 +265,46 @@ namespace game {
 					return bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
 				}
 			protected:
-				void loseOver() {
+				ObjBase& loseOver() {
 					if (currentStatu == attr::gui::over)
 						currentStatu = attr::gui::normal;
+					return *this;
 				}
-				void gainOver() {
+				ObjBase& gainOver() {
 					if (currentStatu == attr::gui::normal)
 						currentStatu = attr::gui::over;
+					return *this;
 				}
-				void loseFocus() {
+				ObjBase& loseFocus() {
 					currentStatu = attr::gui::normal;
+					return *this;
+				}
+				ObjBase& gainFocus() {
+					currentStatu = attr::gui::focus;
+					return *this;
 				}
 			};
 			class TextObj :public ObjBase {
 				friend class WindowManager;
 			public:
 				TextObj() {
-					styles[attr::gui::Statu::normal].set(Skip, Skip, Skip, sf::Color::Black);
-					styles[attr::gui::Statu::over].set(Skip, Skip, Skip, sf::Color::Black);
-					styles[attr::gui::Statu::focus].set(Skip, Skip, Skip, sf::Color::Black);
+					textStyles[attr::gui::Statu::normal].set(sf::Color::Black, sf::Color::Black, Skip);
+					textStyles[attr::gui::Statu::over].set(sf::Color::Black, sf::Color::Black, Skip);
+					textStyles[attr::gui::Statu::focus].set(sf::Color::Black, sf::Color::Black, Skip);
+				}
+				TextObj& setTextStyle(Skipable<Style>_normalStyle, Skipable<Style>_overStyle, Skipable<Style>_focusStyle) {
+					_normalStyle.assignTo(textStyles[attr::gui::Statu::normal]);
+					_overStyle.assignTo(textStyles[attr::gui::Statu::over]);
+					_focusStyle.assignTo(textStyles[attr::gui::Statu::focus]);
+					return *this;
+				}
+				Style& textStyle(int id) {
+					return textStyles[id];
 				}
 				//use this setter
 				//before : setCenter()
 				//after : setStyle() , setText()
-				TextObj& setSizeSyncText() {
+				TextObj& setSizeAuto() {
 					textObj.setFont(game::fontManager[font]);
 					textObj.setCharacterSize(characterSize);
 					textObj.setLineSpacing(lineSpacing);
@@ -313,8 +326,9 @@ namespace game {
 				sf::Text textObj{ fontManager[font] };
 				sf::FloatRect textRect;
 				sf::Vector2i justification = { attr::gui::Mid,attr::gui::Mid };
+				Style textStyles[3];
 				void draw(sf::RenderTarget& r, sf::FloatRect displayArea) {
-					drawBase(r, displayArea);
+					ObjBase::draw(r, displayArea);
 
 					//render text
 					textObj.setString("_");
@@ -322,7 +336,8 @@ namespace game {
 					textObj.setCharacterSize(characterSize);
 					textObj.setLineSpacing(lineSpacing);
 					textObj.setLetterSpacing(letterSpacing);
-					textObj.setFillColor(styles[currentStatu].textColor);
+					textObj.setFillColor(textStyles[currentStatu].backgroundColor);
+					textObj.setOutlineColor(textStyles[currentStatu].outlineColor);
 					textObj.setPosition({ 0,0 });
 					//fix position offset
 					sf::Vector2f offsetFix;
@@ -378,12 +393,14 @@ namespace game {
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, TextObj& x) {
 					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structIn(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf.structIn(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
+								x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const TextObj& x) {
 					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structOut(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf.structOut(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
+								 x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 					return bf;
 				}
 			};
@@ -391,18 +408,20 @@ namespace game {
 				friend class WindowManager;
 			public:
 				ButtonObj() {
-					styles[attr::gui::Statu::normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2, sf::Color::Black);
-					styles[attr::gui::Statu::over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2, sf::Color::Black);
-					styles[attr::gui::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2, sf::Color::Black);
+					styles[attr::gui::Statu::normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
+					styles[attr::gui::Statu::over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
+					styles[attr::gui::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, ButtonObj& x) {
 					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structIn(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf.structIn(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
+								x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ButtonObj& x) {
 					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structOut(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf.structOut(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
+								 x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 					return bf;
 				}
 			};
@@ -410,9 +429,9 @@ namespace game {
 				friend class WindowManager;
 			public:
 				InputObj() {
-					styles[attr::gui::Statu::normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2, sf::Color::Black);
-					styles[attr::gui::Statu::over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2, sf::Color::Black);
-					styles[attr::gui::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2, sf::Color::Black);
+					styles[attr::gui::Statu::normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
+					styles[attr::gui::Statu::over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
+					styles[attr::gui::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
 				}
 			protected:
 				int typeLimit = attr::gui::InputTypeLimit::String;
@@ -461,7 +480,7 @@ namespace game {
 				sf::Vector2f scroll;
 				void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
 					if (posRect.findIntersection(displayArea)) {
-						drawBase(r, displayArea);
+						ObjBase::draw(r, displayArea);
 						sf::FloatRect displayAreaCur(-scroll, posRect.size);
 						sf::RenderTexture rCur(static_cast<sf::Vector2u>(posRect.size));
 						rCur.clear(sf::Color::Transparent);
@@ -473,7 +492,8 @@ namespace game {
 						textObj.setCharacterSize(characterSize);
 						textObj.setLineSpacing(lineSpacing);
 						textObj.setLetterSpacing(letterSpacing);
-						textObj.setFillColor(styles[currentStatu].textColor);
+						textObj.setFillColor(textStyles[currentStatu].backgroundColor);
+						textObj.setOutlineColor(textStyles[currentStatu].outlineColor);
 						textObj.setPosition({ 0,0 });
 						//fix position offset
 						sf::Vector2f offsetFix;
@@ -528,7 +548,7 @@ namespace game {
 								rCur,
 								cursorPos,
 								cursorPos + sf::Vector2f(0, (float)characterSize),
-								styles[currentStatu].textColor,
+								textStyles[currentStatu].backgroundColor,
 								2.0f
 							);
 						}
@@ -625,14 +645,16 @@ namespace game {
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, InputObj& x) {
 					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structIn(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf.structIn(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
+								x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 					bf.structIn(x.sizeLimit,x.typeLimit, x.inputLimit);
 					x.cursor = x.text.getSize();
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const InputObj& x) {
 					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structOut(x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf.structOut(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
+								 x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 					bf.structOut(x.sizeLimit, x.typeLimit, x.inputLimit);
 					return bf;
 				}
@@ -646,9 +668,9 @@ namespace game {
 				sf::FloatRect scrollLimit;
 			public:
 				AreaObj() {
-					styles[attr::gui::Statu::normal].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip);
-					styles[attr::gui::Statu::over].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip);
-					styles[attr::gui::Statu::focus].set(sf::Color::White, sf::Color(200, 200, 200), 2, Skip);
+					styles[attr::gui::Statu::normal].set(sf::Color::White, sf::Color(200, 200, 200), 2);
+					styles[attr::gui::Statu::over].set(sf::Color::White, sf::Color(200, 200, 200), 2);
+					styles[attr::gui::Statu::focus].set(sf::Color::White, sf::Color(200, 200, 200), 2);
 				}
 				LargeObjUMap<AreaObj>area;
 				LargeObjUMap<TextObj>text;
@@ -751,7 +773,7 @@ namespace game {
 				void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
 					if (!posRect.findIntersection(displayArea))
 						return;
-					drawBase(r, displayArea);
+					ObjBase::draw(r, displayArea);
 					sf::FloatRect displayAreaCur(-scroll, posRect.size);
 					sf::RenderTexture rCur(static_cast<sf::Vector2u>(posRect.size));
 					rCur.clear(sf::Color::Transparent);
@@ -853,7 +875,7 @@ namespace game {
 			}
 		private:
 			inline AreaObj* updateOver(AreaObj* areaPtr,bool stopScroll=false) {
-				if (exist(overFocus)) {
+				if (statuExist(overFocus)) {
 					if (overFocus.count(attr::gui::ButtonId)) {
 						area(overFocus[attr::gui::AreaPath].cast<string>())
 							.button[overFocus[attr::gui::ButtonId].cast<string>()].loseOver();
@@ -901,7 +923,7 @@ namespace game {
 				L_return:;
 				return areaPtr;
 			}
-			inline bool exist(Statu& statu) {
+			inline bool statuExist(Statu& statu) {
 				AreaObj* areaPtr = nullptr;
 				string temp = "";
 				if (!statu.count(attr::gui::AreaPath)) {
@@ -936,6 +958,17 @@ namespace game {
 					return areaPtr->input.count(statu[attr::gui::InputId].cast<string>());
 				return true;
 			}
+			inline ObjBase* statuVisit(Statu& statu, AreaObj* areaPtr = nullptr) {
+				if (statu.count(attr::gui::AreaPath) && areaPtr == nullptr)
+					areaPtr = &area(statu[attr::gui::AreaPath].cast<string>());
+				if (statu.count(attr::gui::ButtonId))
+					return &areaPtr->button[statu[attr::gui::ButtonId].cast<string>()];
+				else if (statu.count(attr::gui::InputId))
+					return &areaPtr->input[statu[attr::gui::InputId].cast<string>()];
+				else if (statu.count(attr::gui::AreaPath))
+					return areaPtr;
+				else return nullptr;
+			}
 		public:
 			bool update(const optional<sf::Event>& sfEvent) {
 				if (windowData.size() == 0)
@@ -950,35 +983,26 @@ namespace game {
 				string path = "";
 				AreaObj* topWindow = &windowData.back();
 				AreaObj* areaOverPtr;
-				if (!exist(focus))
+				if (!statuExist(focus))
 					focus = {};
 				//sf::Event::MouseButtonPressed
 				//update focus
 				//after updating focus ,varible 'focus' & 'overFocus' must have a value
 				if (sfEvent->is<sf::Event::MouseButtonPressed>()) {
 					mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position);//update mousePos
-					areaOverPtr = updateOver(topWindow,true);
+
+					//update inertial scroll stop
+					areaOverPtr=updateOver(topWindow,true);
+
 					if (focus.count(attr::gui::InputId)&&!overFocus.contain(attr::gui::AreaPath,focus[attr::gui::AreaPath].cast<string>(), attr::gui::InputId, focus[attr::gui::InputId].cast<string>()))
 						eventList.push(game::Event(attr::gui::InputLoseFocus, { attr::gui::InputPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::InputId].cast<string>() }));
 					if (overFocus.count(attr::gui::InputId) && !focus.contain(attr::gui::AreaPath, overFocus[attr::gui::AreaPath].cast<string>(), attr::gui::InputId, overFocus[attr::gui::InputId].cast<string>()))
 						eventList.push(game::Event(attr::gui::InputGainFocus, { attr::gui::InputPath,overFocus[attr::gui::AreaPath].cast<string>() + '_' + overFocus[attr::gui::InputId].cast<string>() }));
 
-					if (focus.count(attr::gui::ButtonId))
-						area(focus[attr::gui::AreaPath].cast<string>())
-							.button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
-					else if (focus.count(attr::gui::InputId))
-						area(focus[attr::gui::AreaPath].cast<string>())
-							.input[focus[attr::gui::InputId].cast<string>()].loseFocus();
-					else if (focus.count(attr::gui::AreaPath))
-						area(focus[attr::gui::AreaPath].cast<string>()).loseFocus();
-
-					if (overFocus.count(attr::gui::ButtonId))
-						areaOverPtr->button[overFocus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::focus;
-					else if (overFocus.count(attr::gui::InputId))
-						areaOverPtr->input[overFocus[attr::gui::InputId].cast<string>()].currentStatu = attr::gui::Statu::focus;
-					//update inertial scroll stop
-					else if (overFocus.count(attr::gui::AreaPath))
-						areaOverPtr->currentStatu = attr::gui::Statu::focus;
+					if (statuVisit(focus)!=nullptr)
+						statuVisit(focus)->loseFocus();
+					if (statuVisit(overFocus,areaOverPtr) != nullptr)
+						statuVisit(overFocus,areaOverPtr)->gainFocus();
 
 					focus = overFocus;
 					return true;
@@ -993,10 +1017,14 @@ namespace game {
 						if (areaPtr.scrollable != sf::Vector2i()) {
 							//tar.scroll += mouseVelocity();//wrong
 							//consider the case of two continuous sf::Event::MouseMoved event
-							if (focus.count(attr::gui::ButtonId) && (mouseLastPressPos - mousePos.back()).lengthSquared() >= scrollThreshold * scrollThreshold) {
-								area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::over;
+							if (ensure(focus.count(attr::gui::ButtonId), (mouseLastPressPos - mousePos.back()).lengthSquared() >= scrollThreshold * scrollThreshold))
+								isScrolling = true;
+							if (focus.count(attr::gui::ButtonId) && isScrolling) {
+								if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
+									area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
+								else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
 							}
-							if (ensure(focus.count(attr::gui::ButtonId), area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu == attr::gui::Statu::over)){
+							if (isScrolling){
 								if (mousePos.Size() > 1)
 									areaPtr.scroll += (mousePos.back() - mousePos[mousePos.backPos() - 1]).componentWiseMul(static_cast<sf::Vector2f>(areaPtr.scrollable));
 								
@@ -1005,20 +1033,16 @@ namespace game {
 						else {
 							if (focus.count(attr::gui::ButtonId)) {
 								if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
-									area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::focus;
-								else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::over;
+									area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].gainFocus();
+								else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
 							}
 						}
 					}
 					//update over
 					//after updating over ,varible 'focus' will not be changed
 					else {
-						if (overFocus.count(attr::gui::ButtonId))
-							areaOverPtr->button[overFocus[attr::gui::ButtonId].cast<string>()].gainOver();
-						else if (overFocus.count(attr::gui::InputId))
-							areaOverPtr->input[overFocus[attr::gui::InputId].cast<string>()].gainOver();
-						else if (overFocus.count(attr::gui::AreaPath))
-							areaOverPtr->gainOver();
+						if (statuVisit(overFocus, areaOverPtr)!=nullptr)
+							statuVisit(overFocus, areaOverPtr)->gainOver();
 					}
 					return true;
 				}
@@ -1031,12 +1055,13 @@ namespace game {
 
 					if (focus.count(attr::gui::ButtonId)) {
 						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>())) {
-							if (area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu==attr::gui::Statu::focus)
+							if (!isScrolling)
 								eventList.push(game::Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::ButtonId].cast<string>() }));
-							area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::over;
+							area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
 						}
-						else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].currentStatu = attr::gui::Statu::normal;
+						else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
 					}
+					isScrolling = false;
 
 					//update inertial scroll start
 					if (focus.count(attr::gui::AreaPath)) {
@@ -1077,6 +1102,12 @@ namespace game {
 				}
 				if (sfEvent->is<sf::Event::MouseWheelScrolled>()) {
 					areaOverPtr = updateOver(topWindow);
+					isScrolling = true;
+					if (focus.count(attr::gui::ButtonId) && isScrolling) {
+						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
+							area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
+						else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
+					}
 					float delta = sfEvent->getIf<sf::Event::MouseWheelScrolled>()->delta;
 					if (areaOverPtr->scrollable == sf::Vector2i(1, 0))
 						areaOverPtr->scrollVelocity = sf::Vector2f(delta*mouseWheelScrollRate,0);
@@ -1094,6 +1125,9 @@ namespace game {
 			//update cursor tick
 			//update inertial scroll
 			void draw(sf::RenderTarget& drawTarget) {
+				AreaObj* areaOverPtr = updateOver(&windowData.back());
+				if (statuVisit(overFocus, areaOverPtr) != nullptr)
+					statuVisit(overFocus, areaOverPtr)->gainOver();
 				if (focus.count(attr::gui::InputId)) {
 					cursorBlinkTick++;
 					cursorBlinkTick %= cursorBlinkRate;
