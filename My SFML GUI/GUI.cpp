@@ -198,7 +198,7 @@ namespace game {
 			class ObjBase {
 				friend class WindowManager;
 				template <typename T>
-				friend class LargeObjUMap;
+				friend class OrderedHashMap;
 			protected:
 				string id;
 				sf::FloatRect posRect = sf::FloatRect(sf::Vector2f(), sf::Vector2f(1.f, 1.f));
@@ -658,10 +658,10 @@ namespace game {
 					styles[attr::gui::Statu::over].set(sf::Color::White, sf::Color(200, 200, 200), 2);
 					styles[attr::gui::Statu::focus].set(sf::Color::White, sf::Color(200, 200, 200), 2);
 				}
-				LargeObjUMap<AreaObj>area;
-				LargeObjUMap<TextObj>text;
-				LargeObjUMap<ButtonObj>button;
-				LargeObjUMap<InputObj>input;
+				OrderedHashMap<AreaObj>area;
+				OrderedHashMap<TextObj>text;
+				OrderedHashMap<ButtonObj>button;
+				OrderedHashMap<InputObj>input;
 				AreaObj& setScrollable(Skipable<sf::Vector2i> _mouseDragScrollable, Skipable<sf::Vector2i> _mouseWheelScrollable) {
 					_mouseDragScrollable.assignTo(mouseDragScrollable);
 					_mouseWheelScrollable.assignTo(mouseWheelScrollable);
@@ -789,7 +789,7 @@ namespace game {
 			unordered_map<string, int>windowId;
 			vector<AreaObj>windowData;
 		public:
-			LargeObjUMap<AreaObj>preset;
+			OrderedHashMap<AreaObj>preset;
 			void readPreset(BinaryFStream & bf) {
 				bf >> preset;
 			}

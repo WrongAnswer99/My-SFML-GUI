@@ -1,8 +1,6 @@
 //Author : WrongAnswer99
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
-#include <vector>
-#include <map>
 #include <any>
 #include <queue>
 #include <unordered_map>
@@ -226,64 +224,77 @@ public:
 		}
 	}
 };
-//使用时确保.id不被修改
+//确保T有.id成员且不在外部被修改
 template <typename T>
-class LargeObjUMap {
+class OrderedHashMap {
 private:
-	unordered_map<string, unsigned int>idMap;
-	vector<T>data;
+	unordered_map<string, typename list<T>::iterator>idMap;
+	list<T>data;
 public:
+	OrderedHashMap() {}
+	OrderedHashMap(const OrderedHashMap& other) {
+		data = other.data;
+		for (auto it = data.begin(); it != data.end(); it++) {
+			idMap[it->id] = it;
+		}
+	}
+	OrderedHashMap& operator=(const OrderedHashMap& other) {
+		if (this == &other) {
+			return *this;
+		}
+		data = other.data;
+		idMap.clear();
+		for (auto it = data.begin(); it != data.end(); it++) {
+			idMap[it->id] = it;
+		}
+		return *this;
+	}
 	T& operator[](const string& key) {
 		if (!idMap.count(key)) {
 			data.emplace_back();
 			data.back().id = key;
-			idMap[key] = static_cast<unsigned int>(data.size() - 1);
+			idMap[key] = --data.end();
 		}
-		return data[idMap[key]];
+		return *idMap[key];
 	}
-	//确保.id不被修改
-	inline vector<T>& iterate() {
+	inline list<T>& iterate() {
 		return data;
-	}
-	size_t count(const string &key) {
-		return idMap.count(key);
 	}
 	void erase(const string& key) {
 		if (idMap.count(key)) {
-			if (data.size() > 1) {
-				int pos = idMap[key];
-				swap(data[pos], data.back());
-				idMap[data[pos].id] = pos;
-				idMap.erase(key);
-				data.pop_back();
-			}
-			else {
-				idMap.clear();
-				data.clear();
-			}
+			data.erase(idMap[key]);
+			idMap.erase(key);
 		}
 	}
-	friend inline BinaryFStream& operator>>(BinaryFStream& bf, LargeObjUMap<T>& x) {
+	size_t count(const string& key)const {
+		return idMap.count(key);
+	}
+private:
+	void bfin(BinaryFStream& bf) {
 		size_t size;
 		bf >> size;
-		x.idMap.clear(); x.data.clear();
-		x.idMap.reserve(size); x.data.reserve(size);
-		string st{};
+		idMap.clear(); data.clear();
+		idMap.reserve(size);
 		T t{};
 		for (size_t i = 0; i < size; i++) {
-			bf >> st >> t;
-			x.data.emplace_back(std::move(t));
-			x.idMap.emplace(std::move(st), static_cast<unsigned int>(i));
-			st = string{};
+			bf >> t;
+			data.emplace_back(std::move(t));
+			idMap.emplace(data.back().id, --data.end());
 			t = T{};
 		}
+	}
+	void bfout(BinaryFStream& bf)const {
+		bf << data.size();
+		for (auto& elem : data) {
+			bf << elem;
+		}
+	}
+	friend inline BinaryFStream& operator>>(BinaryFStream& bf, OrderedHashMap<T>& x) {
+		x.bfin(bf);
 		return bf;
 	}
-	friend inline BinaryFStream& operator<<(BinaryFStream& bf, const LargeObjUMap<T>& x) {
-		bf << x.idMap.size();
-		for (auto& elem : x.idMap) {
-			bf << elem.first << x.data[elem.second];
-		}
+	friend inline BinaryFStream& operator<<(BinaryFStream& bf, const OrderedHashMap<T>& x) {
+		x.bfout(bf);
 		return bf;
 	}
 };

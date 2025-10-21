@@ -1,7 +1,8 @@
 //Author : WrongAnswer99
 
-//#define LET_ME_SEE_SEE
+#define LET_ME_SEE_SEE
 #include "GUI.cpp"
+#include <iostream>
 unordered_map<string, game::gui::WindowManager::Style>style;
 
 int windowWidth = 800, windowHeight = 600;
@@ -184,7 +185,6 @@ int main() {
 				windowManager.update(sfEvt);
 			}
 		}
-		//windowManager.button("main_area_button").getStatu()
 		while (windowManager.pollEvent(evt)) {
 			if (evt.eventId == attr::gui::ButtonPressed) {
 				cout << "Button pressed : " << evt[attr::gui::ButtonPath].cast<string>() << endl;
