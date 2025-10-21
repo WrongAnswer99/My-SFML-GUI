@@ -125,53 +125,39 @@ namespace game {
 			static constexpr int scrollSensitivity = 6;
 			const float mouseWheelScrollRate = 50.f;
 			const float scrollThreshold = 10;
-			template<typename T, int size>
+			template<typename T, int capacity>
 			class RollArray {
 			private:
-				T array[size];
+				T array[capacity];
 				int realSize = 0;
 				int backPosition = 0;
 			public:
 				inline void emplace_back() {
-					if (realSize < size) {
+					if (realSize < capacity) {
 						realSize++;
 						backPosition = realSize - 1;
 					}
 					else {
-						backPosition = (backPosition + 1) % size;
+						backPosition = (backPosition + 1) % capacity;
 					}
 				}
 				inline T& front() {
-					if (realSize < size) {
+					if (realSize < capacity)
 						return array[0];
-					}
-					else {
-						return array[(backPosition + 1) % size];
-					}
-				}
-				inline int frontPos() {
-					if (realSize < size) {
-						return 0;
-					}
-					else {
-						return backPosition + 1;
-					}
+					else return array[(backPosition + 1) % capacity];
 				}
 				inline T& back() {
 					return array[backPosition];
 				}
-				inline int& backPos() {
-					return backPosition;
-				}
-				inline T& operator[](int pos) {
-					return array[((pos % size) + size) % size];
+				inline T& operator[](size_t pos) {
+					return array[(((realSize < capacity ? 0 : (backPosition + 1) % capacity) + pos) % capacity + capacity) % capacity];
 				}
 				inline bool copy_back() {
 					emplace_back();
-					array[backPosition] = array[(backPosition - 1 + size) % size];
+					array[backPosition] = array[(backPosition - 1 + capacity) % capacity];
 					return true;
 				}
-				inline size_t Size() {
+				inline size_t size() {
 					return realSize;
 				}
 			};
@@ -663,7 +649,7 @@ namespace game {
 				friend class WindowManager;
 			protected:
 				sf::Vector2f scroll;
-				sf::Vector2i scrollable;
+				sf::Vector2i mouseDragScrollable, mouseWheelScrollable;
 				sf::Vector2f scrollVelocity;
 				sf::FloatRect scrollLimit;
 			public:
@@ -676,8 +662,9 @@ namespace game {
 				LargeObjUMap<TextObj>text;
 				LargeObjUMap<ButtonObj>button;
 				LargeObjUMap<InputObj>input;
-				AreaObj& setScrollable(bool scrollableX, bool scrollableY) {
-					scrollable = sf::Vector2i(scrollableX, scrollableY);
+				AreaObj& setScrollable(Skipable<sf::Vector2i> _mouseDragScrollable, Skipable<sf::Vector2i> _mouseWheelScrollable) {
+					_mouseDragScrollable.assignTo(mouseDragScrollable);
+					_mouseWheelScrollable.assignTo(mouseWheelScrollable);
 					return *this;
 				}
 			protected:
@@ -729,13 +716,13 @@ namespace game {
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, AreaObj& x) {
 					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
 					bf.structIn(x.area, x.text, x.button, x.input);
-					bf.structIn(x.scrollable, x.scrollLimit);
+					bf.structIn(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const AreaObj& x) {
 					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
 					bf.structOut(x.area, x.text, x.button, x.input);
-					bf.structOut(x.scrollable, x.scrollLimit);
+					bf.structOut(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit);
 					return bf;
 				}
 			protected:
@@ -754,7 +741,7 @@ namespace game {
 					}
 				}
 				void updateScroll(WindowManager& windowManager) {
-					if (scrollable != sf::Vector2i()) {
+					if (scrollVelocity != sf::Vector2f()) {
 						if (scrollVelocity.lengthSquared() < windowManager.scrollResistance * windowManager.scrollResistance) {
 							scrollVelocity = sf::Vector2f();
 						}
@@ -764,8 +751,9 @@ namespace game {
 								.componentWiseMul(sf::Vector2f(windowManager.scrollResistance, windowManager.scrollResistance));
 						}
 						scroll += scrollVelocity;
-						ensureScrollLimit();
 					}
+					if (mouseDragScrollable != sf::Vector2i() || mouseWheelScrollable != sf::Vector2i())
+						ensureScrollLimit();
 					for (auto& elem : area.iterate()) {
 						elem.updateScroll(windowManager);
 					}
@@ -1014,7 +1002,7 @@ namespace game {
 					//update scroll
 					if (mousePressed) {
 						AreaObj& areaPtr = area(focus[attr::gui::AreaPath].cast<string>());
-						if (areaPtr.scrollable != sf::Vector2i()) {
+						if (areaPtr.mouseDragScrollable != sf::Vector2i()) {
 							//tar.scroll += mouseVelocity();//wrong
 							//consider the case of two continuous sf::Event::MouseMoved event
 							if (ensure(focus.count(attr::gui::ButtonId), (mouseLastPressPos - mousePos.back()).lengthSquared() >= scrollThreshold * scrollThreshold))
@@ -1024,10 +1012,8 @@ namespace game {
 									area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
 								else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
 							}
-							if (isScrolling){
-								if (mousePos.Size() > 1)
-									areaPtr.scroll += (mousePos.back() - mousePos[mousePos.backPos() - 1]).componentWiseMul(static_cast<sf::Vector2f>(areaPtr.scrollable));
-								
+							if (isScrolling&& mousePos.size() > 1){
+								areaPtr.scroll += (mousePos.back() - mousePos[mousePos.size() - 2]).componentWiseMul(static_cast<sf::Vector2f>(areaPtr.mouseDragScrollable));
 							}
 						}
 						else {
@@ -1065,9 +1051,9 @@ namespace game {
 
 					//update inertial scroll start
 					if (focus.count(attr::gui::AreaPath)) {
-						if (area(focus[attr::gui::AreaPath].cast<string>()).scrollable != sf::Vector2i())
+						if (area(focus[attr::gui::AreaPath].cast<string>()).mouseDragScrollable != sf::Vector2i())
 							area(focus[attr::gui::AreaPath].cast<string>()).scrollVelocity = mouseVelocity()
-								.componentWiseMul(static_cast<sf::Vector2f>(area(focus[attr::gui::AreaPath].cast<string>()).scrollable))
+								.componentWiseMul(static_cast<sf::Vector2f>(area(focus[attr::gui::AreaPath].cast<string>()).mouseDragScrollable))
 								.componentWiseDiv(sf::Vector2f(scrollSensitivity,scrollSensitivity));
 					}
 					return true;
@@ -1109,11 +1095,11 @@ namespace game {
 						else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
 					}
 					float delta = sfEvent->getIf<sf::Event::MouseWheelScrolled>()->delta;
-					if (areaOverPtr->scrollable == sf::Vector2i(1, 0))
+					if (areaOverPtr->mouseWheelScrollable == sf::Vector2i(1, 0))
 						areaOverPtr->scrollVelocity = sf::Vector2f(delta*mouseWheelScrollRate,0);
-					if (areaOverPtr->scrollable == sf::Vector2i(0, 1))
+					if (areaOverPtr->mouseWheelScrollable == sf::Vector2i(0, 1))
 						areaOverPtr->scrollVelocity = sf::Vector2f(0, delta * mouseWheelScrollRate);
-					if (areaOverPtr->scrollable == sf::Vector2i(1, 1)) {
+					if (areaOverPtr->mouseWheelScrollable == sf::Vector2i(1, 1)) {
 						if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LShift) || sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::RShift))
 							areaOverPtr->scrollVelocity = sf::Vector2f(delta * mouseWheelScrollRate, 0);
 						else areaOverPtr->scrollVelocity = sf::Vector2f(0, delta * mouseWheelScrollRate);

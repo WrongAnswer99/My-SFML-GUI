@@ -14,7 +14,6 @@ static void init() {
 	style["stdbf"].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
 
 	windowManager.preset["main"]
-		.setScrollable(false,false)
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(0, 0))
 		.setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
@@ -33,7 +32,7 @@ static void init() {
 		.setCenter();
 
 	windowManager.preset["main"].area["area"]
-		.setScrollable(true,true)
+		.setScrollable(sf::Vector2i(1, 1), sf::Vector2i(1, 1))
 		.setStyle(style["stda2"], style["stda2"], style["stda2"])
 		.setPosition(sf::Vector2f(50, 50))
 		.setSize(sf::Vector2f(700, 450));
