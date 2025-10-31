@@ -106,7 +106,29 @@ inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::String& x) 
 		bf << elem;
 	return bf;
 }
-#ifdef LET_ME_SEE_SEE
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Image& x) {
+	string s;
+	bf >> s;
+	if (!x.loadFromMemory(s.data(), s.size()))
+		cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
+	return bf;
+}
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Image& x) {
+	bf<<*x.saveToMemory("png");
+	return bf;
+}
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Texture& x) {
+	string s;
+	bf >> s;
+	if (!x.loadFromImage(sf::Image(s.data(), s.size())))
+		cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
+	return bf;
+}
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Texture& x) {
+	bf << *x.copyToImage().saveToMemory("png");
+	return bf;
+}
+#ifdef DEBUG
 #define private public
 #define protected public
 #endif
@@ -124,7 +146,7 @@ namespace game {
 			//scroll sensitivity = 6 tick = 0.1 s (60 FPS)
 			static constexpr int scrollSensitivity = 6;
 			const float mouseWheelScrollRate = 50.f;
-			const float scrollThreshold = 10;
+			const float scrollThreshold = 20;
 			template<typename T, int capacity>
 			class RollArray {
 			private:
@@ -270,6 +292,74 @@ namespace game {
 					return *this;
 				}
 			};
+			class ImageObj :public ObjBase {
+				friend class WindowManager;
+			public:
+				ImageObj() {}
+				//use this setter
+				//before : setCenter()
+				//after : setImage() , setScale() , setScaleTo()
+				ImageObj& setSizeAuto() {
+					posRect.size = static_cast<sf::Vector2f>(image.getSize()).componentWiseMul(scale);
+					return *this;
+				}
+			protected:
+				sf::Texture image;
+				sf::Vector2i justification = { attr::gui::Mid,attr::gui::Mid };
+				sf::Vector2f scale = sf::Vector2f(1, 1);
+				sf::Color imageMaskColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
+				ImageObj& setImageMaskColor(Skipable<sf::Color>_normalMaskColor, Skipable<sf::Color>_overMaskColor, Skipable<sf::Color>_focusMaskColor) {
+					_normalMaskColor.assignTo(imageMaskColors[attr::gui::Statu::normal]);
+					_overMaskColor.assignTo(imageMaskColors[attr::gui::Statu::over]);
+					_focusMaskColor.assignTo(imageMaskColors[attr::gui::Statu::focus]);
+					return *this;
+				}
+				sf::Color& imageMaskColor(int id) {
+					return imageMaskColors[id];
+				}
+				void draw(sf::RenderTarget& r, sf::FloatRect displayArea) {
+					ObjBase::draw(r, displayArea);
+					if (posRect.findIntersection(displayArea)) {
+						sf::Sprite imageRender(image);
+						imageRender.setPosition(posRect.position + ((posRect.size - static_cast<sf::Vector2f>(image.getSize()).componentWiseMul(scale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
+						imageRender.setScale(scale);
+						imageRender.setColor(imageMaskColors[currentStatu]);
+						r.draw(imageRender);
+					}
+				}
+			public:
+				ImageObj& setJustification(Skipable<attr::gui::TextJustification> xJus, Skipable<attr::gui::TextJustification> yJus) {
+					xJus.assignTo(justification.x);
+					yJus.assignTo(justification.y);
+					return *this;
+				}
+				ImageObj& setScale(sf::Vector2f _scale) {
+					scale = _scale;
+					return *this;
+				}
+				//use this setter
+				//after : setImage()
+				ImageObj& setScaleTo(sf::Vector2f _size) {
+					scale = _size.componentWiseDiv(static_cast<sf::Vector2f>(image.getSize()));
+					return *this;
+				}
+				ImageObj& setImage(const sf::Image& _image) {
+					bool loadSuccess = image.loadFromImage(_image);
+					if (!loadSuccess)
+						cerr << "[ImageObj::setImage] Image load failed 图像加载失败" << endl << "  id: " << id << endl;
+					return *this;
+				}
+				friend inline BinaryFStream& operator>>(BinaryFStream& bf, ImageObj& x) {
+					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structIn(x.image, x.scale, x.justification, x.imageMaskColors[attr::gui::Statu::normal], x.imageMaskColors[attr::gui::Statu::over], x.imageMaskColors[attr::gui::Statu::focus]);
+					return bf;
+				}
+				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ImageObj& x) {
+					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf.structOut(x.image, x.scale, x.justification, x.imageMaskColors[attr::gui::Statu::normal], x.imageMaskColors[attr::gui::Statu::over], x.imageMaskColors[attr::gui::Statu::focus]);
+					return bf;
+				}
+			};
 			class TextObj :public ObjBase {
 				friend class WindowManager;
 			public:
@@ -289,19 +379,19 @@ namespace game {
 				}
 				//use this setter
 				//before : setCenter()
-				//after : setStyle() , setText()
+				//after : setText()
 				TextObj& setSizeAuto() {
-					textObj.setFont(game::fontManager[font]);
-					textObj.setCharacterSize(characterSize);
-					textObj.setLineSpacing(lineSpacing);
-					textObj.setLetterSpacing(letterSpacing);
-					textObj.setString(text);
+					textRender.setFont(fontManager[font]);
+					textRender.setCharacterSize(characterSize);
+					textRender.setLineSpacing(lineSpacing);
+					textRender.setLetterSpacing(letterSpacing);
+					textRender.setString(text);
 					posRect.size.x = 0;
 					for (int i = 0; i <= text.getSize(); i++) {
-						if (textObj.findCharacterPos(i).x > posRect.size.x)
-							posRect.size.x = textObj.findCharacterPos(i).x;
+						if (textRender.findCharacterPos(i).x > posRect.size.x)
+							posRect.size.x = textRender.findCharacterPos(i).x;
 					}
-					posRect.size.y = textObj.findCharacterPos(textObj.getString().getSize()).y + characterSize;
+					posRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
 					return *this;
 				}
 			protected:
@@ -309,7 +399,7 @@ namespace game {
 				unsigned int characterSize = 30;
 				float letterSpacing = 1, lineSpacing = 1;
 				sf::String text = "";
-				sf::Text textObj{ fontManager[font] };
+				sf::Text textRender{ fontManager[font] };
 				sf::FloatRect textRect;
 				sf::Vector2i justification = { attr::gui::Mid,attr::gui::Mid };
 				Style textStyles[3];
@@ -317,26 +407,25 @@ namespace game {
 					ObjBase::draw(r, displayArea);
 
 					//render text
-					textObj.setString("_");
-					textObj.setFont(game::fontManager[font]);
-					textObj.setCharacterSize(characterSize);
-					textObj.setLineSpacing(lineSpacing);
-					textObj.setLetterSpacing(letterSpacing);
-					textObj.setFillColor(textStyles[currentStatu].backgroundColor);
-					textObj.setOutlineColor(textStyles[currentStatu].outlineColor);
-					textObj.setPosition({ 0,0 });
+					textRender.setString("_");
+					textRender.setCharacterSize(characterSize);
+					textRender.setLineSpacing(lineSpacing);
+					textRender.setLetterSpacing(letterSpacing);
+					textRender.setFillColor(textStyles[currentStatu].backgroundColor);
+					textRender.setOutlineColor(textStyles[currentStatu].outlineColor);
+					textRender.setPosition({ 0,0 });
 					//fix position offset
 					sf::Vector2f offsetFix;
-					offsetFix.x = textObj.getGlobalBounds().position.x;
-					offsetFix.y = textObj.getGlobalBounds().position.y + textObj.getGlobalBounds().size.y - characterSize;
-					textObj.setString(text);
+					offsetFix.x = textRender.getGlobalBounds().position.x;
+					offsetFix.y = textRender.getGlobalBounds().position.y + textRender.getGlobalBounds().size.y - characterSize;
+					textRender.setString(text);
 					textRect.size.x = 0;
 					for (int i = 0; i <= text.getSize(); i++) {
-						if (textObj.findCharacterPos(i).x > textRect.size.x)
-							textRect.size.x = textObj.findCharacterPos(i).x;
+						if (textRender.findCharacterPos(i).x > textRect.size.x)
+							textRect.size.x = textRender.findCharacterPos(i).x;
 					}
-					textRect.size.y = textObj.findCharacterPos(textObj.getString().getSize()).y + characterSize;
-					textObj.setPosition(posRect.position - offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
+					textRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
+					textRender.setPosition(posRect.position - offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
 					textRect.position = posRect.position + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification));
 
 					if (textRect.findIntersection(displayArea)) {
@@ -348,12 +437,13 @@ namespace game {
 							sf::Color::Red
 							//styles[currentStatu].backgroundColor
 						);*/
-						r.draw(textObj);
+						r.draw(textRender);
 					}
 				}
 			public:
 				TextObj& setFont(string _font) {
 					font = _font;
+					textRender.setFont(fontManager[font]);
 					return *this;
 				}
 				TextObj& setCharacterSize(int _characterSize) {
@@ -374,13 +464,14 @@ namespace game {
 					text = _text;
 					return *this;
 				}
-				sf::String getText() {
+				sf::String& getText() {
 					return text;
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, TextObj& x) {
 					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
 					bf.structIn(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
 								x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					x.textRender.setFont(fontManager[x.font]);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const TextObj& x) {
@@ -402,6 +493,7 @@ namespace game {
 					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
 					bf.structIn(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
 								x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					x.textRender.setFont(fontManager[x.font]);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ButtonObj& x) {
@@ -473,28 +565,27 @@ namespace game {
 						//draw text
 
 						//render text
-						textObj.setString("_");
-						textObj.setFont(game::fontManager[font]);
-						textObj.setCharacterSize(characterSize);
-						textObj.setLineSpacing(lineSpacing);
-						textObj.setLetterSpacing(letterSpacing);
-						textObj.setFillColor(textStyles[currentStatu].backgroundColor);
-						textObj.setOutlineColor(textStyles[currentStatu].outlineColor);
-						textObj.setPosition({ 0,0 });
+						textRender.setString("_");
+						textRender.setCharacterSize(characterSize);
+						textRender.setLineSpacing(lineSpacing);
+						textRender.setLetterSpacing(letterSpacing);
+						textRender.setFillColor(textStyles[currentStatu].backgroundColor);
+						textRender.setOutlineColor(textStyles[currentStatu].outlineColor);
+						textRender.setPosition({ 0,0 });
 						//fix position offset
 						sf::Vector2f offsetFix;
-						offsetFix.x = textObj.getGlobalBounds().position.x;
-						offsetFix.y = textObj.getGlobalBounds().position.y + textObj.getGlobalBounds().size.y - characterSize;
-						textObj.setString(text);
+						offsetFix.x = textRender.getGlobalBounds().position.x;
+						offsetFix.y = textRender.getGlobalBounds().position.y + textRender.getGlobalBounds().size.y - characterSize;
+						textRender.setString(text);
 						textRect.size.x = 0;
 						for (int i = 0; i <= text.getSize(); i++) {
-							if (textObj.findCharacterPos(i).x > textRect.size.x)
-								textRect.size.x = textObj.findCharacterPos(i).x;
+							if (textRender.findCharacterPos(i).x > textRect.size.x)
+								textRect.size.x = textRender.findCharacterPos(i).x;
 						}
-						textRect.size.y = textObj.findCharacterPos(textObj.getString().getSize()).y + characterSize;
-						textObj.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayAreaCur.position);
+						textRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
+						textRender.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayAreaCur.position);
 						textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification));
-						sf::Vector2f cursorPos = textObj.findCharacterPos(cursor);
+						sf::Vector2f cursorPos = textRender.findCharacterPos(cursor);
 						cursorPos += offsetFix;
 						if (textRect.size.x > posRect.size.x) {
 							if (cursorPos.x < 0)
@@ -526,7 +617,7 @@ namespace game {
 							sf::Color::Red
 							//styles[currentStatu].backgroundColor
 						);*/
-						rCur.draw(textObj);
+						rCur.draw(textRender);
 
 						//draw cursor
 						if (currentStatu == attr::gui::Statu::focus && (windowManager.cursorBlinkTick >= 0 && windowManager.cursorBlinkTick < windowManager.cursorBlinkRate / 2)) {
@@ -634,6 +725,7 @@ namespace game {
 					bf.structIn(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
 								x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 					bf.structIn(x.sizeLimit,x.typeLimit, x.inputLimit);
+					x.textRender.setFont(fontManager[x.font]);
 					x.cursor = x.text.getSize();
 					return bf;
 				}
@@ -662,6 +754,7 @@ namespace game {
 				OrderedHashMap<TextObj>text;
 				OrderedHashMap<ButtonObj>button;
 				OrderedHashMap<InputObj>input;
+				OrderedHashMap<ImageObj>image;
 				AreaObj& setScrollable(Skipable<sf::Vector2i> _mouseDragScrollable, Skipable<sf::Vector2i> _mouseWheelScrollable) {
 					_mouseDragScrollable.assignTo(mouseDragScrollable);
 					_mouseWheelScrollable.assignTo(mouseWheelScrollable);
@@ -698,11 +791,15 @@ namespace game {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
-					for (auto& elem : text.iterate()) {
+					for (auto& elem : button.iterate()) {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
-					for (auto& elem : button.iterate()) {
+					for (auto& elem : image.iterate()) {
+						addPoint(scrollLimit, elem.posRect.position);
+						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
+					}
+					for (auto& elem : text.iterate()) {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
@@ -715,13 +812,13 @@ namespace game {
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, AreaObj& x) {
 					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structIn(x.area, x.text, x.button, x.input);
+					bf.structIn(x.area, x.text, x.button, x.input, x.image);
 					bf.structIn(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const AreaObj& x) {
 					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structOut(x.area, x.text, x.button, x.input);
+					bf.structOut(x.area, x.text, x.button, x.input, x.image);
 					bf.structOut(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit);
 					return bf;
 				}
@@ -772,6 +869,9 @@ namespace game {
 					for (auto& elem : button.iterate()) {
 						elem.draw(rCur, displayAreaCur);
 					}
+					for (auto& elem : image.iterate()) {
+						elem.draw(rCur, displayAreaCur);
+					}
 					for (auto& elem : text.iterate()) {
 						elem.draw(rCur, displayAreaCur);
 					}
@@ -794,8 +894,10 @@ namespace game {
 				bf >> preset;
 			}
 			void newWindow(string id) {
-				if (windowId.count(id))
-					throw invalid_argument("[WindowManager::newWindow] Window ID already exists 窗口ID重复 : " + id);
+				if (windowId.count(id)) {
+					cerr << "[WindowManager::newWindow] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
+					throw runtime_error("[WindowManager::newWindow] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
+				}
 				if (preset.count(id))
 					windowData.push_back(preset[id]);
 				else windowData.emplace_back();
@@ -810,12 +912,15 @@ namespace game {
 					windowId.erase(windowData.back().id);
 					windowData.pop_back();
 				}
-				else throw runtime_error("[WindowManager::closeTopWindow] No window to close 无窗口，无法关闭");
+				else cerr << "[WindowManager::closeTopWindow] No window to close 无窗口，无法关闭\n";
 			}
 			AreaObj& window(string id) {
 				if (windowId.count(id))
 					return windowData[windowId[id]];
-				else throw std::out_of_range("[WindowManager::window] Window ID not found 未找到指定窗口ID : " + id);
+				else {
+					cerr << "[WindowManager::window] Window ID not found 未找到指定窗口ID\n  id: " << id << "\n";
+					throw std::runtime_error("[WindowManager::window] Window ID not found 未找到指定窗口ID\n  id: " + id + "\n");
+				}
 			}
 		private:
 			template<typename F>
@@ -983,9 +1088,9 @@ namespace game {
 					areaOverPtr=updateOver(topWindow,true);
 
 					if (focus.count(attr::gui::InputId)&&!overFocus.contain(attr::gui::AreaPath,focus[attr::gui::AreaPath].cast<string>(), attr::gui::InputId, focus[attr::gui::InputId].cast<string>()))
-						eventList.push(game::Event(attr::gui::InputLoseFocus, { attr::gui::InputPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::InputId].cast<string>() }));
+						eventList.push(Event(attr::gui::InputLoseFocus, { attr::gui::InputPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::InputId].cast<string>() }));
 					if (overFocus.count(attr::gui::InputId) && !focus.contain(attr::gui::AreaPath, overFocus[attr::gui::AreaPath].cast<string>(), attr::gui::InputId, overFocus[attr::gui::InputId].cast<string>()))
-						eventList.push(game::Event(attr::gui::InputGainFocus, { attr::gui::InputPath,overFocus[attr::gui::AreaPath].cast<string>() + '_' + overFocus[attr::gui::InputId].cast<string>() }));
+						eventList.push(Event(attr::gui::InputGainFocus, { attr::gui::InputPath,overFocus[attr::gui::AreaPath].cast<string>() + '_' + overFocus[attr::gui::InputId].cast<string>() }));
 
 					if (statuVisit(focus)!=nullptr)
 						statuVisit(focus)->loseFocus();
@@ -1042,7 +1147,7 @@ namespace game {
 					if (focus.count(attr::gui::ButtonId)) {
 						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>())) {
 							if (!isScrolling)
-								eventList.push(game::Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::ButtonId].cast<string>() }));
+								eventList.push(Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::ButtonId].cast<string>() }));
 							area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
 						}
 						else area(focus[attr::gui::AreaPath].cast<string>()).button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
@@ -1128,7 +1233,7 @@ namespace game {
 		};
 	}
 }
-#ifdef LET_ME_SEE_SEE
+#ifdef DEBUG
 #undef private
 #undef protected
 #endif

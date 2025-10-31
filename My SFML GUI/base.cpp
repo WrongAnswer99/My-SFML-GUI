@@ -171,7 +171,7 @@ public:
 	//当未打开文件时返回false
 	inline bool good() {
 		if (fileIn.is_open())
-			return fileIn.good();
+			return fileIn.good()&&fileInGood;
 		if (fileOut.is_open())
 			return fileOut.good();
 		return false;
@@ -298,174 +298,176 @@ private:
 		return bf;
 	}
 };
-namespace game {
-	//statu = {"name1", value1, "name2", value2, ...};
-	//statu["name"] = value;
-	//T val = statu["name"].cast<T>();
-	//statu["name"]["subname"];当"name"键也为Statu类型时可直接使用
+//statu = {"name1", value1, "name2", value2, ...};
+//statu["name"] = value;
+//T val = statu["name"].cast<T>();
+//statu["name"]["subname"];当"name"键也为Statu类型时可直接使用
+//自动将const char*转换为string,自动将const wchar_t*转换为wstring
+class Statu {
+protected:
+	//方便转化的any类型
 	//自动将const char*转换为string,自动将const wchar_t*转换为wstring
-	class Statu {
-	protected:
-		//方便转化的any类型
-		//自动将const char*转换为string,自动将const wchar_t*转换为wstring
-		class castable_any {
-			friend class Statu;
-			friend class Event;
-			// private:
-		private:
-			any _data;
-		public:
-			castable_any() {}
-			template <typename T>
-			castable_any(T val) {
-				if constexpr (is_same_v<const char*, decay_t<T>>) {
-					_data = string(val);
-				}
-				else if constexpr (is_same_v<const wchar_t*, decay_t<T>>) {
-					_data = wstring(val);
-				}
-				else _data = val;
-			}
-			//返回:转化为指定类型的值
-			template <typename T>
-			T& cast() {
-				return any_cast<T&>(_data);
-			}
-			castable_any& operator[](string name) {
-				return any_cast<Statu&>(_data)[name];
-			}
-		};
-		unordered_map<string, castable_any>data;
+	class castable_any {
+		friend class Statu;
+		friend class Event;
+		// private:
+	private:
+		any _data;
 	public:
-		Statu() {}
-		Statu(initializer_list<castable_any> list) {
-			for (auto i = list.begin(); i != list.end(); i++) {
-				string name = any_cast<string>(i->_data);
-				i++;
-				data[name] = *i;
+		castable_any() {}
+		template <typename T>
+		castable_any(T val) {
+			if constexpr (is_same_v<const char*, decay_t<T>>) {
+				_data = string(val);
 			}
-		}
-		//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
-		bool contain() {
-			return true;
-		}
-		//用法:statu.contain("name1", value1, "name2", value2, ...);
-		//需要保证参数个数为偶数(因为是键值对),否则抛出runtime_error
-		//返回:是否包含键值对
-		template<typename T1, typename T2, typename ...Args>
-		bool contain(T1 name, T2 val, Args ...args) {
-			static_assert(sizeof...(Args) % 2 == 0, "参数个数必须为偶数");
-			if (!data.count(static_cast<string>(name)))return false;
-			try {
-				if constexpr (is_same_v<const char*, decay_t<T2>>) {
-					if (any_cast<string>(data[static_cast<string>(name)]._data) != string(val))
-						return false;
-				}
-				else if constexpr (is_same_v<const wchar_t*, decay_t<T2>>) {
-					if (any_cast<wstring>(data[static_cast<string>(name)]._data) != wstring(val))
-						return false;
-				}
-				else {
-					if (any_cast<T2>(data[static_cast<string>(name)]._data) != val)
-						return false;
-				}
+			else if constexpr (is_same_v<const wchar_t*, decay_t<T>>) {
+				_data = wstring(val);
 			}
-			catch (bad_any_cast) {
-				return false;
-			}
-			return contain(args...);
+			else _data = val;
 		}
-		//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
-		bool count() {
-			return true;
+		//返回:转化为指定类型的值
+		template <typename T>
+		T& cast() {
+			return any_cast<T&>(_data);
 		}
-		//用法:statu.count("name1", "name2", ...);
-		//返回:是否包含键
-		template<typename T, typename ...Args>
-		bool count(T name, Args ...args) {
-			if (!data.count(name))
-				return false;
-			else return count(args...);
-		}
-		//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
-		void erase() {
-			return;
-		}
-		//用法:statu.erase("name1", "name2", ...);
-		template<typename T, typename ...Args>
-		void erase(T name, Args ...args) {
-			if (data.count(name)) {
-				data.erase(name);
-			}
-			erase(args...);
-			return;
-		}
-		//返回:指定键的值
 		castable_any& operator[](string name) {
-			return data[name];
-		}
-		//批量添加键值对
-		void operator+=(Statu _statu) {
-			for (auto& elem : _statu.data) {
-				data[elem.first] = elem.second;
-			}
-		}
-		//返回:是否为空
-		bool empty() const {
-			return data.empty();
-		}
-		//返回:键值对个数
-		size_t size() const {
-			return data.size();
+			return any_cast<Statu&>(_data)[name];
 		}
 	};
-	//Event(eventEnum, {"name1", value1, "name2", value2});
-	class Event :public Statu {
-	public:
-		string eventId;
-		Event() {}
-		Event(string eventId) :eventId(eventId) {}
-		Event(string eventId, initializer_list<castable_any> list) :eventId(eventId) {
-			for (auto i = list.begin(); i != list.end(); i++) {
-				string name = any_cast<string>(i->_data);
-				i++;
-				data[name] = *i;
+	unordered_map<string, castable_any>data;
+public:
+	Statu() {}
+	Statu(initializer_list<castable_any> list) {
+		for (auto i = list.begin(); i != list.end(); i++) {
+			string name = any_cast<string>(i->_data);
+			i++;
+			data[name] = *i;
+		}
+	}
+	//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
+	bool contain() {
+		return true;
+	}
+	//用法:statu.contain("name1", value1, "name2", value2, ...);
+	//需要保证参数个数为偶数(因为是键值对),否则抛出runtime_error
+	//返回:是否包含键值对
+	template<typename T1, typename T2, typename ...Args>
+	bool contain(T1 name, T2 val, Args ...args) {
+		static_assert(sizeof...(Args) % 2 == 0, "参数个数必须为偶数");
+		if (!data.count(static_cast<string>(name)))return false;
+		try {
+			if constexpr (is_same_v<const char*, decay_t<T2>>) {
+				if (any_cast<string>(data[static_cast<string>(name)]._data) != string(val))
+					return false;
+			}
+			else if constexpr (is_same_v<const wchar_t*, decay_t<T2>>) {
+				if (any_cast<wstring>(data[static_cast<string>(name)]._data) != wstring(val))
+					return false;
+			}
+			else {
+				if (any_cast<T2>(data[static_cast<string>(name)]._data) != val)
+					return false;
 			}
 		}
-	};
-	class EventManager {
-	protected:
-		queue<Event> eventList;
-	public:
-		bool pollEvent(Event& event) {
-			if (!eventList.empty()) {
-				event = eventList.front();
-				eventList.pop();
-				return true;
-			}
+		catch (bad_any_cast) {
 			return false;
 		}
-	};
+		return contain(args...);
+	}
+	//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
+	bool count() {
+		return true;
+	}
+	//用法:statu.count("name1", "name2", ...);
+	//返回:是否包含键
+	template<typename T, typename ...Args>
+	bool count(T name, Args ...args) {
+		if (!data.count(name))
+			return false;
+		else return count(args...);
+	}
+	//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
+	void erase() {
+		return;
+	}
+	//用法:statu.erase("name1", "name2", ...);
+	template<typename T, typename ...Args>
+	void erase(T name, Args ...args) {
+		if (data.count(name)) {
+			data.erase(name);
+		}
+		erase(args...);
+		return;
+	}
+	//返回:指定键的值
+	castable_any& operator[](string name) {
+		return data[name];
+	}
+	//批量添加键值对
+	void operator+=(Statu _statu) {
+		for (auto& elem : _statu.data) {
+			data[elem.first] = elem.second;
+		}
+	}
+	//返回:是否为空
+	bool empty() const {
+		return data.empty();
+	}
+	//返回:键值对个数
+	size_t size() const {
+		return data.size();
+	}
+};
+//Event(eventEnum, {"name1", value1, "name2", value2});
+class Event :public Statu {
+public:
+	string eventId;
+	Event() {}
+	Event(string eventId) :eventId(eventId) {}
+	Event(string eventId, initializer_list<castable_any> list) :eventId(eventId) {
+		for (auto i = list.begin(); i != list.end(); i++) {
+			string name = any_cast<string>(i->_data);
+			i++;
+			data[name] = *i;
+		}
+	}
+};
+class EventManager {
+protected:
+	queue<Event> eventList;
+public:
+	bool pollEvent(Event& event) {
+		if (!eventList.empty()) {
+			event = eventList.front();
+			eventList.pop();
+			return true;
+		}
+		return false;
+	}
+};
+class FontManager {
+private:
+	unordered_map<string, sf::Font>font;
+	//noncopyable
+	FontManager(const FontManager& other) = delete;
+	FontManager& operator=(const FontManager& _f) = delete;
+public:
+	FontManager() {};
+	bool loadFont(string name, string filename) {
+		return font[name].openFromFile(filename);
+	}
+	sf::Font& operator[](string name) {
+		return font[name];
+	}
+}fontManager;
+typedef unordered_map<int, sf::Texture> ImageManager;
+sf::Texture nullTexture;
+namespace game {
 	//全局事件
 	EventManager globalEvent;
 
-	class FontManager {
-	private:
-		unordered_map<string, sf::Font>font;
-		//noncopyable
-		FontManager& operator=(const FontManager& _f)const {}
-	public:
-		bool loadFont(string name, string filename) {
-			return font[name].openFromFile(filename);
-		}
-		sf::Font& operator[](string name) {
-			return font[name];
-		}
-	}fontManager;
-
 	//存储图片Texture
-	unordered_map<int, sf::Texture>imageManager;
-
+	ImageManager imageManager;
 
 	//记录当前的frame状态
 	struct Frame {
@@ -474,7 +476,7 @@ namespace game {
 
 
 	//存储类型，实体动画+实体标签
-	struct AnimationObject {
+	class AnimationData {
 	private:
 		//存储类型，实体动画
 		class Animation {
@@ -490,7 +492,7 @@ namespace game {
 		public:
 			//将图像数据加到sprite中
 			//不会更改位置和方向
-			void attachSpriteVal(sf::Sprite& sprite, Frame frame) {
+			void attachSprite(sf::Sprite& sprite, Frame frame) {
 				sprite.setTexture(imageManager[imageId[frame.frame]], true);
 				sprite.setOrigin(origin[frame.frame]);
 				sprite.setScale(scale[frame.frame]);
@@ -520,35 +522,27 @@ namespace game {
 	};
 
 
-
-	class ObjectDataManager {
-		unordered_map<string, AnimationObject>data;
-	public:
-		AnimationObject& operator[](string name) {
-			return data[name];
-		}
-	};
-	//存储了方块信息
-	ObjectDataManager blockData;
-	//存储了实体信息
-	ObjectDataManager entityData;
-
+	//存储了方块/实体动画信息
+	unordered_map<string, AnimationData>animationData;
+	//存储了方块/实体初始化信息
+	unordered_map<string, Statu>objInitData;
 
 	//方块类型
 	class Block {
 	public:
 		//方块编号（类型）
-		string id = "";
+		string typeId = "";
 		Frame frame = Frame();
+		sf::Sprite sprite{ nullTexture };
 		Block() {}
 		//创建方块初始化
-		Block(string id) :id(id) {}
+		Block(string typeId) :typeId(typeId) {}
 		//更新frame指定的原始图像至sprite
-		void updateToSprite(sf::Sprite& sprite) const {
-			blockData[id].aniMain().attachSpriteVal(sprite, frame);
+		void updateSprite() {
+			animationData[typeId].aniMain().attachSprite(sprite, frame);
 		}
 		void nextTick() {
-			blockData[id].aniMain().frameNext(frame);
+			animationData[typeId].aniMain().frameNext(frame);
 		}
 	};
 	//地图类型
@@ -564,104 +558,101 @@ namespace game {
 	};
 
 
-
 	//实体类型
 	class Entity {
 	public:
 		//实体编号（类型）
-		string id = "";
+		string typeId;
+		int id;
 		string aniId;
 		Frame frame = Frame();
 		Statu tag;
-		Entity() {}
-		//创建实体初始化
-		Entity(string id, float x, float y, float angle, Statu _tag = Statu()) :id(id), x(x), y(y), angle(angle) {
-			tag = entityData[id].tag;
-			tag += _tag;
-		}
-		float x = 0, y = 0;
+		sf::Sprite sprite{ nullTexture };
+		Entity(string typeId, int id) :typeId(typeId), id(id) {}
+		sf::Vector2f pos;
 		float angle = 0;
 		//event中存储了未处理事件
 		vector<Event> event;
 
 		//更新frame指定的原始图像至sprite
-		void updateToSprite(sf::Sprite& sprite) const {
-			sprite.setPosition({ x, y });
+		void updateSprite() {
+			sprite.setPosition(pos);
 			sprite.setRotation(sf::degrees(angle));
-			entityData[id].ani[aniId].attachSpriteVal(sprite, frame);
+			animationData[typeId].ani[aniId].attachSprite(sprite, frame);
 		}
 		void nextTick() {
-			if (!entityData[id].ani[aniId].frameNext(frame)) {
+			if (!animationData[typeId].ani[aniId].frameNext(frame)) {
 				event.push_back(Event(attr::ani::AnimationEnd));
 			}
 		}
 	};
-	/*
 	class EntityManager {
-		//链式前向星
-		struct point {
-			point() {}
-			Entity data;
-			int prev = 0, nxt = 0;
-		};
-		unordered_map<int, point>entity;
-		unordered_map<string, int>head;
-		unordered_map<string, int>name;
-		int maxSize = 0;
+	private:
+		unordered_map<string, unordered_map<int, typename list<Entity>::iterator>>idMap;
+		unordered_map<string, pair<string, int>>nickIdMap;
+		unordered_map<string, int>index;
+		list<Entity>data;
+		//noncopyable
+		EntityManager(const EntityManager& other) = delete;
+		EntityManager& operator=(const EntityManager& other) = delete;
+		void check(const string& nickId) {
+			if (!count(nickId))
+				nickIdMap.erase(nickId);
+		}
 	public:
-		int spawn(Entity _entity, string _name = "") {
-			maxSize++;
-			int cur = maxSize;
-			if (_name != "")
-				name[_name] = cur;
-			entity[cur].data = _entity;
-			int prev = head[_entity.id];
-			if (prev != 0)
-				entity[prev].nxt = cur;
-			entity[cur].prev = prev;
-			entity[cur].nxt = 0;
-			head[_entity.id] = cur;
-			return cur;
+		EntityManager() {}
+		Entity& New(const string& type,string nickId="") {
+			data.emplace_back(type, index[type]);
+			idMap[type][index[type]] = --data.end();
+			if (nickId!="")
+				nickIdMap[nickId] = make_pair(type, index[type]);
+			index[type]++;
+			return data.back();
 		}
-		void erase(int pos) {
-			if (!entity.count(pos))return;
-			int cur = pos, prev = entity[pos].prev, nxt = entity[pos].nxt;
-			string id = entity[pos].data.id;
-			if (prev != 0)
-				entity[prev].nxt = nxt;
-			if (head[id] == cur)
-				head[id] = prev;
-			else entity[nxt].prev = prev;
-			entity.erase(pos);
-		}
-		void erase(string _name) {
-			erase(name[_name]);
-		}
-		Entity& operator[](int pos) {
-			return entity[entity.count(pos) ? pos : 0].data;
-		}
-		Entity& operator[](string _name) {
-			return operator[](name.count(_name) ? (name[_name]) : 0);
-		}
-		template <typename ...Args>
-		vector<int> search(string id = "", Args ...args) {
-			vector<int>ret; ret.clear();
-			if (id == "") {
-				for (int i = 0; i < entity.size(); i++) {
-					if (entity[i].data.tag.contain(args...))
-						ret.push_back(i);
-				}
-			}
+		Entity& entity(const string& nickId) {
+			check(nickId);
+			if (nickIdMap.count(nickId))
+				return *idMap[nickIdMap[nickId].first][nickIdMap[nickId].second];
 			else {
-				for (int i = head[id]; i != 0; i = entity[i].prev) {
-					if (entity[i].data.tag.contain(args...))
-						ret.push_back(i);
-				}
-				reverse(ret.begin(), ret.end());
+				cerr << "[EntityManager::entity] Entity NickID not found 未找到指定实体昵称\n  nickId: " << nickId << "\n";
+				throw std::runtime_error("[EntityManager::entity] Entity NickID not found 未找到指定实体昵称\n  nickId: " + nickId + "\n");
 			}
-			return ret;
 		}
-	}entityManager;*/
+		Entity& entity(const string& type,int _index) {
+			if (idMap[type].count(_index))
+				return *idMap[type][_index];
+			else {
+				cerr << "[EntityManager::entity] Entity ID not found 未找到指定实体ID\n  type: " << type << "\n  index: " << _index << "\n";
+				throw std::runtime_error("[EntityManager::entity] Entity ID not found 未找到指定实体ID\n  type: " + type + "\n  index: " + to_string(_index) + "\n");
+			}
+		}
+		inline const unordered_map<int, typename list<Entity>::iterator>& iterate(const string& type) {
+			return idMap[type];
+		}
+		inline list<Entity>& iterate() {
+			return data;
+		}
+		void erase(const string& nickId) {
+			check(nickId);
+			if (nickIdMap.count(nickId)) {
+				erase(nickIdMap[nickId].first, nickIdMap[nickId].second);
+				nickIdMap.erase(nickId);
+			}
+		}
+		void erase(const string& type,int _index) {
+			if (idMap[type].count(_index)) {
+				data.erase(idMap[type][_index]);
+				idMap[type].erase(_index);
+			}
+		}
+		bool count(const string& nickId) {
+			return nickIdMap.count(nickId) && idMap[nickIdMap[nickId].first].count(nickIdMap[nickId].second);
+		}
+		bool count(const string& type,int _index){
+			return idMap[type].count(_index);
+		}
+	};
+	EntityManager entityManager;
 
 
 	namespace Data {

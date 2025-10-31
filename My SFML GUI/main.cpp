@@ -1,6 +1,6 @@
 //Author : WrongAnswer99
 
-#define LET_ME_SEE_SEE
+//#define DEBUG
 #include "GUI.cpp"
 #include <iostream>
 unordered_map<string, game::gui::WindowManager::Style>style;
@@ -163,16 +163,36 @@ static void init() {
 		.setPosition(sf::Vector2f(350, 2200))
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
+	windowManager.preset["main"].area["area"].image["image"]
+		.setImage(sf::Image("D:\\test.png"))
+		.setJustification(attr::gui::Mid, attr::gui::Mid)
+		//.setScale(sf::Vector2f(1, 1))
+		//.setScaleTo(sf::Vector2f(200, 200))
+		.setSize(sf::Vector2f(200, 200))
+		//.setSizeAuto()
+		.setStyle(style["stdbn"], style["stdbn"], style["stdbn"])
+		.setPosition(sf::Vector2f(0, 150));
+
 
 	windowManager.preset["main"].area["area"]
 		.setScrollLimitAuto();
 }
-game::Event evt;
+Event evt;
 int main() {
-	game::fontManager.loadFont("ht", "FZHTJW.TTF");
+	fontManager.loadFont("ht", "FZHTJW.TTF");
+
 	init();
+
 	/*BinaryFStream bf("D:\\1.bin");
-	windowManager.readPreset(bf);*/
+	bf.clear();
+	bf << windowManager.preset;
+	bf.close();
+	exit(0);*/
+	
+	/*BinaryFStream bf("D:\\1.bin");
+	windowManager.readPreset(bf);
+	bf.close();*/
+
 	windowManager.newWindow("main");
 	game::window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"²âÊÔ", sf::Style::Close, sf::State::Windowed);
 	game::window.setFramerateLimit(60);
