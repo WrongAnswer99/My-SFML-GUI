@@ -1276,7 +1276,6 @@ namespace game {
 			//update cursor tick
 			//update inertial scroll
 			void draw(sf::RenderTarget& drawTarget) {
-				cout << isDragScrolling << endl;
 				if (windowData.size() >= 1) {
 					updateSimpleMove(focus.count(attr::gui::AreaPath) ? &area(focus[attr::gui::AreaPath].cast<string>()) : nullptr, updateOver(&windowData.back()));
 				}
