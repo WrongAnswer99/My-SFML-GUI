@@ -137,7 +137,7 @@ namespace game {
 		class WindowManager :public EventManager {
 		private:
 			Statu focus, overFocus;
-			bool isScrolling = false;
+			bool isDragScrolling = false;
 			bool mousePressed = false;
 			unsigned int cursorBlinkTick = 0;
 			//cursorBlinkRate : how many ticks the cursor blinks
@@ -1015,32 +1015,32 @@ namespace game {
 						if (elem.posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
 							origin += elem.posRect.position + areaPtr->scroll;
 							areaPtr = &elem;
-							goto L_continue;
+							goto LabelFindSuccess;
 						}
 					}
 					break;
-					L_continue:;
+				LabelFindSuccess:;
 				}
 				overFocus[attr::gui::AreaPath] = path;
 				for (auto& elem : areaPtr->button.iterate()) {
 					if (elem.posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
 						overFocus[attr::gui::ButtonId] = elem.id;
-						goto L_return;
+						goto LabelReturn;
 					}
 				}
 				for (auto& elem : areaPtr->option.iterate()) {
 					if (elem.posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
 						overFocus[attr::gui::OptionId] = elem.id;
-						goto L_return;
+						goto LabelReturn;
 					}
 				}
 				for (auto& elem : areaPtr->input.iterate()) {
 					if (elem.posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
 						overFocus[attr::gui::InputId] = elem.id;
-						goto L_return;
+						goto LabelReturn;
 					}
 				}
-				L_return:;
+			LabelReturn:;
 				return areaPtr;
 			}
 			inline bool statuExist(Statu& statu) {
@@ -1093,6 +1093,47 @@ namespace game {
 					return areaPtr;
 				else return nullptr;
 			}
+			inline void updateSimpleMove(AreaObj* areaFocusPtr,AreaObj* areaOverPtr) {
+				//update scroll
+				if (areaFocusPtr != nullptr && mousePressed) {
+					if (areaFocusPtr->mouseDragScrollable != sf::Vector2i()) {
+						if (ensure(focus.count(attr::gui::ButtonId) || focus.count(attr::gui::OptionId), (mouseLastPressPos - mousePos.back()).lengthSquared() >= scrollThreshold * scrollThreshold))
+							isDragScrolling = true;
+						if (focus.count(attr::gui::ButtonId) && isDragScrolling) {
+							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
+								areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
+							else areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
+						}
+						if (focus.count(attr::gui::OptionId) && isDragScrolling) {
+							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>()))
+								areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus().gainOver();
+							else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus();
+							if (areaFocusPtr->optionFocus.count(attr::gui::OptionId))
+								areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
+						}
+					}
+					else {
+						if (areaFocusPtr != nullptr && focus.count(attr::gui::ButtonId)) {
+							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
+								areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].gainFocus();
+							else areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
+						}
+						if (areaFocusPtr != nullptr && focus.count(attr::gui::OptionId)) {
+							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>()))
+								areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].gainFocus();
+							else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus().gainOver();
+							if (areaFocusPtr->optionFocus.count(attr::gui::OptionId))
+								areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
+						}
+					}
+				}
+				//update over
+				//after updating over ,varible 'focus' will not be changed
+				else {
+					if (statuVisit(overFocus, areaOverPtr) != nullptr)
+						statuVisit(overFocus, areaOverPtr)->gainOver();
+				}
+			}
 		public:
 			bool update(const optional<sf::Event>& sfEvent) {
 				if (windowData.size() == 0)
@@ -1115,8 +1156,6 @@ namespace game {
 				//update focus
 				//after updating focus ,varible 'focus' & 'overFocus' must have a value
 				if (sfEvent->is<sf::Event::MouseButtonPressed>()) {
-					isScrolling = false;
-					
 					mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseButtonPressed>()->position);//update mousePos
 
 					//update inertial scroll stop
@@ -1142,51 +1181,14 @@ namespace game {
 					sf::Vector2f mousePosDelta = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position) - mousePos.back();
 					mousePos.back() = sf::Vector2f(sfEvent->getIf<sf::Event::MouseMoved>()->position);//update mousePos
 					areaOverPtr=updateOver(topWindow);
-					//update scroll
-					if (areaFocusPtr != nullptr && mousePressed) {
-						if (areaFocusPtr->mouseDragScrollable != sf::Vector2i()) {
-							//tar.scroll += mouseVelocity();//wrong
-							//consider the case of two continuous sf::Event::MouseMoved event
-							if (ensure(focus.count(attr::gui::ButtonId) || focus.count(attr::gui::OptionId), (mouseLastPressPos - mousePos.back()).lengthSquared() >= scrollThreshold * scrollThreshold))
-								isScrolling = true;
-							if (focus.count(attr::gui::ButtonId) && isScrolling) {
-								if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
-									areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
-								else areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
-							}
-							if (focus.count(attr::gui::OptionId) && isScrolling) {
-								if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>()))
-									areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus().gainOver();
-								else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus();
-								if (areaFocusPtr->optionFocus.count(attr::gui::OptionId))
-									areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
-							}
-							areaFocusPtr->scroll += mousePosDelta.componentWiseMul(static_cast<sf::Vector2f>(areaFocusPtr->mouseDragScrollable));
-						}
-						else {
-							if (areaFocusPtr != nullptr && focus.count(attr::gui::ButtonId)) {
-								if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
-									areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].gainFocus();
-								else areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
-							}
-							if (areaFocusPtr != nullptr && focus.count(attr::gui::OptionId)) {
-								if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>()))
-									areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].gainFocus();
-								else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus().gainOver();
-								if (areaFocusPtr->optionFocus.count(attr::gui::OptionId))
-									areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
-							}
-						}
+					if (areaFocusPtr != nullptr && mousePressed && areaFocusPtr->mouseDragScrollable != sf::Vector2i() && isDragScrolling) {
+						//consider the case of two continuous sf::Event::MouseMoved event
+						areaFocusPtr->scroll += mousePosDelta.componentWiseMul(static_cast<sf::Vector2f>(areaFocusPtr->mouseDragScrollable));
 					}
-					//update over
-					//after updating over ,varible 'focus' will not be changed
-					else {
-						if (statuVisit(overFocus, areaOverPtr)!=nullptr)
-							statuVisit(overFocus, areaOverPtr)->gainOver();
-					}
+					updateSimpleMove(areaFocusPtr, areaOverPtr);
 					return true;
 				}
-				//sf::Event::MouseButtonReleased
+				//sf::Event::MouseButtonReleased 
 				//update release
 				//after updating release ,varible 'focus' will not be changed
 				if (sfEvent->is<sf::Event::MouseButtonReleased>()) {
@@ -1195,7 +1197,7 @@ namespace game {
 
 					if (areaFocusPtr != nullptr && focus.count(attr::gui::ButtonId)) {
 						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>())) {
-							if (!isScrolling)
+							if (!isDragScrolling)
 								eventList.push(Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::ButtonId].cast<string>() }));
 							areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
 						}
@@ -1205,15 +1207,16 @@ namespace game {
 						if (areaFocusPtr->optionFocus.count(attr::gui::OptionId))
 							areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].loseFocus();
 						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>())) {
-							if (!isScrolling) {
+							if (!isDragScrolling) {
 								areaFocusPtr->optionFocus = { attr::gui::OptionId,focus[attr::gui::OptionId].cast<string>() };
 								eventList.push(Event(attr::gui::OptionChosen, { attr::gui::OptionPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::OptionId].cast<string>() }));
 							}
 						}
+						else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus();
 						if (areaFocusPtr->optionFocus.count(attr::gui::OptionId))
 							areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
 					}
-					isScrolling = false;
+					isDragScrolling = false;
 
 					//update inertial scroll start
 					if (areaFocusPtr != nullptr && focus.count(attr::gui::AreaPath)) {
@@ -1254,19 +1257,6 @@ namespace game {
 				}
 				if (sfEvent->is<sf::Event::MouseWheelScrolled>()) {
 					areaOverPtr = updateOver(topWindow);
-					isScrolling = true;
-					if (areaFocusPtr != nullptr && focus.count(attr::gui::ButtonId) && isScrolling) {
-						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
-							areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
-						else areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
-					}
-					if (areaFocusPtr != nullptr && focus.count(attr::gui::OptionId) && isScrolling) {
-						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>()))
-							areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus().gainOver();
-						else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus();
-						if (areaFocusPtr->optionFocus.count(attr::gui::OptionId))
-							areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
-					}
 					float delta = sfEvent->getIf<sf::Event::MouseWheelScrolled>()->delta;
 					if (areaOverPtr->mouseWheelScrollable == sf::Vector2i(1, 0))
 						areaOverPtr->scrollVelocity = sf::Vector2f(delta*mouseWheelScrollRate,0);
@@ -1277,6 +1267,8 @@ namespace game {
 							areaOverPtr->scrollVelocity = sf::Vector2f(delta * mouseWheelScrollRate, 0);
 						else areaOverPtr->scrollVelocity = sf::Vector2f(0, delta * mouseWheelScrollRate);
 					}
+					updateSimpleMove(areaFocusPtr, areaOverPtr);
+					return true;
 				}
 				return false;
 			}
@@ -1284,9 +1276,10 @@ namespace game {
 			//update cursor tick
 			//update inertial scroll
 			void draw(sf::RenderTarget& drawTarget) {
-				AreaObj* areaOverPtr = updateOver(&windowData.back());
-				if (statuVisit(overFocus, areaOverPtr) != nullptr)
-					statuVisit(overFocus, areaOverPtr)->gainOver();
+				cout << isDragScrolling << endl;
+				if (windowData.size() >= 1) {
+					updateSimpleMove(focus.count(attr::gui::AreaPath) ? &area(focus[attr::gui::AreaPath].cast<string>()) : nullptr, updateOver(&windowData.back()));
+				}
 				if (focus.count(attr::gui::InputId)) {
 					cursorBlinkTick++;
 					cursorBlinkTick %= cursorBlinkRate;

@@ -231,7 +231,6 @@ int main() {
 	windowManager.newWindow("main");
 	game::window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"²âÊÔ", sf::Style::Close, sf::State::Windowed);
 	game::window.setFramerateLimit(60);
-	wcout.imbue(locale("chs"));
 	while (true) {
 		while (const optional sfEvt=game::window.pollEvent()) {
 			if (sfEvt->is<sf::Event::Closed>()) {
