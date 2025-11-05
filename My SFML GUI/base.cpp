@@ -187,17 +187,6 @@ public:
 		return *this;
 	}
 };
-class Vec2 {
-private:
-	int x, y;
-public:
-	template<typename T1, typename T2>
-	Vec2(T1 x, T2 y) : x(static_cast<float>(x)), y(static_cast<float>(y)) {}
-	template<typename T>
-	operator sf::Vector2<T>() {
-		return sf::Vector2<T>(static_cast<T>(x), static_cast<T>(y));
-	}
-};
 
 class Skip_t {};
 #define Skip Skip_t()
@@ -298,10 +287,10 @@ private:
 		return bf;
 	}
 };
-//statu = {"name1", value1, "name2", value2, ...};
-//statu["name"] = value;
-//T val = statu["name"].cast<T>();
-//statu["name"]["subname"];当"name"键也为Statu类型时可直接使用
+//statu = {"key1", value1, "key2", value2, ...};
+//statu["key"] = value;
+//T val = statu["key"].cast<T>();
+//statu["key"]["subkey"];当"key"键也为Statu类型时可直接使用
 //自动将const char*转换为string,自动将const wchar_t*转换为wstring
 class Statu {
 protected:
@@ -330,8 +319,8 @@ protected:
 		T& cast() {
 			return any_cast<T&>(_data);
 		}
-		castable_any& operator[](string name) {
-			return any_cast<Statu&>(_data)[name];
+		castable_any& operator[](string key) {
+			return any_cast<Statu&>(_data)[key];
 		}
 	};
 	unordered_map<string, castable_any>data;
@@ -339,33 +328,33 @@ public:
 	Statu() {}
 	Statu(initializer_list<castable_any> list) {
 		for (auto i = list.begin(); i != list.end(); i++) {
-			string name = any_cast<string>(i->_data);
+			string key = any_cast<string>(i->_data);
 			i++;
-			data[name] = *i;
+			data[key] = *i;
 		}
 	}
 	//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
 	bool contain() {
 		return true;
 	}
-	//用法:statu.contain("name1", value1, "name2", value2, ...);
+	//用法:statu.contain("key1", value1, "key2", value2, ...);
 	//需要保证参数个数为偶数(因为是键值对),否则抛出runtime_error
 	//返回:是否包含键值对
 	template<typename T1, typename T2, typename ...Args>
-	bool contain(T1 name, T2 val, Args ...args) {
+	bool contain(T1 key, T2 val, Args ...args) {
 		static_assert(sizeof...(Args) % 2 == 0, "参数个数必须为偶数");
-		if (!data.count(static_cast<string>(name)))return false;
+		if (!data.count(static_cast<string>(key)))return false;
 		try {
 			if constexpr (is_same_v<const char*, decay_t<T2>>) {
-				if (any_cast<string>(data[static_cast<string>(name)]._data) != string(val))
+				if (any_cast<string>(data[static_cast<string>(key)]._data) != string(val))
 					return false;
 			}
 			else if constexpr (is_same_v<const wchar_t*, decay_t<T2>>) {
-				if (any_cast<wstring>(data[static_cast<string>(name)]._data) != wstring(val))
+				if (any_cast<wstring>(data[static_cast<string>(key)]._data) != wstring(val))
 					return false;
 			}
 			else {
-				if (any_cast<T2>(data[static_cast<string>(name)]._data) != val)
+				if (any_cast<T2>(data[static_cast<string>(key)]._data) != val)
 					return false;
 			}
 		}
@@ -378,11 +367,11 @@ public:
 	bool count() {
 		return true;
 	}
-	//用法:statu.count("name1", "name2", ...);
+	//用法:statu.count("key1", "key2", ...);
 	//返回:是否包含键
 	template<typename T, typename ...Args>
-	bool count(T name, Args ...args) {
-		if (!data.count(name))
+	bool count(T key, Args ...args) {
+		if (!data.count(key))
 			return false;
 		else return count(args...);
 	}
@@ -390,18 +379,18 @@ public:
 	void erase() {
 		return;
 	}
-	//用法:statu.erase("name1", "name2", ...);
+	//用法:statu.erase("key1", "key2", ...);
 	template<typename T, typename ...Args>
-	void erase(T name, Args ...args) {
-		if (data.count(name)) {
-			data.erase(name);
+	void erase(T key, Args ...args) {
+		if (data.count(key)) {
+			data.erase(key);
 		}
 		erase(args...);
 		return;
 	}
 	//返回:指定键的值
-	castable_any& operator[](string name) {
-		return data[name];
+	castable_any& operator[](string key) {
+		return data[key];
 	}
 	//批量添加键值对
 	void operator+=(Statu _statu) {
@@ -418,7 +407,7 @@ public:
 		return data.size();
 	}
 };
-//Event(eventEnum, {"name1", value1, "name2", value2});
+//Event(eventEnum, {"key1", value1, "key2", value2});
 class Event :public Statu {
 public:
 	string eventId;
@@ -426,9 +415,9 @@ public:
 	Event(string eventId) :eventId(eventId) {}
 	Event(string eventId, initializer_list<castable_any> list) :eventId(eventId) {
 		for (auto i = list.begin(); i != list.end(); i++) {
-			string name = any_cast<string>(i->_data);
+			string key = any_cast<string>(i->_data);
 			i++;
-			data[name] = *i;
+			data[key] = *i;
 		}
 	}
 };

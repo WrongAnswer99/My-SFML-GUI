@@ -2,7 +2,6 @@
 
 //#define DEBUG
 #include "GUI.cpp"
-#include <iostream>
 unordered_map<string, game::gui::WindowManager::Style>style;
 
 int windowWidth = 800, windowHeight = 600;
@@ -83,6 +82,42 @@ static void init() {
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 275))
 		.setSize(sf::Vector2f(100, 50))
+		.setCenter();
+
+	windowManager.preset["main"].area["area"].option["option1"]
+		.setText(L"选项1")
+		.setFont("ht")
+		.setCharacterSize(50)
+		.setPosition(sf::Vector2f(350, 750))
+		.setSize(sf::Vector2f(150, 50))
+		.setCenter();
+	windowManager.preset["main"].area["area"].option["option2"]
+		.setText(L"选项2")
+		.setFont("ht")
+		.setCharacterSize(50)
+		.setPosition(sf::Vector2f(350, 800))
+		.setSize(sf::Vector2f(150, 50))
+		.setCenter();
+	windowManager.preset["main"].area["area"].option["option3"]
+		.setText(L"选项3")
+		.setFont("ht")
+		.setCharacterSize(50)
+		.setPosition(sf::Vector2f(350, 850))
+		.setSize(sf::Vector2f(150, 50))
+		.setCenter();
+	windowManager.preset["main"].area["area"].option["option4"]
+		.setText(L"选项4")
+		.setFont("ht")
+		.setCharacterSize(50)
+		.setPosition(sf::Vector2f(350, 900))
+		.setSize(sf::Vector2f(150, 50))
+		.setCenter();
+	windowManager.preset["main"].area["area"].option["option5"]
+		.setText(L"选项5")
+		.setFont("ht")
+		.setCharacterSize(50)
+		.setPosition(sf::Vector2f(350, 950))
+		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
 
 	windowManager.preset["main"].area["area"].text["1"]
@@ -196,6 +231,7 @@ int main() {
 	windowManager.newWindow("main");
 	game::window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"测试", sf::Style::Close, sf::State::Windowed);
 	game::window.setFramerateLimit(60);
+	wcout.imbue(locale("chs"));
 	while (true) {
 		while (const optional sfEvt=game::window.pollEvent()) {
 			if (sfEvt->is<sf::Event::Closed>()) {
@@ -208,6 +244,9 @@ int main() {
 		while (windowManager.pollEvent(evt)) {
 			if (evt.eventId == attr::gui::ButtonPressed) {
 				cout << "Button pressed : " << evt[attr::gui::ButtonPath].cast<string>() << endl;
+			}
+			if (evt.eventId == attr::gui::OptionChosen) {
+				cout << "Option chosen : " << evt[attr::gui::OptionPath].cast<string>() << endl;
 			}
 			if (evt.eventId == attr::gui::InputGainFocus) {
 				cout << "Input gain focus : " << evt[attr::gui::InputPath].cast<string>() << endl;
