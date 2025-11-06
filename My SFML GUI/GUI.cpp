@@ -747,11 +747,11 @@ namespace game {
 					styles[attr::gui::Statu::focus].set(sf::Color::White, sf::Color(200, 200, 200), 2);
 				}
 				OrderedHashMap<AreaObj>area;
-				OrderedHashMap<ImageObj>image;
-				OrderedHashMap<TextObj>text;
 				OrderedHashMap<InputObj>input;
 				OrderedHashMap<ButtonObj>button;
 				OrderedHashMap<OptionObj>option;
+				OrderedHashMap<ImageObj>image;
+				OrderedHashMap<TextObj>text;
 				AreaObj& setScrollable(Skipable<sf::Vector2i> _mouseDragScrollable, Skipable<sf::Vector2i> _mouseWheelScrollable) {
 					_mouseDragScrollable.assignTo(mouseDragScrollable);
 					_mouseWheelScrollable.assignTo(mouseWheelScrollable);
@@ -788,14 +788,6 @@ namespace game {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
-					for (auto& elem : image.iterate()) {
-						addPoint(scrollLimit, elem.posRect.position);
-						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
-					}
-					for (auto& elem : text.iterate()) {
-						addPoint(scrollLimit, elem.posRect.position);
-						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
-					}
 					for (auto& elem : input.iterate()) {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
@@ -805,6 +797,14 @@ namespace game {
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
 					for (auto& elem : option.iterate()) {
+						addPoint(scrollLimit, elem.posRect.position);
+						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
+					}
+					for (auto& elem : image.iterate()) {
+						addPoint(scrollLimit, elem.posRect.position);
+						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
+					}
+					for (auto& elem : text.iterate()) {
 						addPoint(scrollLimit, elem.posRect.position);
 						addPoint(scrollLimit, elem.posRect.position + elem.posRect.size);
 					}
@@ -876,12 +876,6 @@ namespace game {
 					for (auto& elem : area.iterate()) {
 						elem.draw(rCur, displayAreaCur, windowManager);
 					}
-					for (auto& elem : image.iterate()) {
-						elem.draw(rCur, displayAreaCur);
-					}
-					for (auto& elem : text.iterate()) {
-						elem.draw(rCur, displayAreaCur);
-					}
 					for (auto& elem : input.iterate()) {
 						elem.draw(rCur, displayAreaCur, windowManager);
 					}
@@ -889,6 +883,12 @@ namespace game {
 						elem.draw(rCur, displayAreaCur);
 					}
 					for (auto& elem : option.iterate()) {
+						elem.draw(rCur, displayAreaCur);
+					}
+					for (auto& elem : image.iterate()) {
+						elem.draw(rCur, displayAreaCur);
+					}
+					for (auto& elem : text.iterate()) {
 						elem.draw(rCur, displayAreaCur);
 					}
 					rCur.display();
@@ -958,16 +958,6 @@ namespace game {
 					return window(temp.second);
 				else return temp.first->area[temp.second];
 			}
-			//通过路径访问image
-			ImageObj& image(string path) {
-				auto temp = visit(path);
-				return temp.first->image[temp.second];
-			}
-			//通过路径访问text
-			TextObj& text(string path) {
-				auto temp = visit(path);
-				return temp.first->text[temp.second];
-			}
 			//通过路径访问input
 			InputObj& input(string path) {
 				auto temp = visit(path);
@@ -982,6 +972,16 @@ namespace game {
 			OptionObj& option(string path) {
 				auto temp = visit(path);
 				return temp.first->option[temp.second];
+			}
+			//通过路径访问image
+			ImageObj& image(string path) {
+				auto temp = visit(path);
+				return temp.first->image[temp.second];
+			}
+			//通过路径访问text
+			TextObj& text(string path) {
+				auto temp = visit(path);
+				return temp.first->text[temp.second];
 			}
 		private:
 			inline AreaObj* updateOver(AreaObj* areaPtr,bool stopScroll=false) {

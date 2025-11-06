@@ -203,10 +203,10 @@ static void init() {
 		.setJustification(attr::gui::Mid, attr::gui::Mid)
 		//.setScale(sf::Vector2f(1, 1))
 		//.setScaleTo(sf::Vector2f(200, 200))
-		.setSize(sf::Vector2f(200, 200))
 		//.setSizeAuto()
+		.setSize(sf::Vector2f(200, 200))
 		.setStyle(style["stdbn"], style["stdbn"], style["stdbn"])
-		.setPosition(sf::Vector2f(0, 150));
+		.setPosition(sf::Vector2f(600, 250));
 
 
 	windowManager.preset["main"].area["area"]
