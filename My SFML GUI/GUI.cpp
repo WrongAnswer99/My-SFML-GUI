@@ -824,15 +824,31 @@ namespace game {
 					return bf;
 				}
 				AreaObj& setOption(string key) {
-					if (option.count(key))
+					if (optionFocus.count(attr::gui::OptionId)) {
+						if (!option.count(optionFocus[attr::gui::OptionId].cast<string>()))
+							optionFocus = {};
+						else option[optionFocus[attr::gui::OptionId].cast<string>()].loseFocus();
+					}
+					if (option.count(key)) {
 						optionFocus = { attr::gui::OptionId,key };
+						option[key].gainFocus();
+					}
 					return *this;
 				}
 				AreaObj& setOptionNull() {
+					if (option.count(optionFocus[attr::gui::OptionId].cast<string>()))
+						option[optionFocus[attr::gui::OptionId].cast<string>()].loseFocus();
 					optionFocus = {};
 					return *this;
 				}
 			protected:
+				void updateOptionFocus() {
+					if (optionFocus.count(attr::gui::OptionId)) {
+						if (!option.count(optionFocus[attr::gui::OptionId].cast<string>()))
+							optionFocus = {};
+						else option[optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
+					}
+				}
 				void ensureScrollLimit() {
 					if (-scroll.x < scrollLimit.position.x) {
 						scroll.x = -(scrollLimit.position.x);
@@ -1108,11 +1124,7 @@ namespace game {
 							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>()))
 								areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus().gainOver();
 							else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus();
-							if (areaFocusPtr != nullptr && areaFocusPtr->optionFocus.count(attr::gui::OptionId)) {
-								if (!areaFocusPtr->option.count(areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()))
-									areaFocusPtr->optionFocus = {};
-								else areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
-							}
+							areaFocusPtr->updateOptionFocus();
 						}
 					}
 					else {
@@ -1125,11 +1137,7 @@ namespace game {
 							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>()))
 								areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].gainFocus();
 							else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus().gainOver();
-							if (areaFocusPtr != nullptr && areaFocusPtr->optionFocus.count(attr::gui::OptionId)) {
-								if (!areaFocusPtr->option.count(areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()))
-									areaFocusPtr->optionFocus = {};
-								else areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
-							}
+							areaFocusPtr->updateOptionFocus();
 						}
 					}
 				}
@@ -1174,11 +1182,8 @@ namespace game {
 
 					if (statuVisit(focus)!=nullptr)
 						statuVisit(focus)->loseFocus();
-					if (areaFocusPtr != nullptr && areaFocusPtr->optionFocus.count(attr::gui::OptionId)) {
-						if (!areaFocusPtr->option.count(areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()))
-							areaFocusPtr->optionFocus = {};
-						else areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
-					}
+					if (areaFocusPtr != nullptr)
+						areaFocusPtr->updateOptionFocus();
 					if (statuVisit(overFocus,areaOverPtr) != nullptr)
 						statuVisit(overFocus,areaOverPtr)->gainFocus();
 
@@ -1222,11 +1227,7 @@ namespace game {
 							}
 						}
 						else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus();
-						if (areaFocusPtr != nullptr && areaFocusPtr->optionFocus.count(attr::gui::OptionId)) {
-							if (!areaFocusPtr->option.count(areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()))
-								areaFocusPtr->optionFocus = {};
-							else areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
-						}
+						areaFocusPtr->updateOptionFocus();
 					}
 					isDragScrolling = false;
 
