@@ -1,6 +1,6 @@
 //Author : WrongAnswer99
 
-//#define DEBUG
+//#define GUIDEBUG
 #include "GUI.cpp"
 unordered_map<string, game::gui::WindowManager::Style>style;
 
@@ -199,7 +199,7 @@ static void init() {
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
 	windowManager.preset["main"].area["area"].image["image"]
-		.setImage(sf::Image("D:\\test.png"))
+		.setImageFromFile("D:\\test.png")
 		.setJustification(attr::gui::Mid, attr::gui::Mid)
 		//.setScale(sf::Vector2f(1, 1))
 		//.setScaleTo(sf::Vector2f(200, 200))
@@ -208,6 +208,15 @@ static void init() {
 		.setStyle(style["stdbn"], style["stdbn"], style["stdbn"])
 		.setPosition(sf::Vector2f(600, 250));
 
+	windowManager.preset["main"].area["area"].image["image1"]
+		.setImageId("test")
+		.setJustification(attr::gui::Mid, attr::gui::Mid)
+		//.setScale(sf::Vector2f(1, 1))
+		//.setScaleTo(sf::Vector2f(200, 200))
+		//.setSizeAuto()
+		.setSize(sf::Vector2f(200, 200))
+		.setStyle(style["stdbn"], style["stdbn"], style["stdbn"])
+		.setPosition(sf::Vector2f(600, 450));
 
 	windowManager.preset["main"].area["area"]
 		.setScrollLimitAuto();
@@ -216,17 +225,18 @@ Event evt;
 int main() {
 	fontManager.loadFont("ht", "FZHTJW.TTF");
 
-	init();
+	/*init();
 
-	/*BinaryFStream bf("D:\\1.bin");
+	BinaryFStream bf("D:\\1.bin");
 	bf.clear();
+	bf << imageManager;
 	bf << windowManager.preset;
 	bf.close();
 	exit(0);*/
 	
-	/*BinaryFStream bf("D:\\1.bin");
+	BinaryFStream bf("D:\\1.bin");
 	windowManager.readPreset(bf);
-	bf.close();*/
+	bf.close();
 
 	windowManager.newWindow("main");
 	game::window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"²âÊÔ", sf::Style::Close, sf::State::Windowed);

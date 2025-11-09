@@ -1,134 +1,6 @@
 //Author : WrongAnswer99
 #include "base.cpp"
-template <typename T>
-inline sf::Rect<T> operator+(sf::Rect<T> rect, sf::Vector2<T> vec) {
-	rect.position += vec;
-	return rect;
-}
-template <typename T>
-inline sf::Rect<T> operator-(sf::Rect<T> rect, sf::Vector2<T> vec) {
-	rect.position -= vec;
-	return rect;
-}
-template<typename T,typename U>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, pair<T,U>& x) {
-	bf >> x.first >> x.second;
-	return bf;
-}
-template<typename T,typename U>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const pair<T,U>& x) {
-	bf << x.first << x.second;
-	return bf;
-}
-template<typename T, typename U>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, unordered_map<T, U>& x) {
-	size_t size;
-	bf >> size;
-	x.clear();
-	x.reserve(size);
-	T t{};
-	U u{};
-	for (size_t i = 0; i < size; ++i) {
-		bf >> t >> u;
-		x.emplace(std::move(t), std::move(u));
-		t = T{};
-		u = U{};
-	}
-	return bf;
-}
-template<typename T, typename U>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const unordered_map<T, U>& x) {
-	bf << x.size();
-	for (auto& elem : x) {
-		bf << elem.first << elem.second;
-	}
-	return bf;
-}
-template<typename T>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, vector<T>& x) {
-	size_t size;
-	bf >> size;
-	T t{};
-	x.clear();
-	x.reserve(size);
-	for (size_t i = 0; i < size; ++i) {
-		bf >> t;
-		x.emplace_back(std::move(t));
-		t = T{};
-	}
-	return bf;
-}
-template<typename T>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const vector<T>& x) {
-	bf << x.size();
-	for (auto& elem : x) {
-		bf << elem;
-	}
-	return bf;
-}
-inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Color& x) {
-	bf >> x.r >> x.g >> x.b >> x.a;
-	return bf;
-}
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Color& x) {
-	bf << x.r << x.g << x.b << x.a;
-	return bf;
-}
-template<typename T>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Vector2<T>& x) {
-	bf >> x.x >> x.y;
-	return bf;
-}
-template<typename T>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Vector2<T>& x) {
-	bf << x.x << x.y;
-	return bf;
-}
-template<typename T>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Rect<T>& x) {
-	bf >> x.position >> x.size;
-	return bf;
-}
-template<typename T>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Rect<T>& x) {
-	bf << x.position << x.size;
-	return bf;
-}
-inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::String& x) {
-	string s;
-	bf >> s;
-	x = sf::String::fromUtf8(s.begin(), s.end());
-	return bf;
-}
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::String& x) {
-	bf << x.toUtf8().size();
-	for (uint8_t& elem : x.toUtf8())
-		bf << elem;
-	return bf;
-}
-inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Image& x) {
-	string s;
-	bf >> s;
-	if (!x.loadFromMemory(s.data(), s.size()))
-		cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
-	return bf;
-}
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Image& x) {
-	bf<<*x.saveToMemory("png");
-	return bf;
-}
-inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Texture& x) {
-	string s;
-	bf >> s;
-	if (!x.loadFromImage(sf::Image(s.data(), s.size())))
-		cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
-	return bf;
-}
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Texture& x) {
-	bf << *x.copyToImage().saveToMemory("png");
-	return bf;
-}
-#ifdef DEBUG
+#ifdef GUIDEBUG
 #define private public
 #define protected public
 #endif
@@ -189,8 +61,10 @@ namespace game {
 				return mousePos.back() - mousePos.front();
 			}
 			//noncopyable
-			WindowManager& operator=(const WindowManager& _w)const {}
+			WindowManager(const WindowManager& other) = delete;
+			WindowManager& operator=(const WindowManager& other) = delete;
 		public:
+			WindowManager() {}
 			void clear() {
 				while (!eventList.empty())
 					eventList.pop();
@@ -305,30 +179,30 @@ namespace game {
 				//before : setCenter()
 				//after : setImage() , setScale() , setScaleTo()
 				ImageObj& setSizeAuto() {
-					posRect.size = static_cast<sf::Vector2f>(image.getSize()).componentWiseMul(scale);
+					posRect.size = static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale);
 					return *this;
 				}
 			protected:
-				sf::Texture image;
+				string imageId;
 				sf::Vector2i justification = { attr::gui::Mid,attr::gui::Mid };
 				sf::Vector2f scale = sf::Vector2f(1, 1);
-				sf::Color imageMaskColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
-				ImageObj& setImageMaskColor(Skipable<sf::Color>_normalMaskColor, Skipable<sf::Color>_overMaskColor, Skipable<sf::Color>_focusMaskColor) {
-					_normalMaskColor.assignTo(imageMaskColors[attr::gui::Statu::normal]);
-					_overMaskColor.assignTo(imageMaskColors[attr::gui::Statu::over]);
-					_focusMaskColor.assignTo(imageMaskColors[attr::gui::Statu::focus]);
+				sf::Color imageColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
+				ImageObj& setImageColor(Skipable<sf::Color>_normalColor, Skipable<sf::Color>_overColor, Skipable<sf::Color>_focusColor) {
+					_normalColor.assignTo(imageColors[attr::gui::Statu::normal]);
+					_overColor.assignTo(imageColors[attr::gui::Statu::over]);
+					_focusColor.assignTo(imageColors[attr::gui::Statu::focus]);
 					return *this;
 				}
-				sf::Color& imageMaskColor(int id) {
-					return imageMaskColors[id];
+				sf::Color& imageColor(int id) {
+					return imageColors[id];
 				}
 				void draw(sf::RenderTarget& r, sf::FloatRect displayArea) {
 					ObjBase::draw(r, displayArea);
 					if (posRect.findIntersection(displayArea)) {
-						sf::Sprite imageRender(image);
-						imageRender.setPosition(posRect.position + ((posRect.size - static_cast<sf::Vector2f>(image.getSize()).componentWiseMul(scale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
+						sf::Sprite imageRender(imageManager[imageId]);
+						imageRender.setPosition(posRect.position + ((posRect.size - static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
 						imageRender.setScale(scale);
-						imageRender.setColor(imageMaskColors[currentStatu]);
+						imageRender.setColor(imageColors[currentStatu]);
 						r.draw(imageRender);
 					}
 				}
@@ -345,23 +219,26 @@ namespace game {
 				//use this setter
 				//after : setImage()
 				ImageObj& setScaleTo(sf::Vector2f _size) {
-					scale = _size.componentWiseDiv(static_cast<sf::Vector2f>(image.getSize()));
+					scale = _size.componentWiseDiv(static_cast<sf::Vector2f>(imageManager[imageId].getSize()));
 					return *this;
 				}
-				ImageObj& setImage(const sf::Image& _image) {
-					bool loadSuccess = image.loadFromImage(_image);
-					if (!loadSuccess)
-						cerr << "[ImageObj::setImage] Image load failed 图像加载失败" << endl << "  id: " << id << endl;
+				ImageObj& setImageFromFile(const fs::path& filename) {
+					imageManager.loadImage(filename);
+					imageId = filename.stem().string();
+					return *this;
+				}
+				ImageObj& setImageId(const string& _imageId) {
+					imageId = _imageId;
 					return *this;
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, ImageObj& x) {
 					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structIn(x.image, x.scale, x.justification, x.imageMaskColors[attr::gui::Statu::normal], x.imageMaskColors[attr::gui::Statu::over], x.imageMaskColors[attr::gui::Statu::focus]);
+					bf.structIn(x.imageId, x.scale, x.justification, x.imageColors[attr::gui::Statu::normal], x.imageColors[attr::gui::Statu::over], x.imageColors[attr::gui::Statu::focus]);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ImageObj& x) {
 					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structOut(x.image, x.scale, x.justification, x.imageMaskColors[attr::gui::Statu::normal], x.imageMaskColors[attr::gui::Statu::over], x.imageMaskColors[attr::gui::Statu::focus]);
+					bf.structOut(x.imageId, x.scale, x.justification, x.imageColors[attr::gui::Statu::normal], x.imageColors[attr::gui::Statu::over], x.imageColors[attr::gui::Statu::focus]);
 					return bf;
 				}
 			};
@@ -446,7 +323,7 @@ namespace game {
 					}
 				}
 			public:
-				TextObj& setFont(string _font) {
+				TextObj& setFont(const string& _font) {
 					font = _font;
 					textRender.setFont(fontManager[font]);
 					return *this;
@@ -823,7 +700,7 @@ namespace game {
 					bf.structOut(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit);
 					return bf;
 				}
-				AreaObj& setOption(string key) {
+				AreaObj& setOption(const string& key) {
 					if (optionFocus.count(attr::gui::OptionId)) {
 						if (!option.count(optionFocus[attr::gui::OptionId].cast<string>()))
 							optionFocus = {};
@@ -920,9 +797,10 @@ namespace game {
 		public:
 			OrderedHashMap<AreaObj>preset;
 			void readPreset(BinaryFStream & bf) {
+				bf >> imageManager;
 				bf >> preset;
 			}
-			void newWindow(string id) {
+			void newWindow(const string& id) {
 				if (windowId.count(id)) {
 					cerr << "[WindowManager::newWindow] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
 					throw runtime_error("[WindowManager::newWindow] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
@@ -933,7 +811,7 @@ namespace game {
 				windowData[windowData.size() - 1].id = id;
 				windowId[id] = (int)windowData.size() - 1;
 			}
-			bool topWindowIs(string id) {
+			bool topWindowIs(const string& id) {
 				return windowData.size() > 0 && windowData.back().id == id;
 			}
 			void closeTopWindow() {
@@ -943,7 +821,7 @@ namespace game {
 				}
 				else cerr << "[WindowManager::closeTopWindow] No window to close 无窗口，无法关闭\n";
 			}
-			AreaObj& window(string id) {
+			AreaObj& window(const string& id) {
 				if (windowId.count(id))
 					return windowData[windowId[id]];
 				else {
@@ -952,7 +830,7 @@ namespace game {
 				}
 			}
 		private:
-			pair<AreaObj*,string> visit(string path) {
+			pair<AreaObj*,string> visit(const string& path) {
 				AreaObj* areaPtr = nullptr;
 				string temp = "";
 				for (int i = 0; i < path.size(); i++) {
@@ -968,34 +846,34 @@ namespace game {
 			}
 		public:
 			//通过路径访问area 
-			AreaObj& area(string path) {
+			AreaObj& area(const string& path) {
 				auto temp = visit(path);
 				if (temp.first == nullptr)
 					return window(temp.second);
 				else return temp.first->area[temp.second];
 			}
 			//通过路径访问input
-			InputObj& input(string path) {
+			InputObj& input(const string& path) {
 				auto temp = visit(path);
 				return temp.first->input[temp.second];
 			}
 			//通过路径访问button
-			ButtonObj& button(string path) {
+			ButtonObj& button(const string& path) {
 				auto temp = visit(path);
 				return temp.first->button[temp.second];
 			}
 			//通过路径访问option
-			OptionObj& option(string path) {
+			OptionObj& option(const string& path) {
 				auto temp = visit(path);
 				return temp.first->option[temp.second];
 			}
 			//通过路径访问image
-			ImageObj& image(string path) {
+			ImageObj& image(const string& path) {
 				auto temp = visit(path);
 				return temp.first->image[temp.second];
 			}
 			//通过路径访问text
-			TextObj& text(string path) {
+			TextObj& text(const string& path) {
 				auto temp = visit(path);
 				return temp.first->text[temp.second];
 			}
@@ -1308,7 +1186,7 @@ namespace game {
 		};
 	}
 }
-#ifdef DEBUG
+#ifdef GUIDEBUG
 #undef private
 #undef protected
 #endif

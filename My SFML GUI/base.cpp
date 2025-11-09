@@ -8,6 +8,7 @@
 #include <fstream>
 #include "attr.cpp"
 using namespace std;
+namespace fs = std::filesystem;
 //if exist then check condition
 #define ensure(existCondition,condition) (!(existCondition)||((existCondition)&&(condition)))
 
@@ -126,7 +127,7 @@ private:
 		//0是占位符,表示当前struct结束,用于嵌套struct
 	}
 public:
-	BinaryFStream(std::string filename) :filename(filename) {}
+	BinaryFStream(const string& filename) :filename(filename) {}
 	template<typename T, typename = std::enable_if_t<standardizedSize<std::decay_t<T>>() != 0>>
 	inline BinaryFStream& operator>>(T& x) {
 		prepareInMode();
@@ -187,6 +188,134 @@ public:
 		return *this;
 	}
 };
+template <typename T>
+inline sf::Rect<T> operator+(sf::Rect<T> rect, sf::Vector2<T> vec) {
+	rect.position += vec;
+	return rect;
+}
+template <typename T>
+inline sf::Rect<T> operator-(sf::Rect<T> rect, sf::Vector2<T> vec) {
+	rect.position -= vec;
+	return rect;
+}
+template<typename T, typename U>
+inline static BinaryFStream& operator>>(BinaryFStream& bf, pair<T, U>& x) {
+	bf >> x.first >> x.second;
+	return bf;
+}
+template<typename T, typename U>
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const pair<T, U>& x) {
+	bf << x.first << x.second;
+	return bf;
+}
+template<typename T, typename U>
+inline static BinaryFStream& operator>>(BinaryFStream& bf, unordered_map<T, U>& x) {
+	size_t size;
+	bf >> size;
+	x.clear();
+	x.reserve(size);
+	T t{};
+	U u{};
+	for (size_t i = 0; i < size; ++i) {
+		bf >> t >> u;
+		x.emplace(std::move(t), std::move(u));
+		t = T{};
+		u = U{};
+	}
+	return bf;
+}
+template<typename T, typename U>
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const unordered_map<T, U>& x) {
+	bf << x.size();
+	for (auto& elem : x) {
+		bf << elem.first << elem.second;
+	}
+	return bf;
+}
+template<typename T>
+inline static BinaryFStream& operator>>(BinaryFStream& bf, vector<T>& x) {
+	size_t size;
+	bf >> size;
+	T t{};
+	x.clear();
+	x.reserve(size);
+	for (size_t i = 0; i < size; ++i) {
+		bf >> t;
+		x.emplace_back(std::move(t));
+		t = T{};
+	}
+	return bf;
+}
+template<typename T>
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const vector<T>& x) {
+	bf << x.size();
+	for (auto& elem : x) {
+		bf << elem;
+	}
+	return bf;
+}
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Color& x) {
+	bf >> x.r >> x.g >> x.b >> x.a;
+	return bf;
+}
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Color& x) {
+	bf << x.r << x.g << x.b << x.a;
+	return bf;
+}
+template<typename T>
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Vector2<T>& x) {
+	bf >> x.x >> x.y;
+	return bf;
+}
+template<typename T>
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Vector2<T>& x) {
+	bf << x.x << x.y;
+	return bf;
+}
+template<typename T>
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Rect<T>& x) {
+	bf >> x.position >> x.size;
+	return bf;
+}
+template<typename T>
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Rect<T>& x) {
+	bf << x.position << x.size;
+	return bf;
+}
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::String& x) {
+	string s;
+	bf >> s;
+	x = sf::String::fromUtf8(s.begin(), s.end());
+	return bf;
+}
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::String& x) {
+	bf << x.toUtf8().size();
+	for (uint8_t& elem : x.toUtf8())
+		bf << elem;
+	return bf;
+}
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Image& x) {
+	string s;
+	bf >> s;
+	if (!x.loadFromMemory(s.data(), s.size()))
+		cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
+	return bf;
+}
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Image& x) {
+	bf << *x.saveToMemory("png");
+	return bf;
+}
+inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Texture& x) {
+	string s;
+	bf >> s;
+	if (!x.loadFromImage(sf::Image(s.data(), s.size())))
+		cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
+	return bf;
+}
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Texture& x) {
+	bf << *x.copyToImage().saveToMemory("png");
+	return bf;
+}
 
 class Skip_t {};
 #define Skip Skip_t()
@@ -304,23 +433,31 @@ protected:
 		any _data;
 	public:
 		castable_any() {}
+		castable_any(const castable_any& other) : _data(other._data) {}
 		template <typename T>
-		castable_any(T val) {
+		castable_any(T&& val) {
 			if constexpr (is_same_v<const char*, decay_t<T>>) {
-				_data = string(val);
+				_data = string(forward<T>(val));
 			}
 			else if constexpr (is_same_v<const wchar_t*, decay_t<T>>) {
-				_data = wstring(val);
+				_data = wstring(forward<T>(val));
 			}
-			else _data = val;
+			else _data = forward<T>(val);
 		}
 		//返回:转化为指定类型的值
 		template <typename T>
 		T& cast() {
 			return any_cast<T&>(_data);
 		}
-		castable_any& operator[](string key) {
+		template <typename T>
+		const T& cast() const {
+			return any_cast<const T&>(_data);
+		}
+		castable_any& operator[](const string& key) {
 			return any_cast<Statu&>(_data)[key];
+		}
+		const castable_any& operator[](const string& key) const {
+			return any_cast<const Statu&>(_data)[key];
 		}
 	};
 	unordered_map<string, castable_any>data;
@@ -341,20 +478,20 @@ public:
 	//需要保证参数个数为偶数(因为是键值对),否则抛出runtime_error
 	//返回:是否包含键值对
 	template<typename T1, typename T2, typename ...Args>
-	bool contain(T1 key, T2 val, Args ...args) {
+	bool contain(const T1& key, const T2& val, const Args& ...args) {
 		static_assert(sizeof...(Args) % 2 == 0, "参数个数必须为偶数");
 		if (!data.count(static_cast<string>(key)))return false;
 		try {
 			if constexpr (is_same_v<const char*, decay_t<T2>>) {
-				if (any_cast<string>(data[static_cast<string>(key)]._data) != string(val))
+				if (any_cast<const string&>(data[static_cast<string>(key)]._data) != static_cast<string>(val))
 					return false;
 			}
 			else if constexpr (is_same_v<const wchar_t*, decay_t<T2>>) {
-				if (any_cast<wstring>(data[static_cast<string>(key)]._data) != wstring(val))
+				if (any_cast<const wstring&>(data[static_cast<wstring>(key)]._data) != static_cast<wstring>(val))
 					return false;
 			}
 			else {
-				if (any_cast<T2>(data[static_cast<string>(key)]._data) != val)
+				if (any_cast<const T2&>(data[static_cast<string>(key)]._data) != val)
 					return false;
 			}
 		}
@@ -370,7 +507,7 @@ public:
 	//用法:statu.count("key1", "key2", ...);
 	//返回:是否包含键
 	template<typename T, typename ...Args>
-	bool count(T key, Args ...args) {
+	bool count(const T& key, const Args& ...args) {
 		if (!data.count(key))
 			return false;
 		else return count(args...);
@@ -381,7 +518,7 @@ public:
 	}
 	//用法:statu.erase("key1", "key2", ...);
 	template<typename T, typename ...Args>
-	void erase(T key, Args ...args) {
+	void erase(const T& key, const Args& ...args) {
 		if (data.count(key)) {
 			data.erase(key);
 		}
@@ -389,11 +526,14 @@ public:
 		return;
 	}
 	//返回:指定键的值
-	castable_any& operator[](string key) {
+	castable_any& operator[](const string& key) {
 		return data[key];
 	}
+	const castable_any& operator[](const string& key) const {
+		return data.at(key);
+	}
 	//批量添加键值对
-	void operator+=(Statu _statu) {
+	void operator+=(const Statu& _statu) {
 		for (auto& elem : _statu.data) {
 			data[elem.first] = elem.second;
 		}
@@ -442,21 +582,50 @@ private:
 	FontManager& operator=(const FontManager& _f) = delete;
 public:
 	FontManager() {};
-	bool loadFont(string name, string filename) {
+	bool loadFont(const string& name, const fs::path& filename) {
 		return font[name].openFromFile(filename);
 	}
-	sf::Font& operator[](string name) {
+	sf::Font& operator[](const string& name) {
 		return font[name];
 	}
 }fontManager;
-typedef unordered_map<int, sf::Texture> ImageManager;
 sf::Texture nullTexture;
+//存储图片Texture
+class ImageManager {
+private:
+	unordered_map<string, sf::Texture>image;
+	//noncopyable
+	ImageManager(const ImageManager& other) = delete;
+	ImageManager& operator=(const ImageManager& _f) = delete;
+public:
+	ImageManager() {};
+	bool loadImage(const fs::path& filename) {
+		return image[filename.stem().string()].loadFromFile(filename);
+	}
+	sf::Texture& operator[](const string& name) {
+		return image[name];
+	}
+	friend inline BinaryFStream& operator>>(BinaryFStream& bf, ImageManager& x) {
+		size_t size;
+		bf >> size;
+		string t{};
+		sf::Texture u{};
+		for (size_t i = 0; i < size; ++i) {
+			bf >> t >> u;
+			x.image.emplace(std::move(t), std::move(u));
+			t = string{};
+			u = sf::Texture{};
+		}
+		return bf;
+	}
+	friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ImageManager& x) {
+		bf << x.image;
+		return bf;
+	}
+}imageManager;
 namespace game {
 	//全局事件
 	EventManager globalEvent;
-
-	//存储图片Texture
-	ImageManager imageManager;
 
 	//记录当前的frame状态
 	struct Frame {
@@ -470,7 +639,7 @@ namespace game {
 		//存储类型，实体动画
 		class Animation {
 		private:
-			vector<int>imageId;
+			vector<string>imageId;
 
 			vector<sf::Vector2f>scale, origin;
 			vector<sf::Color>spriteColor;
@@ -525,7 +694,7 @@ namespace game {
 		sf::Sprite sprite{ nullTexture };
 		Block() {}
 		//创建方块初始化
-		Block(string typeId) :typeId(typeId) {}
+		Block(const string& typeId) :typeId(typeId) {}
 		//更新frame指定的原始图像至sprite
 		void updateSprite() {
 			animationData[typeId].aniMain().attachSprite(sprite, frame);
@@ -538,11 +707,11 @@ namespace game {
 	class Map {
 	private:
 		//存储了block的方块编号
-		unordered_map<int64_t, Block>_block;
+		unordered_map<int64_t, Block>blockData;
 	public:
 		//获取(x,y)位置上的值
 		Block& block(int32_t x, int32_t y) {
-			return _block[(static_cast<int64_t>(x) << 32) + y];
+			return blockData[(static_cast<int64_t>(x) << 32) + y];
 		}
 	};
 
@@ -590,7 +759,7 @@ namespace game {
 		}
 	public:
 		EntityManager() {}
-		Entity& New(const string& type,string nickId="") {
+		Entity& New(const string& type, const string& nickId="") {
 			data.emplace_back(type, index[type]);
 			idMap[type][index[type]] = --data.end();
 			if (nickId!="")
@@ -646,7 +815,7 @@ namespace game {
 
 	namespace Data {
 		//加密解密文件
-		static string encrypt(string filename, uint32_t key) {
+		static string encrypt(const string& filename, uint32_t key) {
 			string res = "";
 			ifstream fin;
 			fin.open(filename, ios::binary);
@@ -697,7 +866,7 @@ namespace game {
 		}
 		//快速绘制简单图形
 		namespace Draw {
-			static void Rect(sf::RenderTarget& r, sf::Vector2f point1, sf::Vector2f point2, sf::Color fillcolor, sf::Color linecolor = sf::Color::Transparent, float thickness = 0) {
+			static void Rect(sf::RenderTarget& r, const sf::Vector2f& point1, const sf::Vector2f& point2, sf::Color fillcolor, sf::Color linecolor = sf::Color::Transparent, float thickness = 0) {
 				sf::RectangleShape rect;
 				rect.setOrigin((point2 - point1) / 2.0f);
 				rect.setPosition((point1 + point2) / 2.f);
@@ -707,7 +876,7 @@ namespace game {
 				rect.setOutlineThickness(thickness);
 				r.draw(rect);
 			}
-			static void Line(sf::RenderTarget& r, sf::Vector2f point1, sf::Vector2f point2, sf::Color color, float thickness) {
+			static void Line(sf::RenderTarget& r, const sf::Vector2f& point1, const sf::Vector2f& point2, sf::Color color, float thickness) {
 				sf::RectangleShape rect;
 				sf::CircleShape circle;
 				float len = (point2 - point1).length();
