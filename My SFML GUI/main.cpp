@@ -2,7 +2,7 @@
 
 //#define GUIDEBUG
 #include "GUI.cpp"
-unordered_map<string, game::gui::WindowManager::Style>style;
+std::unordered_map<std::string, game::gui::WindowManager::Style>style;
 
 int windowWidth = 800, windowHeight = 600;
 game::gui::WindowManager windowManager;
@@ -225,24 +225,26 @@ Event evt;
 int main() {
 	fontManager.loadFont("ht", "FZHTJW.TTF");
 
-	/*init();
-
+	init();
+	/*
 	BinaryFStream bf("D:\\1.bin");
 	bf.clear();
 	bf << imageManager;
 	bf << windowManager.preset;
 	bf.close();
-	exit(0);*/
+	exit(0);
+	*/
 	
+	/*
 	BinaryFStream bf("D:\\1.bin");
 	windowManager.readPreset(bf);
 	bf.close();
-
+	*/
 	windowManager.newWindow("main");
 	game::window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"²âÊÔ", sf::Style::Close, sf::State::Windowed);
 	game::window.setFramerateLimit(60);
 	while (true) {
-		while (const optional sfEvt=game::window.pollEvent()) {
+		while (const std::optional sfEvt=game::window.pollEvent()) {
 			if (sfEvt->is<sf::Event::Closed>()) {
 				exit(0);
 			}
@@ -252,16 +254,16 @@ int main() {
 		}
 		while (windowManager.pollEvent(evt)) {
 			if (evt.eventId == attr::gui::ButtonPressed) {
-				cout << "Button pressed : " << evt[attr::gui::ButtonPath].cast<string>() << endl;
+				std::cout << "Button pressed : " << evt[attr::gui::ButtonPath].cast<std::string>() << std::endl;
 			}
 			if (evt.eventId == attr::gui::OptionChosen) {
-				cout << "Option chosen : " << evt[attr::gui::OptionPath].cast<string>() << endl;
+				std::cout << "Option chosen : " << evt[attr::gui::OptionPath].cast<std::string>() << std::endl;
 			}
 			if (evt.eventId == attr::gui::InputGainFocus) {
-				cout << "Input gain focus : " << evt[attr::gui::InputPath].cast<string>() << endl;
+				std::cout << "Input gain focus : " << evt[attr::gui::InputPath].cast<std::string>() << std::endl;
 			}
 			if (evt.eventId == attr::gui::InputLoseFocus) {
-				cout << "Input lose focus : " << evt[attr::gui::InputPath].cast<string>() << endl;
+				std::cout << "Input lose focus : " << evt[attr::gui::InputPath].cast<std::string>() << std::endl;
 			}
 		}
 		game::window.clear();

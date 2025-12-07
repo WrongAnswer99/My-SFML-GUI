@@ -96,7 +96,7 @@ namespace game {
 				template <typename T>
 				friend class OrderedHashMap;
 			protected:
-				string id;
+				std::string id;
 				sf::FloatRect posRect = sf::FloatRect(sf::Vector2f(), sf::Vector2f(1.f, 1.f));
 				Style styles[3];
 				int currentStatu = attr::gui::Statu::normal;
@@ -112,6 +112,7 @@ namespace game {
 						);
 					}
 				}
+				std::set<int> linkList;
 			public:
 				ObjBase& setPosition(sf::Vector2f _pos) {
 					posRect.position = _pos;
@@ -147,28 +148,10 @@ namespace game {
 					return bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
 				}
 			protected:
-				void setStatu(int statu,bool force) {
-					if (force || statu > currentStatu) {
+				void setStatu(int statu,bool force=false) {
+					if (force || currentStatu != attr::gui::Statu::focus) {
 						currentStatu = statu;
 					}
-				}
-				ObjBase& loseOver() {
-					if (currentStatu == attr::gui::over)
-						currentStatu = attr::gui::normal;
-					return *this;
-				}
-				ObjBase& gainOver() {
-					if (currentStatu == attr::gui::normal)
-						currentStatu = attr::gui::over;
-					return *this;
-				}
-				ObjBase& loseFocus() {
-					currentStatu = attr::gui::normal;
-					return *this;
-				}
-				ObjBase& gainFocus() {
-					currentStatu = attr::gui::focus;
-					return *this;
 				}
 			};
 			class ImageObj :public ObjBase {
@@ -183,7 +166,7 @@ namespace game {
 					return *this;
 				}
 			protected:
-				string imageId;
+				std::string imageId;
 				sf::Vector2i justification = { attr::gui::Mid,attr::gui::Mid };
 				sf::Vector2f scale = sf::Vector2f(1, 1);
 				sf::Color imageColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
@@ -227,17 +210,17 @@ namespace game {
 					imageId = filename.stem().string();
 					return *this;
 				}
-				ImageObj& setImageId(const string& _imageId) {
+				ImageObj& setImageId(const std::string& _imageId) {
 					imageId = _imageId;
 					return *this;
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, ImageObj& x) {
-					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf >> static_cast<ObjBase&>(x);
 					bf.structIn(x.imageId, x.scale, x.justification, x.imageColors[attr::gui::Statu::normal], x.imageColors[attr::gui::Statu::over], x.imageColors[attr::gui::Statu::focus]);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ImageObj& x) {
-					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf << static_cast<const ObjBase&>(x);
 					bf.structOut(x.imageId, x.scale, x.justification, x.imageColors[attr::gui::Statu::normal], x.imageColors[attr::gui::Statu::over], x.imageColors[attr::gui::Statu::focus]);
 					return bf;
 				}
@@ -277,7 +260,7 @@ namespace game {
 					return *this;
 				}
 			protected:
-				string font = "";
+				std::string font = "";
 				unsigned int characterSize = 30;
 				float letterSpacing = 1, lineSpacing = 1;
 				sf::String text = "";
@@ -323,7 +306,7 @@ namespace game {
 					}
 				}
 			public:
-				TextObj& setFont(const string& _font) {
+				TextObj& setFont(const std::string& _font) {
 					font = _font;
 					textRender.setFont(fontManager[font]);
 					return *this;
@@ -350,14 +333,14 @@ namespace game {
 					return text;
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, TextObj& x) {
-					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf >> static_cast<ObjBase&>(x);
 					bf.structIn(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
 								x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 					x.textRender.setFont(fontManager[x.font]);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const TextObj& x) {
-					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf << static_cast<const ObjBase&>(x);
 					bf.structOut(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
 								 x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 					return bf;
@@ -388,16 +371,16 @@ namespace game {
 				size_t sizeLimit = INT_MAX;
 				class InputLimit {
 					bool isAllowList = false;
-					vector<char32_t>single;
-					vector<pair<char32_t, char32_t>>range;
+					std::vector<char32_t>single;
+					std::vector<std::pair<char32_t, char32_t>>range;
 				public:
-					void set(bool _isAllowList, initializer_list<char32_t> _single,initializer_list<pair<char32_t, char32_t>> _range) {
+					void set(bool _isAllowList, std::initializer_list<char32_t> _single, std::initializer_list<std::pair<char32_t, char32_t>> _range) {
 						isAllowList = _isAllowList;
 						single = _single;
 						range = _range;
 						for (auto& elem : range)
 							if (elem.first > elem.second)
-								swap(elem.first, elem.second);
+								std::swap(elem.first, elem.second);
 					}
 					bool isLegal(char32_t ch) {
 						for (auto& elem : single)
@@ -543,8 +526,8 @@ namespace game {
 						st.replace('\r', "");
 						size_t realSize = inputLimit.legalize(st);
 						if (sizeLimit - text.getSize() > 0) {
-							text.insert(cursor, st.substring(0, min(remainSize,realSize)));
-							cursor += min(remainSize, realSize);
+							text.insert(cursor, st.substring(0, std::min(remainSize,realSize)));
+							cursor += std::min(remainSize, realSize);
 						}
 					}
 				}
@@ -582,7 +565,7 @@ namespace game {
 					typeLimit = _typeLimit;
 					return *this;
 				}
-				InputObj& setStringTypeLimit(bool _isAllowList, initializer_list<char32_t> _single, initializer_list<pair<char32_t, char32_t>> _range) {
+				InputObj& setStringTypeLimit(bool _isAllowList, std::initializer_list<char32_t> _single, std::initializer_list<std::pair<char32_t, char32_t>> _range) {
 					typeLimit = attr::gui::InputTypeLimit::String;
 					inputLimit.set(_isAllowList, _single, _range);
 					return *this;
@@ -593,18 +576,13 @@ namespace game {
 					return *this;
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, InputObj& x) {
-					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structIn(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
-								x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf >> static_cast<TextObj&>(x);
 					bf.structIn(x.sizeLimit,x.typeLimit, x.inputLimit);
-					x.textRender.setFont(fontManager[x.font]);
 					x.cursor = x.text.getSize();
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const InputObj& x) {
-					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
-					bf.structOut(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
-								 x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+					bf << static_cast<const TextObj&>(x);
 					bf.structOut(x.sizeLimit, x.typeLimit, x.inputLimit);
 					return bf;
 				}
@@ -689,41 +667,41 @@ namespace game {
 					return *this;
 				}
 				friend inline BinaryFStream& operator>>(BinaryFStream& bf, AreaObj& x) {
-					bf.structIn(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf >> static_cast<ObjBase&>(x);
 					bf.structIn(x.area, x.image, x.text, x.input, x.button,x.option);
 					bf.structIn(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit);
 					return bf;
 				}
 				friend inline BinaryFStream& operator<<(BinaryFStream& bf, const AreaObj& x) {
-					bf.structOut(x.id, x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+					bf << static_cast<const ObjBase&>(x);
 					bf.structOut(x.area, x.image, x.text, x.input, x.button, x.option);
 					bf.structOut(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit);
 					return bf;
 				}
-				AreaObj& setOption(const string& key) {
+				AreaObj& setOption(const std::string& key) {
 					if (optionFocus.count(attr::gui::OptionId)) {
-						if (!option.count(optionFocus[attr::gui::OptionId].cast<string>()))
+						if (!option.count(optionFocus[attr::gui::OptionId].cast<std::string>()))
 							optionFocus = {};
-						else option[optionFocus[attr::gui::OptionId].cast<string>()].loseFocus();
+						else option[optionFocus[attr::gui::OptionId].cast<std::string>()].setStatu(attr::gui::Statu::normal,true);
 					}
 					if (option.count(key)) {
 						optionFocus = { attr::gui::OptionId,key };
-						option[key].gainFocus();
+						option[key].setStatu(attr::gui::Statu::focus);
 					}
 					return *this;
 				}
 				AreaObj& setOptionNull() {
-					if (option.count(optionFocus[attr::gui::OptionId].cast<string>()))
-						option[optionFocus[attr::gui::OptionId].cast<string>()].loseFocus();
+					if (option.count(optionFocus[attr::gui::OptionId].cast<std::string>()))
+						option[optionFocus[attr::gui::OptionId].cast<std::string>()].setStatu(attr::gui::Statu::normal,true);
 					optionFocus = {};
 					return *this;
 				}
 			protected:
 				void updateOptionFocus() {
 					if (optionFocus.count(attr::gui::OptionId)) {
-						if (!option.count(optionFocus[attr::gui::OptionId].cast<string>()))
+						if (!option.count(optionFocus[attr::gui::OptionId].cast<std::string>()))
 							optionFocus = {};
-						else option[optionFocus[attr::gui::OptionId].cast<string>()].gainFocus();
+						else option[optionFocus[attr::gui::OptionId].cast<std::string>()].setStatu(attr::gui::Statu::focus);
 					}
 				}
 				void ensureScrollLimit() {
@@ -792,18 +770,18 @@ namespace game {
 				}
 			};
 		private:
-			unordered_map<string, int>windowId;
-			vector<AreaObj>windowData;
+			std::unordered_map<std::string, int>windowId;
+			std::vector<AreaObj>windowData;
 		public:
 			OrderedHashMap<AreaObj>preset;
 			void readPreset(BinaryFStream & bf) {
 				bf >> imageManager;
 				bf >> preset;
 			}
-			void newWindow(const string& id) {
+			void newWindow(const std::string& id) {
 				if (windowId.count(id)) {
-					cerr << "[WindowManager::newWindow] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
-					throw runtime_error("[WindowManager::newWindow] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
+					std::cerr << "[WindowManager::newWindow] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
+					throw std::runtime_error("[WindowManager::newWindow] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 				}
 				if (preset.count(id))
 					windowData.push_back(preset[id]);
@@ -811,7 +789,7 @@ namespace game {
 				windowData[windowData.size() - 1].id = id;
 				windowId[id] = (int)windowData.size() - 1;
 			}
-			bool topWindowIs(const string& id) {
+			bool topWindowIs(const std::string& id) {
 				return windowData.size() > 0 && windowData.back().id == id;
 			}
 			void closeTopWindow() {
@@ -819,20 +797,20 @@ namespace game {
 					windowId.erase(windowData.back().id);
 					windowData.pop_back();
 				}
-				else cerr << "[WindowManager::closeTopWindow] No window to close 无窗口，无法关闭\n";
+				else std::cerr << "[WindowManager::closeTopWindow] No window to close 无窗口，无法关闭\n";
 			}
-			AreaObj& window(const string& id) {
+			AreaObj& window(const std::string& id) {
 				if (windowId.count(id))
 					return windowData[windowId[id]];
 				else {
-					cerr << "[WindowManager::window] Window ID not found 未找到指定窗口ID\n  id: " << id << "\n";
+					std::cerr << "[WindowManager::window] Window ID not found 未找到指定窗口ID\n  id: " << id << "\n";
 					throw std::runtime_error("[WindowManager::window] Window ID not found 未找到指定窗口ID\n  id: " + id + "\n");
 				}
 			}
 		private:
-			pair<AreaObj*,string> visit(const string& path) {
+			std::pair<AreaObj*,std::string> visit(const std::string& path) {
 				AreaObj* areaPtr = nullptr;
-				string temp = "";
+				std::string temp = "";
 				for (int i = 0; i < path.size(); i++) {
 					if (path[i] == '_') {
 						if (areaPtr == nullptr)
@@ -846,59 +824,44 @@ namespace game {
 			}
 		public:
 			//通过路径访问area 
-			AreaObj& area(const string& path) {
+			AreaObj& area(const std::string& path) {
 				auto temp = visit(path);
 				if (temp.first == nullptr)
 					return window(temp.second);
 				else return temp.first->area[temp.second];
 			}
 			//通过路径访问input
-			InputObj& input(const string& path) {
+			InputObj& input(const std::string& path) {
 				auto temp = visit(path);
 				return temp.first->input[temp.second];
 			}
 			//通过路径访问button
-			ButtonObj& button(const string& path) {
+			ButtonObj& button(const std::string& path) {
 				auto temp = visit(path);
 				return temp.first->button[temp.second];
 			}
 			//通过路径访问option
-			OptionObj& option(const string& path) {
+			OptionObj& option(const std::string& path) {
 				auto temp = visit(path);
 				return temp.first->option[temp.second];
 			}
 			//通过路径访问image
-			ImageObj& image(const string& path) {
+			ImageObj& image(const std::string& path) {
 				auto temp = visit(path);
 				return temp.first->image[temp.second];
 			}
 			//通过路径访问text
-			TextObj& text(const string& path) {
+			TextObj& text(const std::string& path) {
 				auto temp = visit(path);
 				return temp.first->text[temp.second];
 			}
 		private:
 			inline AreaObj* updateOver(AreaObj* areaPtr,bool stopScroll=false) {
-				if (statuExist(overFocus)) {
-					if (overFocus.count(attr::gui::ButtonId)) {
-						area(overFocus[attr::gui::AreaPath].cast<string>())
-							.button[overFocus[attr::gui::ButtonId].cast<string>()].loseOver();
-					}
-					if (overFocus.count(attr::gui::OptionId)) {
-						area(overFocus[attr::gui::AreaPath].cast<string>())
-							.option[overFocus[attr::gui::OptionId].cast<string>()].loseOver();
-					}
-					else if (overFocus.count(attr::gui::InputId)) {
-						area(overFocus[attr::gui::AreaPath].cast<string>())
-							.input[overFocus[attr::gui::InputId].cast<string>()].loseOver();
-					}
-					else if (overFocus.count(attr::gui::AreaPath)) {
-						area(overFocus[attr::gui::AreaPath].cast<string>()).loseOver();
-					}
-				}
+				if (statuVisit(overFocus)!=nullptr)
+					statuVisit(overFocus)->setStatu(attr::gui::Statu::normal);
 				sf::Vector2f origin = areaPtr->posRect.position;
 				overFocus = {};
-				string path = "";
+				std::string path = "";
 				while (true) {
 					if (stopScroll)
 						areaPtr->scrollVelocity = sf::Vector2f();
@@ -937,52 +900,50 @@ namespace game {
 			LabelReturn:;
 				return areaPtr;
 			}
-			inline bool statuExist(Statu& statu) {
-				AreaObj* areaPtr = nullptr;
-				string temp = "";
-				if (!statu.count(attr::gui::AreaPath)) {
-					return false;
-				}
-				string& path = statu[attr::gui::AreaPath].cast<string>();
-				for (int i = 0; i < path.size(); i++) {
-					if (path[i] == '_') {
-						if (areaPtr == nullptr) {
-							if (!windowId.count(temp))return false;
-							areaPtr = &window(temp);
-						}
-						else {
-							if (!areaPtr->area.count(temp))return false;
-							areaPtr = &(areaPtr->area[temp]);
-						}
-						temp = "";
-					}
-					else temp.push_back(path[i]);
-				}
-				if (areaPtr == nullptr) {
-					if (!windowId.count(temp))return false;
-					areaPtr = &window(temp);
-				}
-				else {
-					if (!areaPtr->area.count(temp))return false;
-					areaPtr = &(areaPtr->area[temp]);
-				}
-				if (statu.count(attr::gui::ButtonId))
-					return areaPtr->button.count(statu[attr::gui::ButtonId].cast<string>());
-				if (statu.count(attr::gui::OptionId))
-					return areaPtr->option.count(statu[attr::gui::OptionId].cast<string>());
-				if (statu.count(attr::gui::InputId))
-					return areaPtr->input.count(statu[attr::gui::InputId].cast<string>());
-				return true;
-			}
 			inline ObjBase* statuVisit(Statu& statu, AreaObj* areaPtr = nullptr) {
-				if (statu.count(attr::gui::AreaPath) && areaPtr == nullptr)
-					areaPtr = &area(statu[attr::gui::AreaPath].cast<string>());
-				if (statu.count(attr::gui::ButtonId))
-					return &areaPtr->button[statu[attr::gui::ButtonId].cast<string>()];
-				else if (statu.count(attr::gui::OptionId))
-					return &areaPtr->option[statu[attr::gui::OptionId].cast<string>()];
-				else if (statu.count(attr::gui::InputId))
-					return &areaPtr->input[statu[attr::gui::InputId].cast<string>()];
+				if (areaPtr == nullptr) {
+					std::string temp = "";
+					if (!statu.count(attr::gui::AreaPath))
+						return nullptr;
+					std::string& path = statu[attr::gui::AreaPath].raw();
+					for (int i = 0; i < path.size(); i++) {
+						if (path[i] == '_') {
+							if (areaPtr == nullptr) {
+								if (!windowId.count(temp))return nullptr;
+								areaPtr = &window(temp);
+							}
+							else {
+								if (!areaPtr->area.count(temp))return nullptr;
+								areaPtr = &(areaPtr->area[temp]);
+							}
+							temp = "";
+						}
+						else temp.push_back(path[i]);
+					}
+					if (areaPtr == nullptr) {
+						if (!windowId.count(temp))return nullptr;
+						areaPtr = &window(temp);
+					}
+					else {
+						if (!areaPtr->area.count(temp))return nullptr;
+						areaPtr = &(areaPtr->area[temp]);
+					}
+				}
+				if (statu.count(attr::gui::ButtonId)) {
+					if (areaPtr->button.count(statu[attr::gui::ButtonId].cast<std::string>()))
+						return &areaPtr->button[statu[attr::gui::ButtonId].cast<std::string>()];
+					else return nullptr;
+				}
+				else if (statu.count(attr::gui::OptionId)) {
+					if (areaPtr->option.count(statu[attr::gui::OptionId].cast<std::string>()))
+						return &areaPtr->option[statu[attr::gui::OptionId].cast<std::string>()];
+					else return nullptr;
+				}
+				else if (statu.count(attr::gui::InputId)) {
+					if (areaPtr->input.count(statu[attr::gui::InputId].cast<std::string>()))
+						return &areaPtr->input[statu[attr::gui::InputId].cast<std::string>()];
+					else return nullptr;
+				}
 				else if (statu.count(attr::gui::AreaPath))
 					return areaPtr;
 				else return nullptr;
@@ -993,29 +954,21 @@ namespace game {
 					if (areaFocusPtr->mouseDragScrollable != sf::Vector2i()) {
 						if (ensure(focus.count(attr::gui::ButtonId) || focus.count(attr::gui::OptionId), (mouseLastPressPos - mousePos.back()).lengthSquared() >= scrollThreshold * scrollThreshold))
 							isDragScrolling = true;
-						if (focus.count(attr::gui::ButtonId) && isDragScrolling) {
-							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
-								areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
-							else areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
-						}
-						if (focus.count(attr::gui::OptionId) && isDragScrolling) {
-							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>()))
-								areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus().gainOver();
-							else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus();
-							areaFocusPtr->updateOptionFocus();
+						if ((focus.count(attr::gui::ButtonId) || focus.count(attr::gui::OptionId)) && isDragScrolling) {
+							if (overFocus==focus)
+								statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::over, true);
+							else statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::normal, true);
+							if (focus.count(attr::gui::OptionId))
+								areaFocusPtr->updateOptionFocus();
 						}
 					}
 					else {
-						if (areaFocusPtr != nullptr && focus.count(attr::gui::ButtonId)) {
-							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>()))
-								areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].gainFocus();
-							else areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
-						}
-						if (areaFocusPtr != nullptr && focus.count(attr::gui::OptionId)) {
-							if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>()))
-								areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].gainFocus();
-							else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus().gainOver();
-							areaFocusPtr->updateOptionFocus();
+						if (areaFocusPtr != nullptr && (focus.count(attr::gui::ButtonId)|| focus.count(attr::gui::OptionId))) {
+							if (overFocus==focus)
+								statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::focus);
+							else statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::over, true);
+							if (focus.count(attr::gui::OptionId))
+								areaFocusPtr->updateOptionFocus();
 						}
 					}
 				}
@@ -1023,11 +976,11 @@ namespace game {
 				//after updating over ,varible 'focus' will not be changed
 				else {
 					if (statuVisit(overFocus, areaOverPtr) != nullptr)
-						statuVisit(overFocus, areaOverPtr)->gainOver();
+						statuVisit(overFocus, areaOverPtr)->setStatu(attr::gui::Statu::over);
 				}
 			}
 		public:
-			bool update(const optional<sf::Event>& sfEvent) {
+			bool update(const std::optional<sf::Event>& sfEvent) {
 				if (windowData.size() == 0)
 					return false;
 				//update mouse press statu
@@ -1037,13 +990,13 @@ namespace game {
 				}
 				if (sfEvent->is<sf::Event::MouseButtonReleased>())
 					mousePressed = false;
-				string path = "";
+				std::string path = "";
 				AreaObj* topWindow = &windowData.back();
-				if (!statuExist(focus))
+				if (statuVisit(focus)==nullptr)
 					focus = {};
 				AreaObj* areaOverPtr = nullptr, * areaFocusPtr = nullptr;
 				if (focus.count(attr::gui::AreaPath))
-					areaFocusPtr = &area(focus[attr::gui::AreaPath].cast<string>());
+					areaFocusPtr = &area(focus[attr::gui::AreaPath].cast<std::string>());
 				//sf::Event::MouseButtonPressed
 				//update focus
 				//after updating focus ,varible 'focus' & 'overFocus' must have a value
@@ -1053,17 +1006,17 @@ namespace game {
 					//update inertial scroll stop
 					areaOverPtr=updateOver(topWindow,true);
 
-					if (focus.count(attr::gui::InputId)&&!overFocus.contain(attr::gui::AreaPath,focus[attr::gui::AreaPath].cast<string>(), attr::gui::InputId, focus[attr::gui::InputId].cast<string>()))
-						eventList.push(Event(attr::gui::InputLoseFocus, { attr::gui::InputPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::InputId].cast<string>() }));
-					if (overFocus.count(attr::gui::InputId) && !focus.contain(attr::gui::AreaPath, overFocus[attr::gui::AreaPath].cast<string>(), attr::gui::InputId, overFocus[attr::gui::InputId].cast<string>()))
-						eventList.push(Event(attr::gui::InputGainFocus, { attr::gui::InputPath,overFocus[attr::gui::AreaPath].cast<string>() + '_' + overFocus[attr::gui::InputId].cast<string>() }));
+					if (focus.count(attr::gui::InputId) && overFocus != focus)
+						eventList.push(Event(attr::gui::InputLoseFocus, { attr::gui::InputPath,focus[attr::gui::AreaPath].cast<std::string>() + '_' + focus[attr::gui::InputId].cast<std::string>() }));
+					if (overFocus.count(attr::gui::InputId) && overFocus!=focus)
+						eventList.push(Event(attr::gui::InputGainFocus, { attr::gui::InputPath,overFocus[attr::gui::AreaPath].cast<std::string>() + '_' + overFocus[attr::gui::InputId].cast<std::string>() }));
 
-					if (statuVisit(focus)!=nullptr)
-						statuVisit(focus)->loseFocus();
+					if (statuVisit(focus, areaFocusPtr) != nullptr)
+						statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::normal, true);
 					if (areaFocusPtr != nullptr)
 						areaFocusPtr->updateOptionFocus();
 					if (statuVisit(overFocus,areaOverPtr) != nullptr)
-						statuVisit(overFocus,areaOverPtr)->gainFocus();
+						statuVisit(overFocus,areaOverPtr)->setStatu(attr::gui::Statu::focus);
 
 					focus = overFocus;
 					return true;
@@ -1088,23 +1041,23 @@ namespace game {
 					areaOverPtr = updateOver(topWindow);
 
 					if (areaFocusPtr != nullptr && focus.count(attr::gui::ButtonId)) {
-						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::ButtonId, focus[attr::gui::ButtonId].cast<string>())) {
+						if (overFocus==focus) {
 							if (!isDragScrolling)
-								eventList.push(Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::ButtonId].cast<string>() }));
-							areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus().gainOver();
+								eventList.push(Event(attr::gui::ButtonPressed, { attr::gui::ButtonPath,focus[attr::gui::AreaPath].cast<std::string>() + '_' + focus[attr::gui::ButtonId].cast<std::string>() }));
+							areaFocusPtr->button[focus[attr::gui::ButtonId].cast<std::string>()].setStatu(attr::gui::Statu::over, true);
 						}
-						else areaFocusPtr->button[focus[attr::gui::ButtonId].cast<string>()].loseFocus();
+						else areaFocusPtr->button[focus[attr::gui::ButtonId].cast<std::string>()].setStatu(attr::gui::Statu::normal, true);
 					}
 					if (areaFocusPtr != nullptr && focus.count(attr::gui::OptionId)) {
 						if (areaFocusPtr->optionFocus.count(attr::gui::OptionId))
-							areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<string>()].loseFocus();
-						if (overFocus.contain(attr::gui::AreaPath, focus[attr::gui::AreaPath].cast<string>(), attr::gui::OptionId, focus[attr::gui::OptionId].cast<string>())) {
+							areaFocusPtr->option[areaFocusPtr->optionFocus[attr::gui::OptionId].cast<std::string>()].setStatu(attr::gui::Statu::normal, true);
+						if (overFocus==focus) {
 							if (!isDragScrolling) {
-								areaFocusPtr->optionFocus = { attr::gui::OptionId,focus[attr::gui::OptionId].cast<string>() };
-								eventList.push(Event(attr::gui::OptionChosen, { attr::gui::OptionPath,focus[attr::gui::AreaPath].cast<string>() + '_' + focus[attr::gui::OptionId].cast<string>() }));
+								areaFocusPtr->optionFocus = { attr::gui::OptionId,focus[attr::gui::OptionId].cast<std::string>() };
+								eventList.push(Event(attr::gui::OptionChosen, { attr::gui::OptionPath,focus[attr::gui::AreaPath].cast<std::string>() + '_' + focus[attr::gui::OptionId].cast<std::string>() }));
 							}
 						}
-						else areaFocusPtr->option[focus[attr::gui::OptionId].cast<string>()].loseFocus();
+						else areaFocusPtr->option[focus[attr::gui::OptionId].cast<std::string>()].setStatu(attr::gui::Statu::normal, true);
 						areaFocusPtr->updateOptionFocus();
 					}
 					isDragScrolling = false;
@@ -1121,7 +1074,7 @@ namespace game {
 				if (sfEvent->is<sf::Event::TextEntered>()) {
 					if (areaFocusPtr != nullptr && focus.count(attr::gui::InputId)) {
 						char32_t ch = sfEvent->getIf<sf::Event::TextEntered>()->unicode;
-						InputObj& InputTar = areaFocusPtr->input[focus[attr::gui::InputId].cast<string>()];
+						InputObj& InputTar = areaFocusPtr->input[focus[attr::gui::InputId].cast<std::string>()];
 						if (ch == 8)//backspace key
 							InputTar.erase(true);
 						else if (ch == 13)//enter key
@@ -1135,7 +1088,7 @@ namespace game {
 				}
 				if (sfEvent->is<sf::Event::KeyPressed>()) {
 					if (areaFocusPtr != nullptr && focus.count(attr::gui::InputId)) {
-						InputObj& InputTar = areaFocusPtr->input[focus[attr::gui::InputId].cast<string>()];
+						InputObj& InputTar = areaFocusPtr->input[focus[attr::gui::InputId].cast<std::string>()];
 						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Left)//left arrow
 							InputTar.moveCursor(true);
 						if (sfEvent->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Right)//right arrow
@@ -1168,9 +1121,9 @@ namespace game {
 			//update inertial scroll
 			void draw(sf::RenderTarget& drawTarget) {
 				if (windowData.size() >= 1) {
-					if (!statuExist(focus))
+					if (statuVisit(focus)==nullptr)
 						focus = {};
-					updateSimpleMove(focus.count(attr::gui::AreaPath) ? &area(focus[attr::gui::AreaPath].cast<string>()) : nullptr, updateOver(&windowData.back()));
+					updateSimpleMove(focus.count(attr::gui::AreaPath) ? &area(focus[attr::gui::AreaPath].cast<std::string>()) : nullptr, updateOver(&windowData.back()));
 				}
 				if (focus.count(attr::gui::InputId)) {
 					cursorBlinkTick++;

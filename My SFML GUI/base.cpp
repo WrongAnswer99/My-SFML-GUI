@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <iostream>
 #include <fstream>
+#include <set>
 #include "attr.cpp"
-using namespace std;
 namespace fs = std::filesystem;
 //if exist then check condition
 #define ensure(existCondition,condition) (!(existCondition)||((existCondition)&&(condition)))
@@ -127,7 +127,7 @@ private:
 		//0是占位符,表示当前struct结束,用于嵌套struct
 	}
 public:
-	BinaryFStream(const string& filename) :filename(filename) {}
+	BinaryFStream(const std::string& filename) :filename(filename) {}
 	template<typename T, typename = std::enable_if_t<standardizedSize<std::decay_t<T>>() != 0>>
 	inline BinaryFStream& operator>>(T& x) {
 		prepareInMode();
@@ -199,17 +199,17 @@ inline sf::Rect<T> operator-(sf::Rect<T> rect, sf::Vector2<T> vec) {
 	return rect;
 }
 template<typename T, typename U>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, pair<T, U>& x) {
+inline static BinaryFStream& operator>>(BinaryFStream& bf, std::pair<T, U>& x) {
 	bf >> x.first >> x.second;
 	return bf;
 }
 template<typename T, typename U>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const pair<T, U>& x) {
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const std::pair<T, U>& x) {
 	bf << x.first << x.second;
 	return bf;
 }
 template<typename T, typename U>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, unordered_map<T, U>& x) {
+inline static BinaryFStream& operator>>(BinaryFStream& bf, std::unordered_map<T, U>& x) {
 	size_t size;
 	bf >> size;
 	x.clear();
@@ -225,7 +225,7 @@ inline static BinaryFStream& operator>>(BinaryFStream& bf, unordered_map<T, U>& 
 	return bf;
 }
 template<typename T, typename U>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const unordered_map<T, U>& x) {
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const std::unordered_map<T, U>& x) {
 	bf << x.size();
 	for (auto& elem : x) {
 		bf << elem.first << elem.second;
@@ -233,7 +233,7 @@ inline static BinaryFStream& operator<<(BinaryFStream& bf, const unordered_map<T
 	return bf;
 }
 template<typename T>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, vector<T>& x) {
+inline static BinaryFStream& operator>>(BinaryFStream& bf, std::vector<T>& x) {
 	size_t size;
 	bf >> size;
 	T t{};
@@ -247,7 +247,7 @@ inline static BinaryFStream& operator>>(BinaryFStream& bf, vector<T>& x) {
 	return bf;
 }
 template<typename T>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const vector<T>& x) {
+inline static BinaryFStream& operator<<(BinaryFStream& bf, const std::vector<T>& x) {
 	bf << x.size();
 	for (auto& elem : x) {
 		bf << elem;
@@ -283,7 +283,7 @@ inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Rect<T>& x)
 	return bf;
 }
 inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::String& x) {
-	string s;
+	std::string s;
 	bf >> s;
 	x = sf::String::fromUtf8(s.begin(), s.end());
 	return bf;
@@ -295,10 +295,10 @@ inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::String& x) 
 	return bf;
 }
 inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Image& x) {
-	string s;
+	std::string s;
 	bf >> s;
 	if (!x.loadFromMemory(s.data(), s.size()))
-		cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
+		std::cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
 	return bf;
 }
 inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Image& x) {
@@ -306,10 +306,10 @@ inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Image& x) {
 	return bf;
 }
 inline static BinaryFStream& operator>>(BinaryFStream& bf, sf::Texture& x) {
-	string s;
+	std::string s;
 	bf >> s;
 	if (!x.loadFromImage(sf::Image(s.data(), s.size())))
-		cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
+		std::cerr << "[BinaryFStream] Image Read Failed 图片读取失败\n" << "\n";
 	return bf;
 }
 inline static BinaryFStream& operator<<(BinaryFStream& bf, const sf::Texture& x) {
@@ -346,8 +346,8 @@ public:
 template <typename T>
 class OrderedHashMap {
 private:
-	unordered_map<string, typename list<T>::iterator>idMap;
-	list<T>data;
+	std::unordered_map<std::string, typename std::list<T>::iterator>idMap;
+	std::list<T>data;
 public:
 	OrderedHashMap() {}
 	OrderedHashMap(const OrderedHashMap& other) {
@@ -367,7 +367,7 @@ public:
 		}
 		return *this;
 	}
-	T& operator[](const string& key) {
+	T& operator[](const std::string& key) {
 		if (!idMap.count(key)) {
 			data.emplace_back();
 			data.back().id = key;
@@ -375,16 +375,16 @@ public:
 		}
 		return *idMap[key];
 	}
-	inline list<T>& iterate() {
+	inline std::list<T>& iterate() {
 		return data;
 	}
-	void erase(const string& key) {
+	void erase(const std::string& key) {
 		if (idMap.count(key)) {
 			data.erase(idMap[key]);
 			idMap.erase(key);
 		}
 	}
-	size_t count(const string& key)const {
+	size_t count(const std::string& key)const {
 		return idMap.count(key);
 	}
 private:
@@ -416,86 +416,78 @@ private:
 		return bf;
 	}
 };
-//statu = {"key1", value1, "key2", value2, ...};
-//statu["key"] = value;
-//T val = statu["key"].cast<T>();
-//statu["key"]["subkey"];当"key"键也为Statu类型时可直接使用
+//statu = {"name1", value1, "name2", value2, ...};
+//statu["name"] = value;
+//T val = statu["name"].cast<T>();
+//statu["name"]["subname"];当"name"键也为Statu类型时可直接使用
 //自动将const char*转换为string,自动将const wchar_t*转换为wstring
-class Statu {
+class AnyStatu {
 protected:
 	//方便转化的any类型
 	//自动将const char*转换为string,自动将const wchar_t*转换为wstring
 	class castable_any {
-		friend class Statu;
+		friend class AnyStatu;
 		friend class Event;
 		// private:
 	private:
-		any _data;
+		std::any data;
 	public:
 		castable_any() {}
-		castable_any(const castable_any& other) : _data(other._data) {}
 		template <typename T>
-		castable_any(T&& val) {
-			if constexpr (is_same_v<const char*, decay_t<T>>) {
-				_data = string(forward<T>(val));
+		castable_any(T val) {
+			if constexpr (std::is_same_v<const char*, std::decay_t<T>>) {
+				data = string(val);
 			}
-			else if constexpr (is_same_v<const wchar_t*, decay_t<T>>) {
-				_data = wstring(forward<T>(val));
+			else if constexpr (std::is_same_v<const wchar_t*, std::decay_t<T>>) {
+				data = wstring(val);
 			}
-			else _data = forward<T>(val);
+			else data = val;
 		}
 		//返回:转化为指定类型的值
 		template <typename T>
 		T& cast() {
-			return any_cast<T&>(_data);
+			return any_cast<T&>(data);
 		}
-		template <typename T>
-		const T& cast() const {
-			return any_cast<const T&>(_data);
-		}
-		castable_any& operator[](const string& key) {
-			return any_cast<Statu&>(_data)[key];
-		}
-		const castable_any& operator[](const string& key) const {
-			return any_cast<const Statu&>(_data)[key];
+		castable_any& operator[](std::string name) {
+			return any_cast<AnyStatu&>(data)[name];
 		}
 	};
-	unordered_map<string, castable_any>data;
+	std::unordered_map<std::string, castable_any>data;
 public:
-	Statu() {}
-	Statu(initializer_list<castable_any> list) {
+	AnyStatu() {}
+	AnyStatu(std::initializer_list<castable_any> list) {
 		for (auto i = list.begin(); i != list.end(); i++) {
-			string key = any_cast<string>(i->_data);
+			std::string name = any_cast<std::string>(i->data);
 			i++;
-			data[key] = *i;
+			data[name] = *i;
 		}
 	}
 	//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
 	bool contain() {
 		return true;
 	}
-	//用法:statu.contain("key1", value1, "key2", value2, ...);
-	//需要保证参数个数为偶数(因为是键值对),否则抛出runtime_error
+	//用法:statu.contain("name1", value1, "name2", value2, ...);
+	//需要保证参数个数为偶数(因为是键值对)
 	//返回:是否包含键值对
 	template<typename T1, typename T2, typename ...Args>
-	bool contain(const T1& key, const T2& val, const Args& ...args) {
+	bool contain(T1 name, T2 val, Args ...args) {
 		static_assert(sizeof...(Args) % 2 == 0, "参数个数必须为偶数");
-		if (!data.count(static_cast<string>(key)))return false;
+		if (!data.count(static_cast<std::string>(name)))return false;
 		try {
-			if constexpr (is_same_v<const char*, decay_t<T2>>) {
-				if (any_cast<const string&>(data[static_cast<string>(key)]._data) != static_cast<string>(val))
+			if constexpr (std::is_same_v<const char*, std::decay_t<T2>>) {
+				if (std::any_cast<std::string>(data[static_cast<std::string>(name)].data) != string(val))
 					return false;
 			}
-			else if constexpr (is_same_v<const wchar_t*, decay_t<T2>>) {
-				if (any_cast<const wstring&>(data[static_cast<wstring>(key)]._data) != static_cast<wstring>(val))
+			else if constexpr (std::is_same_v<const wchar_t*, std::decay_t<T2>>) {
+				if (std::any_cast<std::wstring>(data[static_cast<std::string>(name)].data) != wstring(val))
 					return false;
 			}
 			else {
-				if (any_cast<const T2&>(data[static_cast<string>(key)]._data) != val)
+				if (any_cast<T2>(data[static_cast<std::string>(name)].data) != val)
 					return false;
 			}
 		}
-		catch (bad_any_cast) {
+		catch (std::bad_any_cast) {
 			return false;
 		}
 		return contain(args...);
@@ -504,11 +496,11 @@ public:
 	bool count() {
 		return true;
 	}
-	//用法:statu.count("key1", "key2", ...);
+	//用法:statu.count("name1", "name2", ...);
 	//返回:是否包含键
 	template<typename T, typename ...Args>
-	bool count(const T& key, const Args& ...args) {
-		if (!data.count(key))
+	bool count(T name, Args ...args) {
+		if (!data.count(name))
 			return false;
 		else return count(args...);
 	}
@@ -516,27 +508,151 @@ public:
 	void erase() {
 		return;
 	}
-	//用法:statu.erase("key1", "key2", ...);
+	//用法:statu.erase("name1", "name2", ...);
 	template<typename T, typename ...Args>
-	void erase(const T& key, const Args& ...args) {
-		if (data.count(key)) {
-			data.erase(key);
+	void erase(T name, Args ...args) {
+		if (data.count(name)) {
+			data.erase(name);
 		}
 		erase(args...);
 		return;
 	}
 	//返回:指定键的值
-	castable_any& operator[](const string& key) {
-		return data[key];
-	}
-	const castable_any& operator[](const string& key) const {
-		return data.at(key);
+	castable_any& operator[](std::string name) {
+		return data[name];
 	}
 	//批量添加键值对
-	void operator+=(const Statu& _statu) {
-		for (auto& elem : _statu.data) {
+	void operator+=(AnyStatu other) {
+		for (auto& elem : other.data) {
 			data[elem.first] = elem.second;
 		}
+	}
+	//返回:是否为空
+	bool empty() const {
+		return data.empty();
+	}
+	//返回:键值对个数
+	size_t size() const {
+		return data.size();
+	}
+};
+//statu = {"name1", value1, "name2", value2, ...};
+//statu["name"] = value;
+//T val = statu["name"].cast<T>();
+//自动将const char*转换为string,自动将const wchar_t*转换为wstring
+class Statu {
+	//自动转化的string类型
+protected:
+	class castable_string {
+		friend class Statu;
+		friend class Event;
+	protected:
+		std::string data;
+		template <typename T>
+		void assign(T val) {
+			if constexpr (std::is_same_v<const char*, std::decay_t<T>>)
+				data = std::string(val);
+			else if constexpr (std::is_same_v<std::string, std::decay_t<T>>)
+				data = val;
+			else if constexpr (std::is_same_v<const wchar_t*, std::decay_t<T>>)
+				data = std::string(reinterpret_cast<const char*>(val), wcslen(val) * sizeof(wchar_t));
+			else if constexpr (std::is_same_v<std::wstring, std::decay_t<T>>)
+				data = std::string(reinterpret_cast<const char*>(val.data()), val.size() * sizeof(wchar_t));
+			else data = std::string(reinterpret_cast<char*>(&val), sizeof(val));
+		}
+	public:
+		castable_string() {}
+		template <typename T>
+		castable_string(T val) {
+			assign(val);
+		}
+		template<typename T>
+		castable_string& operator=(T val) {
+			assign(val);
+			return *this;
+		}
+		//返回:转化为指定类型的值
+		template <typename T>
+		T cast() {
+			if constexpr (std::is_same_v<std::string, std::decay_t<T>>)
+				return data;
+			else if constexpr (std::is_same_v<std::wstring, std::decay_t<T>>)
+				return std::wstring(reinterpret_cast<const wchar_t*>(data.data()), data.size() / sizeof(wchar_t));
+			else {
+				assert(sizeof(T) == data.size());
+				T val;
+				memcpy(reinterpret_cast<char*>(&val), data.data(), sizeof(T));
+				return val;
+			}
+		}
+		std::string& raw() {
+			return data;
+		}
+		bool operator==(const castable_string& other) const {
+			return data == other.data;
+		}
+	};
+	std::unordered_map<std::string, castable_string>data;
+public:
+	Statu() {}
+	Statu(std::initializer_list<castable_string> list) {
+		for (auto i = list.begin(); i != list.end(); i++) {
+			std::string name = i->data;
+			i++;
+			data[name] = *i;
+		}
+	}
+	//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
+	bool contain() {
+		return true;
+	}
+	//用法:statu.contain("name1", value1, "name2", value2, ...);
+	//需要保证参数个数为偶数(因为是键值对)
+	//返回:是否包含键值对
+	template<typename T1, typename T2, typename ...Args>
+	bool contain(T1 name, T2 val, Args ...args) {
+		static_assert(sizeof...(Args) % 2 == 0, "参数个数必须为偶数");
+		if (!data.count(static_cast<std::string>(name)))return false;
+		if (data[castable_string(name).data] != castable_string(val))return false;
+		return contain(args...);
+	}
+	//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
+	bool count() {
+		return true;
+	}
+	//用法:statu.count("name1", "name2", ...);
+	//返回:是否包含键
+	template<typename T, typename ...Args>
+	bool count(T name, Args ...args) {
+		if (!data.count(name))
+			return false;
+		else return count(args...);
+	}
+	//可变参数递归调用终止条件:处理无参数或参数满足递归结束的情况
+	void erase() {
+		return;
+	}
+	//用法:statu.erase("name1", "name2", ...);
+	template<typename T, typename ...Args>
+	void erase(T name, Args ...args) {
+		if (data.count(name)) {
+			data.erase(name);
+		}
+		erase(args...);
+		return;
+	}
+	//返回:指定键的值
+	castable_string& operator[](std::string name) {
+		return data[name];
+	}
+	//批量添加键值对
+	void operator+=(Statu other) {
+		for (auto& elem : other.data) {
+			data[elem.first] = elem.second;
+		}
+	}
+	bool operator==(const Statu& other) const {
+		return data == other.data;
 	}
 	//返回:是否为空
 	bool empty() const {
@@ -550,12 +666,12 @@ public:
 //Event(eventEnum, {"key1", value1, "key2", value2});
 class Event :public Statu {
 public:
-	string eventId;
+	std::string eventId;
 	Event() {}
-	Event(string eventId) :eventId(eventId) {}
-	Event(string eventId, initializer_list<castable_any> list) :eventId(eventId) {
+	Event(std::string eventId) :eventId(eventId) {}
+	Event(std::string eventId, std::initializer_list<castable_string> list) :eventId(eventId) {
 		for (auto i = list.begin(); i != list.end(); i++) {
-			string key = any_cast<string>(i->_data);
+			std::string key = any_cast<std::string>(i->data);
 			i++;
 			data[key] = *i;
 		}
@@ -563,7 +679,7 @@ public:
 };
 class EventManager {
 protected:
-	queue<Event> eventList;
+	std::queue<Event> eventList;
 public:
 	bool pollEvent(Event& event) {
 		if (!eventList.empty()) {
@@ -576,16 +692,16 @@ public:
 };
 class FontManager {
 private:
-	unordered_map<string, sf::Font>font;
+	std::unordered_map<std::string, sf::Font>font;
 	//noncopyable
 	FontManager(const FontManager& other) = delete;
 	FontManager& operator=(const FontManager& _f) = delete;
 public:
 	FontManager() {};
-	bool loadFont(const string& name, const fs::path& filename) {
+	bool loadFont(const std::string& name, const fs::path& filename) {
 		return font[name].openFromFile(filename);
 	}
-	sf::Font& operator[](const string& name) {
+	sf::Font& operator[](const std::string& name) {
 		return font[name];
 	}
 }fontManager;
@@ -593,7 +709,7 @@ sf::Texture nullTexture;
 //存储图片Texture
 class ImageManager {
 private:
-	unordered_map<string, sf::Texture>image;
+	std::unordered_map<std::string, sf::Texture>image;
 	//noncopyable
 	ImageManager(const ImageManager& other) = delete;
 	ImageManager& operator=(const ImageManager& _f) = delete;
@@ -602,18 +718,18 @@ public:
 	bool loadImage(const fs::path& filename) {
 		return image[filename.stem().string()].loadFromFile(filename);
 	}
-	sf::Texture& operator[](const string& name) {
+	sf::Texture& operator[](const std::string& name) {
 		return image[name];
 	}
 	friend inline BinaryFStream& operator>>(BinaryFStream& bf, ImageManager& x) {
 		size_t size;
 		bf >> size;
-		string t{};
+		std::string t{};
 		sf::Texture u{};
 		for (size_t i = 0; i < size; ++i) {
 			bf >> t >> u;
 			x.image.emplace(std::move(t), std::move(u));
-			t = string{};
+			t = std::string{};
 			u = sf::Texture{};
 		}
 		return bf;
@@ -639,14 +755,14 @@ namespace game {
 		//存储类型，实体动画
 		class Animation {
 		private:
-			vector<string>imageId;
+			std::vector<std::string>imageId;
 
-			vector<sf::Vector2f>scale, origin;
-			vector<sf::Color>spriteColor;
+			std::vector<sf::Vector2f>scale, origin;
+			std::vector<sf::Color>spriteColor;
 
 			//存储了延迟时间，单位为tick
 			//显示时间 = 延迟时间 + 1 tick
-			vector<int>delay;
+			std::vector<int>delay;
 		public:
 			//将图像数据加到sprite中
 			//不会更改位置和方向
@@ -672,7 +788,7 @@ namespace game {
 			}
 		};
 	public:
-		unordered_map<string, Animation> ani;
+		std::unordered_map<std::string, Animation> ani;
 		Animation& aniMain() {
 			return ani[""];
 		}
@@ -681,20 +797,20 @@ namespace game {
 
 
 	//存储了方块/实体动画信息
-	unordered_map<string, AnimationData>animationData;
+	std::unordered_map<std::string, AnimationData>animationData;
 	//存储了方块/实体初始化信息
-	unordered_map<string, Statu>objInitData;
+	std::unordered_map<std::string, Statu>objInitData;
 
 	//方块类型
 	class Block {
 	public:
 		//方块编号（类型）
-		string typeId = "";
+		std::string typeId = "";
 		Frame frame = Frame();
 		sf::Sprite sprite{ nullTexture };
 		Block() {}
 		//创建方块初始化
-		Block(const string& typeId) :typeId(typeId) {}
+		Block(const std::string& typeId) :typeId(typeId) {}
 		//更新frame指定的原始图像至sprite
 		void updateSprite() {
 			animationData[typeId].aniMain().attachSprite(sprite, frame);
@@ -707,7 +823,7 @@ namespace game {
 	class Map {
 	private:
 		//存储了block的方块编号
-		unordered_map<int64_t, Block>blockData;
+		std::unordered_map<int64_t, Block>blockData;
 	public:
 		//获取(x,y)位置上的值
 		Block& block(int32_t x, int32_t y) {
@@ -720,17 +836,17 @@ namespace game {
 	class Entity {
 	public:
 		//实体编号（类型）
-		string typeId;
+		std::string typeId;
 		int id;
-		string aniId;
+		std::string aniId;
 		Frame frame = Frame();
 		Statu tag;
 		sf::Sprite sprite{ nullTexture };
-		Entity(string typeId, int id) :typeId(typeId), id(id) {}
+		Entity(std::string typeId, int id) :typeId(typeId), id(id) {}
 		sf::Vector2f pos;
 		float angle = 0;
 		//event中存储了未处理事件
-		vector<Event> event;
+		std::vector<Event> event;
 
 		//更新frame指定的原始图像至sprite
 		void updateSprite() {
@@ -746,20 +862,20 @@ namespace game {
 	};
 	class EntityManager {
 	private:
-		unordered_map<string, unordered_map<int, typename list<Entity>::iterator>>idMap;
-		unordered_map<string, pair<string, int>>nickIdMap;
-		unordered_map<string, int>index;
-		list<Entity>data;
+		std::unordered_map<std::string, std::unordered_map<int, typename std::list<Entity>::iterator>>idMap;
+		std::unordered_map<std::string, std::pair<std::string, int>>nickIdMap;
+		std::unordered_map<std::string, int>index;
+		std::list<Entity>data;
 		//noncopyable
 		EntityManager(const EntityManager& other) = delete;
 		EntityManager& operator=(const EntityManager& other) = delete;
-		void check(const string& nickId) {
+		void check(const std::string& nickId) {
 			if (!count(nickId))
 				nickIdMap.erase(nickId);
 		}
 	public:
 		EntityManager() {}
-		Entity& New(const string& type, const string& nickId="") {
+		Entity& New(const std::string& type, const std::string& nickId="") {
 			data.emplace_back(type, index[type]);
 			idMap[type][index[type]] = --data.end();
 			if (nickId!="")
@@ -767,46 +883,46 @@ namespace game {
 			index[type]++;
 			return data.back();
 		}
-		Entity& entity(const string& nickId) {
+		Entity& entity(const std::string& nickId) {
 			check(nickId);
 			if (nickIdMap.count(nickId))
 				return *idMap[nickIdMap[nickId].first][nickIdMap[nickId].second];
 			else {
-				cerr << "[EntityManager::entity] Entity NickID not found 未找到指定实体昵称\n  nickId: " << nickId << "\n";
+				std::cerr << "[EntityManager::entity] Entity NickID not found 未找到指定实体昵称\n  nickId: " << nickId << "\n";
 				throw std::runtime_error("[EntityManager::entity] Entity NickID not found 未找到指定实体昵称\n  nickId: " + nickId + "\n");
 			}
 		}
-		Entity& entity(const string& type,int _index) {
+		Entity& entity(const std::string& type,int _index) {
 			if (idMap[type].count(_index))
 				return *idMap[type][_index];
 			else {
-				cerr << "[EntityManager::entity] Entity ID not found 未找到指定实体ID\n  type: " << type << "\n  index: " << _index << "\n";
-				throw std::runtime_error("[EntityManager::entity] Entity ID not found 未找到指定实体ID\n  type: " + type + "\n  index: " + to_string(_index) + "\n");
+				std::cerr << "[EntityManager::entity] Entity ID not found 未找到指定实体ID\n  type: " << type << "\n  index: " << _index << "\n";
+				throw std::runtime_error("[EntityManager::entity] Entity ID not found 未找到指定实体ID\n  type: " + type + "\n  index: " + std::to_string(_index) + "\n");
 			}
 		}
-		inline const unordered_map<int, typename list<Entity>::iterator>& iterate(const string& type) {
+		inline const std::unordered_map<int, typename std::list<Entity>::iterator>& iterate(const std::string& type) {
 			return idMap[type];
 		}
-		inline list<Entity>& iterate() {
+		inline std::list<Entity>& iterate() {
 			return data;
 		}
-		void erase(const string& nickId) {
+		void erase(const std::string& nickId) {
 			check(nickId);
 			if (nickIdMap.count(nickId)) {
 				erase(nickIdMap[nickId].first, nickIdMap[nickId].second);
 				nickIdMap.erase(nickId);
 			}
 		}
-		void erase(const string& type,int _index) {
+		void erase(const std::string& type,int _index) {
 			if (idMap[type].count(_index)) {
 				data.erase(idMap[type][_index]);
 				idMap[type].erase(_index);
 			}
 		}
-		bool count(const string& nickId) {
+		bool count(const std::string& nickId) {
 			return nickIdMap.count(nickId) && idMap[nickIdMap[nickId].first].count(nickIdMap[nickId].second);
 		}
-		bool count(const string& type,int _index){
+		bool count(const std::string& type,int _index){
 			return idMap[type].count(_index);
 		}
 	};
@@ -815,10 +931,10 @@ namespace game {
 
 	namespace Data {
 		//加密解密文件
-		static string encrypt(const string& filename, uint32_t key) {
-			string res = "";
-			ifstream fin;
-			fin.open(filename, ios::binary);
+		static std::string encrypt(const std::string& filename, uint32_t key) {
+			std::string res = "";
+			std::ifstream fin;
+			fin.open(filename, std::ios::binary);
 			uint8_t keypart[4] = {};
 			for (int i = 3; i >= 0; i--) {
 				keypart[i] = key & 0xFF;
@@ -836,7 +952,7 @@ namespace game {
 			return res;
 		}
 		//加载文件
-		static void loadFile(string filename) {
+		static void loadFile(std::string filename) {
 
 		}
 	}
