@@ -18,5 +18,43 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Attribute.hpp">
+      <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="VarianTmap.hpp">
+      <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="BinaryFileStreamSFML.hpp">
+      <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="BinaryFileStreamStd.hpp">
+      <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Skippable.hpp">
+      <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MyGUI.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Event.hpp">
+      <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="SFMLBase.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BinaryFileStream.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SFMLBase.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="RollArray.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MyGUI.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

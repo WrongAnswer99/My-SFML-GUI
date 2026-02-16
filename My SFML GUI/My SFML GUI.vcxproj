@@ -19,7 +19,21 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Attribute.hpp" />
+    <ClCompile Include="BinaryFileStreamSFML.hpp" />
+    <ClCompile Include="Event.hpp" />
+    <ClCompile Include="BinaryFileStreamStd.hpp" />
+    <ClCompile Include="MyGUI.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Skippable.hpp" />
+    <ClCompile Include="SFMLBase.cpp" />
+    <ClCompile Include="VarianTmap.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BinaryFileStream.hpp" />
+    <ClInclude Include="MyGUI.hpp" />
+    <ClInclude Include="RollArray.hpp" />
+    <ClInclude Include="SFMLBase.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

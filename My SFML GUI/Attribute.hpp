@@ -1,8 +1,8 @@
 //Author : WrongAnswer99
-#include <string>
+#pragma once
 namespace attr {
 #define obj(x) namespace x
-#define tag(x) const std::string x=#x;
+#define tag(x) constexpr const char* x=#x;
 	//obj(player) {tag(hp)tag(weapon) }
 	namespace gui {
 		enum Statu { normal = 0, over = 1, focus = 2 };
