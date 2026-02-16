@@ -610,8 +610,11 @@ namespace gui {
 				}
 				else temp.push_back(path[i]);
 			}
-			if (std::is_same_v<T, AreaObject> && areaPtr == nullptr)
-				return window(temp);
+			if constexpr (std::is_same_v<T, AreaObject>) {
+				if (areaPtr == nullptr)
+					return window(temp);
+				else return areaPtr->sub.get<T>(temp);
+			}
 			else return areaPtr->sub.get<T>(temp);
 		}
 		template<typename T>
@@ -627,9 +630,12 @@ namespace gui {
 				}
 				else temp.push_back(path[i]);
 			}
-			if (std::is_same_v<T, AreaObject> && areaPtr == nullptr)
-				return window(temp);
-			else return areaPtr->sub.at<T>(temp);
+			if constexpr (std::is_same_v<T, AreaObject>) {
+				if (areaPtr == nullptr)
+					return window(temp);
+				else return areaPtr->sub.get<T>(temp);
+			}
+			else return areaPtr->sub.get<T>(temp);
 		}
 	private:
 		inline AreaObject* updateOver(bool stopScroll = false) {
