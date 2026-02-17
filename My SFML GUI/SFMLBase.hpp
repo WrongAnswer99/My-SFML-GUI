@@ -32,7 +32,7 @@ public:
 		return font[name];
 	}
 };
-extern FontManager fontManager;
+inline FontManager fontManager;
 
 //存储图片Texture
 class ImageManager {
@@ -67,7 +67,7 @@ public:
 		return bf;
 	}
 };
-extern ImageManager imageManager;
+inline ImageManager imageManager;
 
 class Pixelated {
 	sf::RenderTexture pixelated;
@@ -98,7 +98,7 @@ public:
 
 //快速绘制简单图形
 namespace Draw {
-	static void Rect(sf::RenderTarget& r, const sf::Vector2f& point1, const sf::Vector2f& point2, sf::Color fillcolor, sf::Color linecolor = sf::Color::Transparent, float thickness = 0) {
+	inline void Rect(sf::RenderTarget& r, const sf::Vector2f& point1, const sf::Vector2f& point2, sf::Color fillcolor, sf::Color linecolor = sf::Color::Transparent, float thickness = 0) {
 		sf::RectangleShape rect;
 		rect.setOrigin((point2 - point1) / 2.0f);
 		rect.setPosition((point1 + point2) / 2.f);
@@ -108,7 +108,7 @@ namespace Draw {
 		rect.setOutlineThickness(thickness);
 		r.draw(rect);
 	}
-	static void Line(sf::RenderTarget& r, const sf::Vector2f& point1, const sf::Vector2f& point2, sf::Color color, float thickness) {
+	inline void Line(sf::RenderTarget& r, const sf::Vector2f& point1, const sf::Vector2f& point2, sf::Color color, float thickness) {
 		sf::RectangleShape rect;
 		sf::CircleShape circle;
 		float len = (point2 - point1).length();
@@ -127,3 +127,5 @@ namespace Draw {
 		r.draw(circle);
 	}
 }
+
+inline sf::Texture nullTexture;

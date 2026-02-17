@@ -29,9 +29,8 @@ public:
 		this->Type.resize(other.Type.size());
 		std::unordered_map<Base*, Base*> PointerMap{};
 		for (size_t TypeIndex = 0; TypeIndex < this->Type.size(); TypeIndex++) {
-			this->Type[TypeIndex].Destructor = other.Type[TypeIndex].Destructor;
-			this->Type[TypeIndex].CopyHelper = other.Type[TypeIndex].CopyHelper;
-			this->Type[TypeIndex].CopyHelper(this->Type[TypeIndex].Data, other.Type[TypeIndex].Data, this->DataFinder, other.DataFinder, PointerMap);
+			this->Type[TypeIndex].TypeOperationIndex = other.Type[TypeIndex].TypeOperationIndex;
+			TypeOperation.Operation[this->Type[TypeIndex].TypeOperationIndex].CopyHelper(this->Type[TypeIndex].Data, other.Type[TypeIndex].Data, this->DataFinder, other.DataFinder, PointerMap);
 			for (auto& elem : other.Type[TypeIndex].Key) {
 				this->Type[TypeIndex].Key.emplace(elem.first, PointerMap.at(elem.second));
 			}
@@ -134,8 +133,7 @@ private:
 	private:
 		std::map<std::string, Base*> Key;
 		std::any/*store std::shared_ptr<std::list<T>> in std::any*/ Data;
-		std::function<void(std::any&, std::any&)>Destructor;
-		std::function<void(std::any&, const std::any&, std::unordered_map<Base*, DataPointerStruct>&, const std::unordered_map<Base*, DataPointerStruct>&, std::unordered_map<Base*, Base*>&)>CopyHelper;
+		size_t TypeOperationIndex;
 	public:
 		TypeStruct() = default;
 	};
@@ -145,34 +143,59 @@ private:
 
 	//类型管理
 
+	class TypeOperationStruct {
+		friend class VarianTmap;
+		std::unordered_map<std::type_index, size_t>TypeIndexMap;
+		class OperationStruct {
+			friend class VarianTmap;
+			std::function<void(std::any&, std::any&)>Destructor;
+			std::function<void(std::any&, const std::any&, std::unordered_map<Base*, DataPointerStruct>&, const std::unordered_map<Base*, DataPointerStruct>&, std::unordered_map<Base*, Base*>&)>CopyHelper;
+		public:
+			OperationStruct() = default;
+		};
+	public:
+		std::vector<OperationStruct>Operation;
+		template<typename T>
+		size_t registerType() {
+			auto iter = TypeIndexMap.find(std::type_index(typeid(T)));
+			if (iter == TypeIndexMap.end()) {
+				const size_t TypeIndex = TypeIndexMap.size();
+				TypeIndexMap[std::type_index(typeid(T))] = TypeIndex;
+				Operation.emplace_back();
+				Operation.back().Destructor = [](std::any& Data, std::any& Iter) {
+					auto& DataList = *std::any_cast<std::shared_ptr<std::list<T>>&>(Data);
+					DataList.erase(std::any_cast<typename std::list<T>::iterator&>(Iter));
+					return;
+					};
+				Operation.back().CopyHelper = [](std::any& Data, const std::any& OtherData, std::unordered_map<Base*, DataPointerStruct>& Finder, const std::unordered_map<Base*, DataPointerStruct>& OtherFinder, std::unordered_map<Base*, Base*>& PointerMap) {
+					const auto& OtherDataList = *std::any_cast<const std::shared_ptr<std::list<T>>&>(OtherData);
+					Data = std::make_shared<std::list<T>>();
+					auto& DataList = *std::any_cast<std::shared_ptr<std::list<T>>&>(Data);
+					for (auto& elem : OtherDataList) {
+						DataList.push_back(elem);
+						typename std::list<T>::iterator DataIter = std::prev(DataList.end());
+						Base* BasePointer = const_cast<T*>(std::addressof(elem));
+						Base* NewBasePointer = static_cast<Base*>(std::addressof(*DataIter));
+						const DataPointerStruct& DataPointer = OtherFinder.at(BasePointer);
+						Finder.emplace(NewBasePointer, DataPointerStruct(DataPointer.TypeIndex, DataPointer.Key, DataIter));
+						PointerMap.emplace(BasePointer, NewBasePointer);
+					}
+					};
+				return TypeIndex;
+			}
+			else return iter->second;
+		}
+	};
+	inline static TypeOperationStruct TypeOperation;
 	template<typename T>
 	size_t getTypeIndexAutoCreate() {
-		auto ti = std::type_index(typeid(T));
-		auto iter = TypeIndexMap.find(ti);
+		auto iter = TypeIndexMap.find(std::type_index(typeid(T)));
 		if (iter == TypeIndexMap.end()) {
 			const size_t TypeIndex = TypeIndexMap.size();
-			TypeIndexMap[ti] = TypeIndex;
+			TypeIndexMap[std::type_index(typeid(T))] = TypeIndex;
 			Type.emplace_back();
 			Type.back().Data = std::make_shared<std::list<T>>();
-			Type.back().Destructor = [](std::any& Data, std::any& Iter) {
-				auto& DataList = *std::any_cast<std::shared_ptr<std::list<T>>&>(Data);
-				DataList.erase(std::any_cast<typename std::list<T>::iterator&>(Iter));
-				return;
-				};
-			Type.back().CopyHelper = [](std::any& Data, const std::any& OtherData, std::unordered_map<Base*, DataPointerStruct>& Finder, const std::unordered_map<Base*, DataPointerStruct>& OtherFinder, std::unordered_map<Base*, Base*>& PointerMap) {
-				const auto& OtherDataList = *std::any_cast<const std::shared_ptr<std::list<T>>&>(OtherData);
-				Data = std::make_shared<std::list<T>>();
-				auto& DataList = *std::any_cast<std::shared_ptr<std::list<T>>&>(Data);
-				for (auto& elem : OtherDataList) {
-					DataList.push_back(elem);
-					typename std::list<T>::iterator DataIter = std::prev(DataList.end());
-					Base* BasePointer = const_cast<T*>(std::addressof(elem));
-					Base* NewBasePointer = static_cast<Base*>(std::addressof(*DataIter));
-					const DataPointerStruct& DataPointer = OtherFinder.at(BasePointer);
-					Finder.emplace(NewBasePointer, DataPointerStruct(DataPointer.TypeIndex, DataPointer.Key, DataIter));
-					PointerMap.emplace(BasePointer, NewBasePointer);
-				}
-				};
+			Type.back().TypeOperationIndex = TypeOperation.registerType<T>();
 			return TypeIndex;
 		}
 		else return iter->second;
@@ -681,7 +704,7 @@ public:
 			Base* BasePointer = Pointer.pointer;
 			Order.erase(DataPointer.Order);
 			Type[TypeIndex].Key.erase(DataPointer.Key);
-			Type[TypeIndex].Destructor(Type[TypeIndex].Data, DataPointer.Data);
+			TypeOperation.Operation[Type[TypeIndex].TypeOperationIndex].Destructor(Type[TypeIndex].Data, DataPointer.Data);
 			DataFinder.erase(iter);
 			return;
 		}

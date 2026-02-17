@@ -409,7 +409,7 @@ namespace gui {
 			return *this;
 		}
 	protected:
-		static inline void addPoint(sf::FloatRect& rect, sf::Vector2f point) {
+		inline static void addPoint(sf::FloatRect& rect, sf::Vector2f point) {
 			if (point.x < rect.position.x) {
 				rect.size.x += rect.position.x - point.x;
 				rect.position.x = point.x;

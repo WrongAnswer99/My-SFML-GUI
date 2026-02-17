@@ -3,17 +3,17 @@
 #include <map>
 #include <vector>
 template<typename T, typename U>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, std::pair<T, U>& x) {
+inline BinaryFStream& operator>>(BinaryFStream& bf, std::pair<T, U>& x) {
 	bf >> x.first >> x.second;
 	return bf;
 }
 template<typename T, typename U>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const std::pair<T, U>& x) {
+inline BinaryFStream& operator<<(BinaryFStream& bf, const std::pair<T, U>& x) {
 	bf << x.first << x.second;
 	return bf;
 }
 template<typename T, typename U>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, std::map<T, U>& x) {
+inline BinaryFStream& operator>>(BinaryFStream& bf, std::map<T, U>& x) {
 	size_t size;
 	bf >> size;
 	x.clear();
@@ -29,7 +29,7 @@ inline static BinaryFStream& operator>>(BinaryFStream& bf, std::map<T, U>& x) {
 	return bf;
 }
 template<typename T, typename U>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const std::map<T, U>& x) {
+inline BinaryFStream& operator<<(BinaryFStream& bf, const std::map<T, U>& x) {
 	bf << x.size();
 	for (auto& elem : x) {
 		bf << elem.first << elem.second;
@@ -37,7 +37,7 @@ inline static BinaryFStream& operator<<(BinaryFStream& bf, const std::map<T, U>&
 	return bf;
 }
 template<typename T>
-inline static BinaryFStream& operator>>(BinaryFStream& bf, std::vector<T>& x) {
+inline BinaryFStream& operator>>(BinaryFStream& bf, std::vector<T>& x) {
 	size_t size;
 	bf >> size;
 	T t{};
@@ -51,7 +51,7 @@ inline static BinaryFStream& operator>>(BinaryFStream& bf, std::vector<T>& x) {
 	return bf;
 }
 template<typename T>
-inline static BinaryFStream& operator<<(BinaryFStream& bf, const std::vector<T>& x) {
+inline BinaryFStream& operator<<(BinaryFStream& bf, const std::vector<T>& x) {
 	bf << x.size();
 	for (auto& elem : x) {
 		bf << elem;

@@ -26,7 +26,6 @@
     <ClCompile Include="MyGUI.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Skippable.hpp" />
-    <ClCompile Include="SFMLBase.cpp" />
     <ClCompile Include="VarianTmap.hpp" />
   </ItemGroup>
   <ItemGroup>
