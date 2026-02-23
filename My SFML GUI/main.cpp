@@ -199,8 +199,9 @@ void init() {
 		.setPosition(sf::Vector2f(350, 2200))
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
+	imageManager["test"].loadFromFile("D:\\test.png");
 	Main.path_get<gui::ImageObject>("area.image")
-		.setImageFromFile("D:\\test.png")
+		.setImageId("test")
 		.setJustification(attr::gui::Mid, attr::gui::Mid)
 		//.setScale(sf::Vector2f(1, 1))
 		//.setScaleTo(sf::Vector2f(200, 200))
@@ -208,7 +209,7 @@ void init() {
 		.setSize(sf::Vector2f(200, 200))
 		.setStyle(style["stdbn"], style["stdbn"], style["stdbn"])
 		.setPosition(sf::Vector2f(600, 250));
-
+		
 	Main.path_get<gui::ImageObject>("area.image1")
 		.setImageId("test")
 		.setJustification(attr::gui::Mid, attr::gui::Mid)
@@ -218,7 +219,6 @@ void init() {
 		.setSize(sf::Vector2f(200, 200))
 		.setStyle(style["stdbn"], style["stdbn"], style["stdbn"])
 		.setPosition(sf::Vector2f(600, 450));
-
 	Main.path_get<gui::AreaObject>("area")
 		.setScrollLimitAuto();
 }
@@ -226,6 +226,12 @@ Event evt;
 int main() {
 	fontManager.loadFont("ht", "FZHTJW.TTF");
 	init();
+	/*
+	BinaryFStream fs("D:\\1.bin");
+	fs.clear();
+	fs << imageManager;
+	fs << Main;
+	*/
 
 	windowManager.open("main",Main);
 	window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"²âÊÔ", sf::Style::Close, sf::State::Windowed);

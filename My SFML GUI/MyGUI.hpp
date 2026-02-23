@@ -120,11 +120,6 @@ namespace gui {
 			scale = _size.componentWiseDiv(static_cast<sf::Vector2f>(imageManager[imageId].getSize()));
 			return *this;
 		}
-		ImageObject& setImageFromFile(const std::filesystem::path& filename) {
-			imageManager.loadImage(filename);
-			imageId = filename.stem().string();
-			return *this;
-		}
 		ImageObject& setImageId(const std::string& _imageId) {
 			imageId = _imageId;
 			return *this;

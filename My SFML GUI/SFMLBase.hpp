@@ -43,23 +43,14 @@ private:
 	ImageManager& operator=(const ImageManager& _f) = delete;
 public:
 	ImageManager() {};
-	bool loadImage(const std::filesystem::path& filename) {
-		return image[filename.stem().string()].loadFromFile(filename);
+	bool loadImage(const std::string& name,const std::filesystem::path& filename) {
+		return image[name].loadFromFile(filename);
 	}
 	sf::Texture& operator[](const std::string& name) {
 		return image[name];
 	}
 	friend inline BinaryFStream& operator>>(BinaryFStream& bf, ImageManager& x) {
-		size_t size;
-		bf >> size;
-		std::string t{};
-		sf::Texture u{};
-		for (size_t i = 0; i < size; ++i) {
-			bf >> t >> u;
-			x.image.emplace(std::move(t), std::move(u));
-			t = std::string{};
-			u = sf::Texture{};
-		}
+		bf >> x.image;
 		return bf;
 	}
 	friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ImageManager& x) {

@@ -1,6 +1,7 @@
 #pragma once
 #include "BinaryFileStream.hpp"
 #include <map>
+#include <unordered_map>
 #include <vector>
 template<typename T, typename U>
 inline BinaryFStream& operator>>(BinaryFStream& bf, std::pair<T, U>& x) {
@@ -13,11 +14,34 @@ inline BinaryFStream& operator<<(BinaryFStream& bf, const std::pair<T, U>& x) {
 	return bf;
 }
 template<typename T, typename U>
-inline BinaryFStream& operator>>(BinaryFStream& bf, std::map<T, U>& x) {
+inline BinaryFStream& operator>>(BinaryFStream& bf, std::unordered_map<T, U>& x) {
 	size_t size;
 	bf >> size;
 	x.clear();
 	x.reserve(size);
+	T t{};
+	U u{};
+	for (size_t i = 0; i < size; ++i) {
+		bf >> t >> u;
+		x.emplace(std::move(t), std::move(u));
+		t = T{};
+		u = U{};
+	}
+	return bf;
+}
+template<typename T, typename U>
+inline BinaryFStream& operator<<(BinaryFStream& bf, const std::unordered_map<T, U>& x) {
+	bf << x.size();
+	for (auto& elem : x) {
+		bf << elem.first << elem.second;
+	}
+	return bf;
+}
+template<typename T, typename U>
+inline BinaryFStream& operator>>(BinaryFStream& bf, std::map<T, U>& x) {
+	size_t size;
+	bf >> size;
+	x.clear();
 	T t{};
 	U u{};
 	for (size_t i = 0; i < size; ++i) {
