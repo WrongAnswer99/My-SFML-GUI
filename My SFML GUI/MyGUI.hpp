@@ -470,6 +470,9 @@ namespace gui {
 			option = "";
 			return *this;
 		}
+		std::string getOption() {
+			return option;
+		}
 	protected:
 		void updateOption() {
 			if (option!="") {

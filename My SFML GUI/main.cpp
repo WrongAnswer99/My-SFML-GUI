@@ -251,6 +251,7 @@ int main() {
 			}
 			if (evt.eventId == attr::gui::OptionChosen) {
 				std::cout << "Option chosen : " << evt[attr::gui::OptionPath].cast<std::string>() << std::endl;
+				std::cout << "Current choise : " << windowManager.path_at<gui::AreaObject>("main.area").getOption() << std::endl;
 			}
 			if (evt.eventId == attr::gui::InputGainFocus) {
 				std::cout << "Input gain focus : " << evt[attr::gui::InputPath].cast<std::string>() << std::endl;
