@@ -390,7 +390,7 @@ namespace gui {
 		sf::Vector2i mouseDragScrollable, mouseWheelScrollable;
 		sf::Vector2f scrollVelocity;
 		sf::FloatRect scrollLimit;
-		Statu optionFocus;
+		std::string option;
 	public:
 		AreaObject() {
 			styles[attr::gui::Statu::normal].set(sf::Color::White, sf::Color(200, 200, 200), 2);
@@ -440,39 +440,42 @@ namespace gui {
 		friend inline BinaryFStream& operator>>(BinaryFStream& bf, AreaObject& x) {
 			bf >> static_cast<UIBase&>(x);
 			x.sub.read<AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>(bf);
-			bf.structIn(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit);
+			bf.structIn(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
 			return bf;
 		}
 		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const AreaObject& x) {
 			bf << static_cast<const UIBase&>(x);
 			x.sub.write<AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>(bf);
-			bf.structOut(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit);
+			bf.structOut(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
 			return bf;
 		}
 		AreaObject& setOption(const std::string& key) {
-			if (optionFocus.count(attr::gui::OptionId)) {
-				if (auto ptr = sub.find_named<OptionObject>(optionFocus[attr::gui::OptionId].cast<std::string>()))
+			if (option!="") {
+				if (auto ptr = sub.find_named<OptionObject>(option))
 					ptr->setStatu(attr::gui::Statu::normal, true);
-				else optionFocus = {};
+				else option = "";
 			}
+			option = key;
 			if (auto ptr = sub.find_named<OptionObject>(key)) {
-				optionFocus = { attr::gui::OptionId,key };
 				ptr->setStatu(attr::gui::Statu::focus);
 			}
 			return *this;
 		}
 		AreaObject& setOptionNull() {
-			if (auto ptr = sub.find_named<OptionObject>(optionFocus[attr::gui::OptionId].cast<std::string>()))
-				ptr->setStatu(attr::gui::Statu::normal, true);
-			optionFocus = {};
+			if (option != "") {
+				if (auto ptr = sub.find_named<OptionObject>(option))
+					ptr->setStatu(attr::gui::Statu::normal, true);
+				else option = "";
+			}
+			option = "";
 			return *this;
 		}
 	protected:
-		void updateOptionFocus() {
-			if (optionFocus.count(attr::gui::OptionId)) {
-				if (auto ptr = sub.find_named<OptionObject>(optionFocus[attr::gui::OptionId].cast<std::string>()))
+		void updateOption() {
+			if (option!="") {
+				if (auto ptr = sub.find_named<OptionObject>(option))
 					ptr->setStatu(attr::gui::Statu::focus);
-				else optionFocus = {};
+				else option = "";
 			}
 		}
 		void ensureScrollLimit() {
@@ -567,14 +570,16 @@ namespace gui {
 				std::cerr << "[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
 				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
-			layer.insert.back_named(id, Window);
+			auto ptr=layer.insert.back_named(id, Window);
+			ptr->updateOption();
 		}
 		void open(const std::string& id, AreaObject&& Window) {
 			if (layer.find_named<AreaObject>(id)) {
 				std::cerr << "[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
 				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
-			layer.insert.back_named(id, std::move(Window));
+			auto ptr = layer.insert.back_named(id, Window);
+			ptr->updateOption();
 		}
 		size_t close(const std::string& until) {
 			size_t count = 0;
@@ -734,7 +739,7 @@ namespace gui {
 							statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::over, true);
 						else statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::normal, true);
 						if (focus.count(attr::gui::OptionId))
-							areaFocusPtr->updateOptionFocus();
+							areaFocusPtr->updateOption();
 					}
 				}
 				else {
@@ -743,7 +748,7 @@ namespace gui {
 							statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::focus);
 						else statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::over, true);
 						if (focus.count(attr::gui::OptionId))
-							areaFocusPtr->updateOptionFocus();
+							areaFocusPtr->updateOption();
 					}
 				}
 			}
@@ -787,7 +792,7 @@ namespace gui {
 				if (statuVisit(focus, areaFocusPtr) != nullptr)
 					statuVisit(focus, areaFocusPtr)->setStatu(attr::gui::Statu::normal, true);
 				if (areaFocusPtr != nullptr)
-					areaFocusPtr->updateOptionFocus();
+					areaFocusPtr->updateOption();
 				if (statuVisit(overFocus, areaOverPtr) != nullptr)
 					statuVisit(overFocus, areaOverPtr)->setStatu(attr::gui::Statu::focus);
 
@@ -822,16 +827,16 @@ namespace gui {
 					else areaFocusPtr->sub.at<ButtonObject>(focus[attr::gui::ButtonId].cast<std::string>()).setStatu(attr::gui::Statu::normal, true);
 				}
 				if (areaFocusPtr != nullptr && focus.count(attr::gui::OptionId)) {
-					if (areaFocusPtr->optionFocus.count(attr::gui::OptionId))
-						areaFocusPtr->sub.at<OptionObject>(areaFocusPtr->optionFocus[attr::gui::OptionId].cast<std::string>()).setStatu(attr::gui::Statu::normal, true);
+					if (areaFocusPtr->option!="")
+						areaFocusPtr->sub.at<OptionObject>(areaFocusPtr->option).setStatu(attr::gui::Statu::normal, true);
 					if (overFocus == focus) {
 						if (!isDragScrolling) {
-							areaFocusPtr->optionFocus = { attr::gui::OptionId,focus[attr::gui::OptionId].cast<std::string>() };
+							areaFocusPtr->option = focus[attr::gui::OptionId].cast<std::string>();
 							eventList.push(Event(attr::gui::OptionChosen, { attr::gui::OptionPath,focus[attr::gui::AreaPath].cast<std::string>() + '_' + focus[attr::gui::OptionId].cast<std::string>() }));
 						}
 					}
 					else areaFocusPtr->sub.at<OptionObject>(focus[attr::gui::OptionId].cast<std::string>()).setStatu(attr::gui::Statu::normal, true);
-					areaFocusPtr->updateOptionFocus();
+					areaFocusPtr->updateOption();
 				}
 				isDragScrolling = false;
 

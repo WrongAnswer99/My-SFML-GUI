@@ -199,7 +199,7 @@ void init() {
 		.setPosition(sf::Vector2f(350, 2200))
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
-	imageManager["test"].loadFromFile("D:\\test.png");
+	imageManager.loadImage("test","D:\\test.png");
 	Main.path_get<gui::ImageObject>("area.image")
 		.setImageId("test")
 		.setJustification(attr::gui::Mid, attr::gui::Mid)
