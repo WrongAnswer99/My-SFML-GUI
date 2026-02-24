@@ -1,6 +1,8 @@
 #include "MyGUI.hpp"
 namespace gui {
 	void UIBase::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+		if (!isShow)
+			return;
 		if (posRect.findIntersection(displayArea)) {
 			Draw::Rect(
 				r,
@@ -13,6 +15,8 @@ namespace gui {
 		}
 	}
 	void ImageObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+		if (!isShow)
+			return;
 		UIBase::draw(r, displayArea, windowManager);
 		if (posRect.findIntersection(displayArea)) {
 			sf::Sprite imageRender(imageManager[imageId]);
@@ -23,6 +27,8 @@ namespace gui {
 		}
 	}
 	void TextObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+		if (!isShow)
+			return;
 		UIBase::draw(r, displayArea, windowManager);
 
 		//render text
@@ -60,6 +66,8 @@ namespace gui {
 		}
 	}
 	void InputObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+		if (!isShow)
+			return;
 		if (posRect.findIntersection(displayArea)) {
 			UIBase::draw(r, displayArea, windowManager);
 			sf::FloatRect displayAreaCur(-scroll, posRect.size);
@@ -139,6 +147,8 @@ namespace gui {
 		}
 	}
 	void AreaObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+		if (!isShow)
+			return;
 		if (!posRect.findIntersection(displayArea))
 			return;
 		UIBase::draw(r, displayArea, windowManager);

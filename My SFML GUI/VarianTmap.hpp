@@ -133,7 +133,7 @@ private:
 	private:
 		std::map<std::string, Base*> Key;
 		std::any/*store std::shared_ptr<std::list<T>> in std::any*/ Data;
-		size_t TypeOperationIndex;
+		size_t TypeOperationIndex{};
 	public:
 		TypeStruct() = default;
 	};

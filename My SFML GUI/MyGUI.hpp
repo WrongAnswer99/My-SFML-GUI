@@ -34,8 +34,9 @@ namespace gui {
 		sf::FloatRect posRect = sf::FloatRect(sf::Vector2f(), sf::Vector2f(1.f, 1.f));
 		Style styles[3];
 		int currentStatu = attr::gui::Statu::normal;
+		bool isShow = true;
 		virtual void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
-		std::set<std::string> linkList;
+		//std::set<std::string> linkList;
 	public:
 		UIBase& setPosition(sf::Vector2f _pos) {
 			posRect.position = _pos;
@@ -64,6 +65,17 @@ namespace gui {
 		int getStatu() const {
 			return currentStatu;
 		}
+		bool getShow() const {
+			return isShow;
+		}
+		UIBase& setShow(bool _isShow){
+			isShow = _isShow;
+			return *this;
+		}
+		UIBase& toggleShow() {
+			isShow = !isShow;
+			return *this;
+		}
 	protected:
 		void setStatu(int statu, bool force = false) {
 			if (force || currentStatu != attr::gui::Statu::focus) {
@@ -72,10 +84,10 @@ namespace gui {
 		}
 	public:
 		friend inline BinaryFStream& operator>>(BinaryFStream& bf, UIBase& x) {
-			return bf.structIn(x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+			return bf.structIn(x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus], x.isShow);
 		}
 		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const UIBase& x) {
-			return bf.structOut(x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus]);
+			return bf.structOut(x.posRect, x.styles[attr::gui::Statu::normal], x.styles[attr::gui::Statu::over], x.styles[attr::gui::Statu::focus], x.isShow);
 		}
 	};
 	class ImageObject :public UIBase {
@@ -652,7 +664,7 @@ namespace gui {
 				if (stopScroll)
 					areaPtr->scrollVelocity = sf::Vector2f();
 				for (auto& elem : areaPtr->sub.riterate()) {
-					if (elem->posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
+					if (elem->isShow && elem->posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
 						if (auto ptr = areaPtr->sub.find<AreaObject>(elem)) {
 							origin += elem->posRect.position + areaPtr->scroll;
 							path = path + '_' + areaPtr->sub.find_key(elem);

@@ -6,7 +6,7 @@ int windowWidth = 800, windowHeight = 600;
 gui::WindowManager windowManager;
 sf::RenderWindow window;
 gui::AreaObject Main;
-void init() {
+static void init() {
 	style["stda1"].set(sf::Color::White, sf::Color(200, 200, 200), 2);
 	style["stda2"].set(sf::Color(240,240,240), sf::Color(200, 200, 200), 2);
 	style["stdbn"].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
