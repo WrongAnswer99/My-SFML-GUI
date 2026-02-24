@@ -23,7 +23,7 @@ using namespace std::string_literals;
 template<typename Base = void>
 class VarianTmap {
 public:
-	VarianTmap() { insert.pointer = this; }
+	VarianTmap() {}
 	void copyHelper(const VarianTmap<Base>& other) {
 		this->TypeIndexMap = other.TypeIndexMap;
 		this->Type.resize(other.Type.size());
@@ -40,28 +40,29 @@ public:
 			this->Order.push_back(NewBasePointer);
 			this->DataFinder.at(NewBasePointer).Order = std::prev(Order.end());
 		}
-		this->insert.pointer = this;
 	}
 	VarianTmap(const VarianTmap<Base>& other) {
 		copyHelper(other);
 	}
 	VarianTmap<Base>& operator=(const VarianTmap<Base>& other) {
 		if (this != &other) {
+			this->clear();
 			copyHelper(other);
 		}
+		return *this;
 	}
 	void moveHelper(VarianTmap<Base>&& other) {
 		this->TypeIndexMap = std::move(other.TypeIndexMap);
 		this->Order = std::move(other.Order);
 		this->DataFinder = std::move(other.DataFinder);
 		this->Type = std::move(other.Type);
-		this->insert.pointer = this;
 	}
 	VarianTmap(VarianTmap<Base>&& other) noexcept {
 		moveHelper(std::move(other));
 	}
 	VarianTmap<Base>& operator=(VarianTmap<Base>&& other) noexcept {
 		if (this != &other) {
+			this->clear();
 			moveHelper(std::move(other));
 		}
 		return *this;
@@ -250,108 +251,6 @@ private:
 			//else pointer=nullptr; 若为Order.end()，pointer仍保持nullptr
 		}
 	}
-	class Inserter {
-		friend class VarianTmap;
-	private:
-		VarianTmap* pointer;
-	public:
-		template<typename U = void, typename V>
-		auto back_named(const std::string& key, V&& value) {
-			using T = std::conditional_t<std::is_same_v<U, void>, std::remove_cvref_t<V>, U>;
-			return pointer->insertHelper<T>(
-				key,
-				[&](std::list<T>& DataList)->typename std::list<T>::iterator {
-					DataList.push_back(std::forward<V>(value));
-					return std::prev(DataList.end());
-				},
-				[&](Base* BasePointer)->typename std::list<Base*>::iterator {
-					pointer->Order.push_back(BasePointer);
-					return std::prev(pointer->Order.end());
-				}
-			);
-		}
-		template<typename U = void, typename V>
-		auto back(V&& value) {
-			return back_named<U>("", std::forward<V>(value));
-		}
-
-		template<typename U = void, typename V>
-		auto named(auto_cast_pointer Where, const std::string& key, V&& value) {
-			using T = std::conditional_t<std::is_same_v<U, void>, std::remove_cvref_t<V>, U>;
-			return pointer->insertHelper<T>(
-				key,
-				[&](std::list<T>& DataList)->typename std::list<T>::iterator {
-					DataList.push_back(std::forward<V>(value));
-					return std::prev(DataList.end());
-				},
-				[&](Base* BasePointer)->typename std::list<Base*>::iterator {
-					pointer->checkInsertable(Where);
-					if (Where.pointer == nullptr) {
-						pointer->Order.push_back(BasePointer);
-						return std::prev(pointer->Order.end());
-					}
-					else {
-						DataPointerStruct& DataPointer = pointer->DataFinder.at(Where.pointer);
-						typename std::list<Base*>::iterator& WhereOrderIter = DataPointer.Order;
-						return pointer->Order.insert(WhereOrderIter, BasePointer);
-					}
-				}
-			);
-		}
-		template<typename U = void, typename V>
-		auto operator()(auto_cast_pointer Where, V&& value) {
-			return named<U>(Where, "", std::forward<V>(value));
-		}
-
-		template<typename U = void, typename V>
-		auto front_named(const std::string& key, V&& value) {
-			using T = std::conditional_t<std::is_same_v<U, void>, std::remove_cvref_t<V>, U>;
-			return pointer->insertHelper<T>(
-				key,
-				[&](std::list<T>& DataList)->typename std::list<T>::iterator {
-					//数据池中的数据无序，这里直接向数据池中push_back即可，顺序仅靠Order维护，不是写错
-					DataList.push_back(std::forward<V>(value));
-					return std::prev(DataList.end());
-				},
-				[&](Base* BasePointer)->typename std::list<Base*>::iterator {
-					pointer->Order.push_front(BasePointer);
-					return pointer->Order.begin();
-				}
-			);
-		}
-		template<typename U = void, typename V>
-		auto front(V&& value) {
-			return front_named<U>("", std::forward<V>(value));
-		}
-
-
-		template<typename T, typename... Args>
-		auto emplace_named(auto_cast_pointer Where, const std::string& key, Args&&... args) {
-			pointer->checkInsertable(Where);
-			return pointer->insertHelper<T>(
-				key,
-				[&](std::list<T>& DataList)->typename std::list<T>::iterator {
-					DataList.emplace_back(std::forward<Args>(args)...);
-					return std::prev(DataList.end());
-				},
-				[&](Base* BasePointer)->typename std::list<Base*>::iterator {
-					if (Where.pointer == nullptr) {
-						pointer->Order.push_back(BasePointer);
-						return std::prev(pointer->Order.end());
-					}
-					else {
-						DataPointerStruct& DataPointer = pointer->DataFinder.at(Where.pointer);
-						typename std::list<Base*>::iterator& WhereOrderIter = DataPointer.Order;
-						return pointer->Order.insert(WhereOrderIter, BasePointer);
-					}
-				}
-			);
-		}
-		template<typename T, typename... Args>
-		auto emplace(auto_cast_pointer Where, Args&&... args) {
-			return emplace_named<T>(Where, "", std::forward<Args>(args)...);
-		}
-	};
 	template<typename T, typename InsertDataFunc, typename InsertOrderFunc, typename = std::enable_if_t<isDerivedType<T>>>
 	inline T* insertHelper(const std::string& key, InsertDataFunc&& insertDataFunc, InsertOrderFunc&& insertOrderFunc) {
 		const size_t TypeIndex = getTypeIndexAutoCreate<T>();
@@ -400,7 +299,102 @@ private:
 
 	}
 public:
-	Inserter insert;
+	template<typename U = void, typename V>
+	auto push_back_named(const std::string& key, V&& value) {
+		using T = std::conditional_t<std::is_same_v<U, void>, std::remove_cvref_t<V>, U>;
+		return insertHelper<T>(
+			key,
+			[&](std::list<T>& DataList)->typename std::list<T>::iterator {
+				DataList.push_back(std::forward<V>(value));
+				return std::prev(DataList.end());
+			},
+			[&](Base* BasePointer)->typename std::list<Base*>::iterator {
+				Order.push_back(BasePointer);
+				return std::prev(Order.end());
+			}
+		);
+	}
+	template<typename U = void, typename V>
+	auto push_back(V&& value) {
+		return push_back_named<U>("", std::forward<V>(value));
+	}
+
+	template<typename U = void, typename V>
+	auto insert_named(auto_cast_pointer Where, const std::string& key, V&& value) {
+		using T = std::conditional_t<std::is_same_v<U, void>, std::remove_cvref_t<V>, U>;
+		return insertHelper<T>(
+			key,
+			[&](std::list<T>& DataList)->typename std::list<T>::iterator {
+				DataList.push_back(std::forward<V>(value));
+				return std::prev(DataList.end());
+			},
+			[&](Base* BasePointer)->typename std::list<Base*>::iterator {
+				checkInsertable(Where);
+				if (Where.pointer == nullptr) {
+					Order.push_back(BasePointer);
+					return std::prev(Order.end());
+				}
+				else {
+					DataPointerStruct& DataPointer = DataFinder.at(Where.pointer);
+					typename std::list<Base*>::iterator& WhereOrderIter = DataPointer.Order;
+					return Order.insert(WhereOrderIter, BasePointer);
+				}
+			}
+		);
+	}
+	template<typename U = void, typename V>
+	auto insert(auto_cast_pointer Where, V&& value) {
+		return insert_named<U>(Where, "", std::forward<V>(value));
+	}
+
+	template<typename U = void, typename V>
+	auto push_front_named(const std::string& key, V&& value) {
+		using T = std::conditional_t<std::is_same_v<U, void>, std::remove_cvref_t<V>, U>;
+		return insertHelper<T>(
+			key,
+			[&](std::list<T>& DataList)->typename std::list<T>::iterator {
+				//数据池中的数据无序，这里直接向数据池中push_back即可，顺序仅靠Order维护，不是写错
+				DataList.push_back(std::forward<V>(value));
+				return std::prev(DataList.end());
+			},
+			[&](Base* BasePointer)->typename std::list<Base*>::iterator {
+				Order.push_front(BasePointer);
+				return Order.begin();
+			}
+		);
+	}
+	template<typename U = void, typename V>
+	auto push_front(V&& value) {
+		return push_front_named<U>("", std::forward<V>(value));
+	}
+
+
+	template<typename T, typename... Args>
+	auto emplace_named(auto_cast_pointer Where, const std::string& key, Args&&... args) {
+		checkInsertable(Where);
+		return insertHelper<T>(
+			key,
+			[&](std::list<T>& DataList)->typename std::list<T>::iterator {
+				DataList.emplace_back(std::forward<Args>(args)...);
+				return std::prev(DataList.end());
+			},
+			[&](Base* BasePointer)->typename std::list<Base*>::iterator {
+				if (Where.pointer == nullptr) {
+					Order.push_back(BasePointer);
+					return std::prev(Order.end());
+				}
+				else {
+					DataPointerStruct& DataPointer = DataFinder.at(Where.pointer);
+					typename std::list<Base*>::iterator& WhereOrderIter = DataPointer.Order;
+					return Order.insert(WhereOrderIter, BasePointer);
+				}
+			}
+		);
+	}
+	template<typename T, typename... Args>
+	auto emplace(auto_cast_pointer Where, Args&&... args) {
+		return emplace_named<T>(Where, "", std::forward<Args>(args)...);
+	}
 	void merge(const VarianTmap<Base>& other) {
 		std::unordered_map<Base*, Base*> PointerMap{};
 		mergeHelper(other, PointerMap);
@@ -495,33 +489,30 @@ public:
 		}
 	}
 	template<typename T>
-	const std::string& find_key(auto_cast_pointer Pointer) {
-		if (Pointer.pointer == nullptr)
-			Pointer.pointer = *Pointer.orderIter;
+	std::list<Base*>::iterator find_order_named(const std::string& key) {
 		auto TypeIndexOptional = getTypeIndex<T>();
-		size_t TypeIndex;
-		typename std::unordered_map<Base*, DataPointerStruct>::iterator iter;
-		if (!TypeIndexOptional.has_value()) {
-			goto notfound;
-		}
-		TypeIndex = *TypeIndexOptional;
-		iter = DataFinder.find(Pointer.pointer);
-		if (iter == DataFinder.end()) {
-			goto notfound;
+		if (!TypeIndexOptional.has_value())
+			return Order.end();
+		const size_t TypeIndex = *TypeIndexOptional;
+		auto KeyFindIter = Type[TypeIndex].Key.find(key);
+		if (KeyFindIter == Type[TypeIndex].Key.end()) {
+			return Order.end();
 		}
 		else {
-			DataPointerStruct& DataPointer = iter->second;
-			if (DataPointer.TypeIndex != TypeIndex) {
-				goto notfound;
-			}
-			return DataPointer.Key;
+			auto iter = DataFinder.find(KeyFindIter->second);
+			return iter->second.Order;
 		}
-	notfound:;
-		std::cerr
-			<< "[VarianTmap::find_key] Data not found." << std::endl
-			<< "  Type: " << typeid(T).name() << std::endl
-			<< "  Pointer: " << std::format("0x{:x}", reinterpret_cast<uintptr_t>(Pointer.pointer)) << std::endl;
-		throw std::runtime_error("[VarianTmap::find_key] Data not found.\n  Type: "s + typeid(T).name() + "\n  Pointer: " + std::format("0x{:x}", reinterpret_cast<uintptr_t>(Pointer.pointer)) + "\n");
+	}
+	std::list<Base*>::iterator find_order(auto_cast_pointer Pointer) {
+		if (Pointer.pointer == nullptr)
+			Pointer.pointer = *Pointer.orderIter;
+		auto iter = DataFinder.find(Pointer.pointer);
+		if (iter == DataFinder.end()) {
+			return Order.end();
+		}
+		else {
+			return iter->second.Order;
+		}
 	}
 	const std::string& find_key(auto_cast_pointer Pointer) {
 		if (Pointer.pointer == nullptr)
@@ -685,7 +676,7 @@ public:
 	T& get(const std::string& key) {
 		T* pointer = find_named<T>(key);
 		if (pointer == nullptr)
-			return *insert.back_named<T>(key, T{});
+			return *push_back_named<T>(key, T{});
 		else return *pointer;
 	}
 

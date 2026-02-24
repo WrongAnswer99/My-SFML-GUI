@@ -587,14 +587,14 @@ namespace gui {
 				std::cerr << "[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
 				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
-			layer.insert.emplace_named<AreaObject>(layer.end(),id);
+			layer.emplace_named<AreaObject>(layer.end(),id);
 		}
 		void open(const std::string& id,const AreaObject& Window) {
 			if (layer.find_named<AreaObject>(id)) {
 				std::cerr << "[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
 				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
-			auto ptr=layer.insert.back_named(id, Window);
+			auto ptr=layer.push_back_named(id, Window);
 			ptr->updateOption();
 		}
 		void open(const std::string& id, AreaObject&& Window) {
@@ -602,12 +602,12 @@ namespace gui {
 				std::cerr << "[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
 				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
-			auto ptr = layer.insert.back_named(id, Window);
+			auto ptr = layer.push_back_named(id, Window);
 			ptr->updateOption();
 		}
 		size_t close(const std::string& until) {
 			size_t count = 0;
-			while (layer.find_key<AreaObject>(std::prev(layer.end())) != until) {
+			while (layer.find_key(std::prev(layer.end())) != until) {
 				layer.erase(std::prev(layer.end()));
 				count++;
 			}
@@ -668,7 +668,7 @@ namespace gui {
 			AreaObject* areaPtr = *std::prev(layer.end());
 			sf::Vector2f origin = areaPtr->posRect.position;
 			overFocus = {};
-			std::string path = layer.find_key<AreaObject>(areaPtr);
+			std::string path = layer.find_key(areaPtr);
 			while (true) {
 				if (stopScroll)
 					areaPtr->scrollVelocity = sf::Vector2f();
