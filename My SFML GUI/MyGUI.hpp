@@ -53,6 +53,15 @@ namespace gui {
 			posRect.size = _size;
 			return *this;
 		}
+		sf::Vector2f getPosition() const {
+			return posRect.position;
+		}
+		sf::Vector2f getSize() const {
+			return posRect.size;
+		}
+		sf::FloatRect getPosRect() const {
+			return posRect;
+		}
 		UIBase& setStyle(Skippable<Style>_normalStyle, Skippable<Style>_overStyle, Skippable<Style>_focusStyle) {
 			_normalStyle.assignTo(styles[attr::gui::Statu::normal]);
 			_overStyle.assignTo(styles[attr::gui::Statu::over]);
