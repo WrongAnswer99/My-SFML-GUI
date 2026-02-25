@@ -218,7 +218,7 @@ private:
 		else return iter->second;
 	}
 	template<typename T>
-	std::optional<size_t> getTypeIndex()const {
+	std::optional<size_t> getTypeIndex() const {
 		auto ti = std::type_index(typeid(T));
 		auto iter = TypeIndexMap.find(ti);
 		if (iter == TypeIndexMap.end()) {
@@ -427,13 +427,13 @@ public:
 
 	//遍历管理
 
-	const std::list<Base*>& order() {
+	const std::list<Base*>& order() const {
 		return Order;
 	}
-	const std::list<Base*>& iterate() {
+	const std::list<Base*>& iterate() const {
 		return Order;
 	}
-	const auto riterate() {
+	const auto riterate() const {
 		return std::views::reverse(Order);
 	}
 	template<typename T>
@@ -441,10 +441,22 @@ public:
 		const size_t TypeIndex = getTypeIndexAutoCreate<T>();
 		return *std::any_cast<std::shared_ptr<std::list<T>>&>(Type[TypeIndex].Data);
 	}
-	typename std::list<Base*>::iterator begin() {
+	template<typename T>
+	const std::list<T>& iterate() const {
+		auto TypeIndexOptional = getTypeIndex<T>();
+		if (!TypeIndexOptional.has_value()) {
+			std::cerr
+				<< "[VarianTmap::iterate(const)] Type not found." << std::endl
+				<< "  Type: " << typeid(T).name() << std::endl;
+			throw std::runtime_error("[VarianTmap::rename_named] Type not found.\n  Type: "s + typeid(T).name() + "\n");
+		}
+		const size_t TypeIndex = *TypeIndexOptional;
+		return *std::any_cast<std::shared_ptr<std::list<T>>&>(Type[TypeIndex].Data);
+	}
+	typename std::list<Base*>::const_iterator begin() const {
 		return Order.begin();
 	}
-	typename std::list<Base*>::iterator end() {
+	typename std::list<Base*>::const_iterator end() const {
 		return Order.end();
 	}
 
@@ -453,7 +465,7 @@ public:
 	//查找数据
 
 	template<typename T>
-	T* find_named(const std::string& key) {
+	T* find_named(const std::string& key) const {
 		auto TypeIndexOptional = getTypeIndex<T>();
 		if (!TypeIndexOptional.has_value())
 			return nullptr;
@@ -466,13 +478,13 @@ public:
 			return static_cast<T*>(KeyFindIter->second);
 		}
 	}
-	Base* find(auto_cast_pointer Pointer) {
+	Base* find(auto_cast_pointer Pointer) const {
 		if (Pointer.pointer == nullptr)
 			Pointer.pointer = *Pointer.orderIter;
 		return DataFinder.count(Pointer.pointer) ? Pointer.pointer : nullptr;
 	}
 	template<typename T>
-	T* find(auto_cast_pointer Pointer) {
+	T* find(auto_cast_pointer Pointer) const {
 		auto TypeIndexOptional = getTypeIndex<T>();
 		if (!TypeIndexOptional.has_value())
 			return nullptr;
@@ -489,7 +501,7 @@ public:
 		}
 	}
 	template<typename T>
-	std::list<Base*>::iterator find_order_named(const std::string& key) {
+	std::list<Base*>::iterator find_order_named(const std::string& key) const {
 		auto TypeIndexOptional = getTypeIndex<T>();
 		if (!TypeIndexOptional.has_value())
 			return Order.end();
@@ -503,7 +515,7 @@ public:
 			return iter->second.Order;
 		}
 	}
-	std::list<Base*>::iterator find_order(auto_cast_pointer Pointer) {
+	std::list<Base*>::iterator find_order(auto_cast_pointer Pointer) const {
 		if (Pointer.pointer == nullptr)
 			Pointer.pointer = *Pointer.orderIter;
 		auto iter = DataFinder.find(Pointer.pointer);
@@ -514,16 +526,15 @@ public:
 			return iter->second.Order;
 		}
 	}
-	const std::string& find_key(auto_cast_pointer Pointer) {
+	const std::string& find_key(auto_cast_pointer Pointer) const {
 		if (Pointer.pointer == nullptr)
 			Pointer.pointer = *Pointer.orderIter;
-		typename std::unordered_map<Base*, DataPointerStruct>::iterator iter;
-		iter = DataFinder.find(Pointer.pointer);
+		typename std::unordered_map<Base*, DataPointerStruct>::const_iterator iter = DataFinder.find(Pointer.pointer);
 		if (iter == DataFinder.end()) {
 			goto notfound;
 		}
 		else {
-			DataPointerStruct& DataPointer = iter->second;
+			const DataPointerStruct& DataPointer = iter->second;
 			return DataPointer.Key;
 		}
 	notfound:;
@@ -661,7 +672,7 @@ public:
 	//访问数据只能从键访问对应的值
 
 	template<typename T>
-	T& at(const std::string& key) {
+	T& at(const std::string& key) const {
 		T* pointer = find_named<T>(key);
 		if (pointer == nullptr) {
 			std::cerr
@@ -863,10 +874,10 @@ public:
 
 	//其他函数
 
-	size_t size() {
+	size_t size() const {
 		return Order.size();
 	}
-	bool empty() {
+	bool empty() const {
 		return Order.size() == 0;
 	}
 	void clear() {
@@ -931,7 +942,7 @@ private:
 			readHelper<Args...>(stream, TypeOrderIndex + 1, DataPointerQue);
 	}
 	template<typename T, typename ...Args>
-	void writeHelper(auto& stream, size_t TypeOrderIndex, std::vector<size_t>& TypeOrderIndexVec)const {
+	void writeHelper(auto& stream, size_t TypeOrderIndex, std::vector<size_t>& TypeOrderIndexVec) const {
 		auto TypeIndexOptional = getTypeIndex<T>();
 		if (TypeIndexOptional.has_value()) {
 			const size_t TypeIndex = *TypeIndexOptional;

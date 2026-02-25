@@ -228,6 +228,9 @@ namespace gui {
 		sf::String& getText() {
 			return text;
 		}
+		const sf::String& getText() const {
+			return text;
+		}
 		friend inline BinaryFStream& operator>>(BinaryFStream& bf, TextObject& x) {
 			bf >> static_cast<UIBase&>(x);
 			bf.structIn(x.textStyles[attr::gui::Statu::normal], x.textStyles[attr::gui::Statu::over], x.textStyles[attr::gui::Statu::focus],
@@ -495,6 +498,9 @@ namespace gui {
 		std::string getOption() {
 			return option;
 		}
+		const std::string getOption() const {
+			return option;
+		}
 	protected:
 		void updateOption() {
 			if (option!="") {
@@ -534,7 +540,7 @@ namespace gui {
 			return areaPtr->sub.get<T>(temp);
 		}
 		template<typename T>
-		T& path_at(const std::string& path) {
+		T& path_at(const std::string& path) const {
 			AreaObject* areaPtr = this;
 			std::string temp = "";
 			for (int i = 0; i < path.size(); i++) {
