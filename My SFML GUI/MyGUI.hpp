@@ -38,6 +38,7 @@ namespace gui {
 		virtual void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 		//std::set<std::string> linkList;
 	public:
+		Statu tag;
 		UIBase& setPosition(sf::Vector2f _pos) {
 			posRect.position = _pos;
 			return *this;
