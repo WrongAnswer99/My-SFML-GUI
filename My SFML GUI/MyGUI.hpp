@@ -63,12 +63,12 @@ namespace gui {
 	protected:
 		sf::FloatRect posRect = sf::FloatRect(sf::Vector2f(), sf::Vector2f(1.f, 1.f));
 		Style styles[3];
-		int currentStatu = gui::UIBase::Statu::normal;
+		int currentStatu = gui::UIBase::Normal;
 		bool isShow = true;
 		virtual void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 		//std::set<std::string> linkList;
 	public:
-		enum Statu { normal = 0, over = 1, focus = 2 };
+		enum Statu { Normal = 0, Over = 1, Focus = 2 };
 		enum Justification { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
 		Tag tag;
 		UIBase& setPosition(sf::Vector2f _pos) {
@@ -96,9 +96,9 @@ namespace gui {
 			return posRect;
 		}
 		UIBase& setStyle(Skippable<Style>_normalStyle, Skippable<Style>_overStyle, Skippable<Style>_focusStyle) {
-			_normalStyle.assignTo(styles[gui::UIBase::Statu::normal]);
-			_overStyle.assignTo(styles[gui::UIBase::Statu::over]);
-			_focusStyle.assignTo(styles[gui::UIBase::Statu::focus]);
+			_normalStyle.assignTo(styles[gui::UIBase::Normal]);
+			_overStyle.assignTo(styles[gui::UIBase::Over]);
+			_focusStyle.assignTo(styles[gui::UIBase::Focus]);
 			return *this;
 		}
 		Style& style(int id) {
@@ -120,16 +120,16 @@ namespace gui {
 		}
 	protected:
 		void setStatu(int statu, bool force = false) {
-			if (force || currentStatu != gui::UIBase::Statu::focus) {
+			if (force || currentStatu != gui::UIBase::Focus) {
 				currentStatu = statu;
 			}
 		}
 	public:
 		friend inline BinaryFStream& operator>>(BinaryFStream& bf, UIBase& x) {
-			return bf.structIn(x.posRect, x.styles[gui::UIBase::Statu::normal], x.styles[gui::UIBase::Statu::over], x.styles[gui::UIBase::Statu::focus], x.isShow);
+			return bf.structIn(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
 		}
 		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const UIBase& x) {
-			return bf.structOut(x.posRect, x.styles[gui::UIBase::Statu::normal], x.styles[gui::UIBase::Statu::over], x.styles[gui::UIBase::Statu::focus], x.isShow);
+			return bf.structOut(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
 		}
 	};
 	class ImageObject :public UIBase {
@@ -145,13 +145,13 @@ namespace gui {
 		}
 	protected:
 		std::string imageId;
-		sf::Vector2i justification = { gui::UIBase::Justification::Mid,gui::UIBase::Justification::Mid };
+		sf::Vector2i justification = { gui::UIBase::Mid,gui::UIBase::Mid };
 		sf::Vector2f scale = sf::Vector2f(1, 1);
 		sf::Color imageColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
 		ImageObject& setImageColor(Skippable<sf::Color>_normalColor, Skippable<sf::Color>_overColor, Skippable<sf::Color>_focusColor) {
-			_normalColor.assignTo(imageColors[gui::UIBase::Statu::normal]);
-			_overColor.assignTo(imageColors[gui::UIBase::Statu::over]);
-			_focusColor.assignTo(imageColors[gui::UIBase::Statu::focus]);
+			_normalColor.assignTo(imageColors[gui::UIBase::Normal]);
+			_overColor.assignTo(imageColors[gui::UIBase::Over]);
+			_focusColor.assignTo(imageColors[gui::UIBase::Focus]);
 			return *this;
 		}
 		sf::Color& imageColor(int id) {
@@ -180,12 +180,12 @@ namespace gui {
 		}
 		friend inline BinaryFStream& operator>>(BinaryFStream& bf, ImageObject& x) {
 			bf >> static_cast<UIBase&>(x);
-			bf.structIn(x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Statu::normal], x.imageColors[gui::UIBase::Statu::over], x.imageColors[gui::UIBase::Statu::focus]);
+			bf.structIn(x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
 			return bf;
 		}
 		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ImageObject& x) {
 			bf << static_cast<const UIBase&>(x);
-			bf.structOut(x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Statu::normal], x.imageColors[gui::UIBase::Statu::over], x.imageColors[gui::UIBase::Statu::focus]);
+			bf.structOut(x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
 			return bf;
 		}
 	};
@@ -193,14 +193,14 @@ namespace gui {
 		friend class WindowManager;
 	public:
 		TextObject() {
-			textStyles[gui::UIBase::Statu::normal].set(sf::Color::Black, sf::Color::Black, Skip);
-			textStyles[gui::UIBase::Statu::over].set(sf::Color::Black, sf::Color::Black, Skip);
-			textStyles[gui::UIBase::Statu::focus].set(sf::Color::Black, sf::Color::Black, Skip);
+			textStyles[gui::UIBase::Normal].set(sf::Color::Black, sf::Color::Black, Skip);
+			textStyles[gui::UIBase::Over].set(sf::Color::Black, sf::Color::Black, Skip);
+			textStyles[gui::UIBase::Focus].set(sf::Color::Black, sf::Color::Black, Skip);
 		}
 		TextObject& setTextStyle(Skippable<Style>_normalStyle, Skippable<Style>_overStyle, Skippable<Style>_focusStyle) {
-			_normalStyle.assignTo(textStyles[gui::UIBase::Statu::normal]);
-			_overStyle.assignTo(textStyles[gui::UIBase::Statu::over]);
-			_focusStyle.assignTo(textStyles[gui::UIBase::Statu::focus]);
+			_normalStyle.assignTo(textStyles[gui::UIBase::Normal]);
+			_overStyle.assignTo(textStyles[gui::UIBase::Over]);
+			_focusStyle.assignTo(textStyles[gui::UIBase::Focus]);
 			return *this;
 		}
 		Style& textStyle(int id) {
@@ -230,7 +230,7 @@ namespace gui {
 		sf::String text = "";
 		sf::Text textRender{ fontManager[font] };
 		sf::FloatRect textRect;
-		sf::Vector2i justification = { gui::UIBase::Justification::Mid,gui::UIBase::Justification::Mid };
+		sf::Vector2i justification = { gui::UIBase::Mid,gui::UIBase::Mid };
 		Style textStyles[3];
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 	public:
@@ -265,14 +265,14 @@ namespace gui {
 		}
 		friend inline BinaryFStream& operator>>(BinaryFStream& bf, TextObject& x) {
 			bf >> static_cast<UIBase&>(x);
-			bf.structIn(x.textStyles[gui::UIBase::Statu::normal], x.textStyles[gui::UIBase::Statu::over], x.textStyles[gui::UIBase::Statu::focus],
+			bf.structIn(x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
 				x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 			x.textRender.setFont(fontManager[x.font]);
 			return bf;
 		}
 		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const TextObject& x) {
 			bf << static_cast<const UIBase&>(x);
-			bf.structOut(x.textStyles[gui::UIBase::Statu::normal], x.textStyles[gui::UIBase::Statu::over], x.textStyles[gui::UIBase::Statu::focus],
+			bf.structOut(x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
 				x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 			return bf;
 		}
@@ -281,9 +281,9 @@ namespace gui {
 		friend class WindowManager;
 	public:
 		ButtonObject() {
-			styles[gui::UIBase::Statu::normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
-			styles[gui::UIBase::Statu::over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
-			styles[gui::UIBase::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
+			styles[gui::UIBase::Normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
+			styles[gui::UIBase::Over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
+			styles[gui::UIBase::Focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
 		}
 	};
 	class OptionObject :public ButtonObject {
@@ -293,12 +293,12 @@ namespace gui {
 		friend class WindowManager;
 	public:
 		InputObject() {
-			styles[gui::UIBase::Statu::normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
-			styles[gui::UIBase::Statu::over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
-			styles[gui::UIBase::Statu::focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
+			styles[gui::UIBase::Normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
+			styles[gui::UIBase::Over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
+			styles[gui::UIBase::Focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
 		}
 	protected:
-		int typeLimit = gui::InputObject::InputType::String;
+		int typeLimit = gui::InputObject::String;
 		size_t sizeLimit = INT_MAX;
 		class InputLimit {
 			bool isAllowList = false;
@@ -345,14 +345,14 @@ namespace gui {
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 		inline void insert(char32_t ch) {
 			if (text.getSize() >= sizeLimit)return;
-			if (typeLimit == gui::InputObject::InputType::Int) {
+			if (typeLimit == gui::InputObject::Int) {
 				if ((ch == '-' && cursor == 0 && ensure(text.getSize() > 0, text[0] != '-')) ||
 					(ch >= '0' && ch <= '9' && ensure(text.getSize() > 0, ensure(text[0] == '-', cursor != 0)))) {
 					text.insert(cursor, ch);
 					cursor++;
 				}
 			}
-			else if (typeLimit == gui::InputObject::InputType::Float) {
+			else if (typeLimit == gui::InputObject::Float) {
 				if ((ch == '-' && cursor == 0 && ensure(text.getSize() > 0, text[0] != '-')) ||
 					(ch >= '0' && ch <= '9' && ensure(text.getSize() > 0, ensure(text[0] == '-', cursor != 0))) ||
 					(ch == '.' && ensure(text.getSize() > 0, ensure(text[0] == '-', cursor != 0)) && text.find('.') == sf::String::InvalidPos)) {
@@ -368,7 +368,7 @@ namespace gui {
 			}
 		}
 		inline void insert(sf::String st) {
-			if (typeLimit == gui::InputObject::InputType::Int || typeLimit == gui::InputObject::InputType::Float) {
+			if (typeLimit == gui::InputObject::Int || typeLimit == gui::InputObject::Float) {
 				for (auto& elem : st) {
 					if (text.getSize() >= sizeLimit)return;
 					insert(elem);
@@ -420,7 +420,7 @@ namespace gui {
 			return *this;
 		}
 		InputObject& setStringTypeLimit(bool _isAllowList, std::initializer_list<char32_t> _single, std::initializer_list<std::pair<char32_t, char32_t>> _range) {
-			typeLimit = gui::InputObject::InputType::String;
+			typeLimit = gui::InputObject::String;
 			inputLimit.set(_isAllowList, _single, _range);
 			return *this;
 		}
@@ -451,9 +451,9 @@ namespace gui {
 		std::string option;
 	public:
 		AreaObject() {
-			styles[gui::UIBase::Statu::normal].set(sf::Color::White, sf::Color(200, 200, 200), 2);
-			styles[gui::UIBase::Statu::over].set(sf::Color::White, sf::Color(200, 200, 200), 2);
-			styles[gui::UIBase::Statu::focus].set(sf::Color::White, sf::Color(200, 200, 200), 2);
+			styles[gui::UIBase::Normal].set(sf::Color::White, sf::Color(200, 200, 200), 2);
+			styles[gui::UIBase::Over].set(sf::Color::White, sf::Color(200, 200, 200), 2);
+			styles[gui::UIBase::Focus].set(sf::Color::White, sf::Color(200, 200, 200), 2);
 		}
 		VarianTmap<UIBase>sub;
 		AreaObject& setScrollable(Skippable<sf::Vector2i> _mouseDragScrollable, Skippable<sf::Vector2i> _mouseWheelScrollable) {
@@ -510,19 +510,19 @@ namespace gui {
 		AreaObject& setOption(const std::string& key) {
 			if (option!="") {
 				if (auto ptr = sub.find_named<OptionObject>(option))
-					ptr->setStatu(gui::UIBase::Statu::normal, true);
+					ptr->setStatu(gui::UIBase::Normal, true);
 				else option = "";
 			}
 			option = key;
 			if (auto ptr = sub.find_named<OptionObject>(key)) {
-				ptr->setStatu(gui::UIBase::Statu::focus);
+				ptr->setStatu(gui::UIBase::Focus);
 			}
 			return *this;
 		}
 		AreaObject& setOptionNull() {
 			if (option != "") {
 				if (auto ptr = sub.find_named<OptionObject>(option))
-					ptr->setStatu(gui::UIBase::Statu::normal, true);
+					ptr->setStatu(gui::UIBase::Normal, true);
 				else option = "";
 			}
 			option = "";
@@ -538,7 +538,7 @@ namespace gui {
 		void updateOption() {
 			if (option!="") {
 				if (auto ptr = sub.find_named<OptionObject>(option))
-					ptr->setStatu(gui::UIBase::Statu::focus);
+					ptr->setStatu(gui::UIBase::Focus);
 				else option = "";
 			}
 		}
@@ -777,7 +777,7 @@ namespace gui {
 		}
 		inline AreaObject* updateOver(bool stopScroll = false) {
 			if (objectPathVisit(over) != nullptr)
-				objectPathVisit(over)->setStatu(gui::UIBase::Statu::normal);
+				objectPathVisit(over)->setStatu(gui::UIBase::Normal);
 			AreaObject* areaPtr = *std::prev(layer.end());
 			sf::Vector2f origin = areaPtr->posRect.position;
 			over.clear();
@@ -831,8 +831,8 @@ namespace gui {
 						isDragScrolling = true;
 					if ((focus.is<ButtonObject>() || focus.is<OptionObject>()) && isDragScrolling) {
 						if (over == focus)
-							objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Statu::over, true);
-						else objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Statu::normal, true);
+							objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Over, true);
+						else objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Normal, true);
 						if (focus.is<OptionObject>())
 							areaFocusPtr->updateOption();
 					}
@@ -840,8 +840,8 @@ namespace gui {
 				else {
 					if (areaFocusPtr != nullptr && (focus.is<ButtonObject>() || focus.is<OptionObject>())) {
 						if (over == focus)
-							objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Statu::focus);
-						else objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Statu::over, true);
+							objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Focus);
+						else objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Over, true);
 						if (focus.is<OptionObject>())
 							areaFocusPtr->updateOption();
 					}
@@ -851,7 +851,7 @@ namespace gui {
 			//after updating over ,varible 'focus' will not be changed
 			else {
 				if (objectPathVisit(over, areaOverPtr) != nullptr)
-					objectPathVisit(over, areaOverPtr)->setStatu(gui::UIBase::Statu::over);
+					objectPathVisit(over, areaOverPtr)->setStatu(gui::UIBase::Over);
 			}
 		}
 	public:
@@ -885,11 +885,11 @@ namespace gui {
 					event.push(gui::Events::InputGainFocus{ .path = over.path,.name = over.name });
 
 				if (auto ptr = objectPathVisit(focus, areaFocusPtr))
-					ptr->setStatu(gui::UIBase::Statu::normal, true);
+					ptr->setStatu(gui::UIBase::Normal, true);
 				if (areaFocusPtr != nullptr)
 					areaFocusPtr->updateOption();
 				if (auto ptr = objectPathVisit(over, areaOverPtr))
-					ptr->setStatu(gui::UIBase::Statu::focus);
+					ptr->setStatu(gui::UIBase::Focus);
 
 				focus = over;
 				return true;
@@ -917,20 +917,20 @@ namespace gui {
 					if (over == focus) {
 						if (!isDragScrolling)
 							event.push(gui::Events::ButtonPressed{ .path = focus.path,.name = focus.name });
-						areaFocusPtr->sub.at<ButtonObject>(focus.name).setStatu(gui::UIBase::Statu::over, true);
+						areaFocusPtr->sub.at<ButtonObject>(focus.name).setStatu(gui::UIBase::Over, true);
 					}
-					else areaFocusPtr->sub.at<ButtonObject>(focus.name).setStatu(gui::UIBase::Statu::normal, true);
+					else areaFocusPtr->sub.at<ButtonObject>(focus.name).setStatu(gui::UIBase::Normal, true);
 				}
 				if (areaFocusPtr != nullptr && focus.is<OptionObject>()) {
 					if (areaFocusPtr->option!="")
-						areaFocusPtr->sub.at<OptionObject>(areaFocusPtr->option).setStatu(gui::UIBase::Statu::normal, true);
+						areaFocusPtr->sub.at<OptionObject>(areaFocusPtr->option).setStatu(gui::UIBase::Normal, true);
 					if (over == focus) {
 						if (!isDragScrolling) {
 							areaFocusPtr->option = focus.name;
 							event.push(gui::Events::OptionChosen{ .path = focus.path,.name = focus.name });
 						}
 					}
-					else areaFocusPtr->sub.at<OptionObject>(focus.name).setStatu(gui::UIBase::Statu::normal, true);
+					else areaFocusPtr->sub.at<OptionObject>(focus.name).setStatu(gui::UIBase::Normal, true);
 					areaFocusPtr->updateOption();
 				}
 				isDragScrolling = false;

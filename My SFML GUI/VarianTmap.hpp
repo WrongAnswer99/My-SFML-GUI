@@ -19,6 +19,7 @@
 using namespace std::string_literals;
 /*
 * Varian<T> map
+* 注:仅用作"有序序列+快速查找"时,添加数据需要键和值都添加,find只搜Key,不搜索Val
 */
 template<typename Base = void>
 class VarianTmap {
@@ -505,7 +506,7 @@ public:
 		}
 	}
 	template<typename T>
-	std::list<Base*>::iterator find_order_named(const std::string& key) const {
+	std::list<Base*>::const_iterator find_order_named(const std::string& key) const {
 		auto TypeIndexOptional = getTypeIndex<T>();
 		if (!TypeIndexOptional.has_value())
 			return Order.end();
@@ -519,7 +520,7 @@ public:
 			return iter->second.Order;
 		}
 	}
-	std::list<Base*>::iterator find_order(auto_cast_pointer Pointer) const {
+	std::list<Base*>::const_iterator find_order(auto_cast_pointer Pointer) const {
 		if (Pointer.pointer == nullptr) {
 			if (Pointer.orderIter == Order.end())return Order.end();
 			Pointer.pointer = *Pointer.orderIter;
