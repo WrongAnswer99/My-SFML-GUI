@@ -760,8 +760,10 @@ namespace gui {
 	private:
 		inline UIBase* objectPathVisit(ObjectPath& obj, AreaObject* areaPtr = nullptr) {
 			if (!obj.type.has_value())return nullptr;
-			if (areaPtr == nullptr)
+			if (areaPtr == nullptr) {
 				areaPtr = path_find<gui::AreaObject>(obj.path);
+				if (areaPtr == nullptr) return nullptr;
+			}
 
 			if (obj.is<gui::ButtonObject>())
 				return areaPtr->sub.find_named<ButtonObject>(obj.name);
