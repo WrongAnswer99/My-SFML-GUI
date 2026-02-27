@@ -131,7 +131,7 @@ namespace gui {
 			rCur.draw(textRender);
 
 			//draw cursor
-			if (currentStatu == attr::gui::Statu::focus && (windowManager.cursorBlinkTick >= 0 && windowManager.cursorBlinkTick < windowManager.cursorBlinkRate / 2)) {
+			if (currentStatu == gui::UIBase::Statu::focus && (windowManager.cursorBlinkTick >= 0 && windowManager.cursorBlinkTick < windowManager.cursorBlinkRate / 2)) {
 				Draw::Line(
 					rCur,
 					cursorPos,

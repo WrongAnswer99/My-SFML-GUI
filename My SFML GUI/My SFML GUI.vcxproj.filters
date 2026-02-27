@@ -18,9 +18,6 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Attribute.hpp">
-      <Filter>头文件</Filter>
-    </ClCompile>
     <ClCompile Include="VarianTmap.hpp">
       <Filter>头文件</Filter>
     </ClCompile>
@@ -36,7 +33,7 @@
     <ClCompile Include="MyGUI.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Event.hpp">
+    <ClCompile Include="Tag.hpp">
       <Filter>头文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -51,6 +48,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="MyGUI.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Event.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

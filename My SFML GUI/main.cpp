@@ -68,7 +68,7 @@ static void init() {
 		//.setTypeLimit(attr::gui::Int)
 		//.setStringTypeLimit(true, { L'_' }, { {L'A',L'Z'},{L'a',L'z'}})
 		.setText(L"这是一个文本框")
-		.setJustification(attr::gui::Mid, attr::gui::Mid)
+		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 225))
@@ -78,7 +78,7 @@ static void init() {
 		.setCenter();
 
 	Main.path_get<gui::ButtonObject>("area.button")
-		.setText(L"按钮").setJustification(attr::gui::Mid, attr::gui::Mid)
+		.setText(L"按钮").setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 275))
@@ -202,7 +202,7 @@ static void init() {
 	imageManager.loadImage("test","D:\\test.png");
 	Main.path_get<gui::ImageObject>("area.image")
 		.setImageId("test")
-		.setJustification(attr::gui::Mid, attr::gui::Mid)
+		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		//.setScale(sf::Vector2f(1, 1))
 		//.setScaleTo(sf::Vector2f(200, 200))
 		//.setSizeAuto()
@@ -212,7 +212,7 @@ static void init() {
 		
 	Main.path_get<gui::ImageObject>("area.image1")
 		.setImageId("test")
-		.setJustification(attr::gui::Mid, attr::gui::Mid)
+		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		//.setScale(sf::Vector2f(1, 1))
 		//.setScaleTo(sf::Vector2f(200, 200))
 		//.setSizeAuto()
@@ -222,7 +222,6 @@ static void init() {
 	Main.path_get<gui::AreaObject>("area")
 		.setScrollLimitAuto();
 }
-Event evt;
 int main() {
 	fontManager.loadFont("ht", "FZHTJW.TTF");
 	init();
@@ -245,19 +244,19 @@ int main() {
 				windowManager.update(sfEvt);
 			}
 		}
-		while (windowManager.pollEvent(evt)) {
-			if (evt.eventId == attr::gui::ButtonPressed) {
-				std::cout << "Button pressed : " << evt[attr::gui::ButtonPath].cast<std::string>() << std::endl;
+		while (const auto evt=windowManager.pollEvent()) {
+			if (auto ptr=evt->getIf<gui::Events::ButtonPressed>()) {
+				std::cout << "Button pressed : " << ptr->wholePath() << std::endl;
 			}
-			if (evt.eventId == attr::gui::OptionChosen) {
-				std::cout << "Option chosen : " << evt[attr::gui::OptionPath].cast<std::string>() << std::endl;
+			if (auto ptr = evt->getIf<gui::Events::OptionChosen>()) {
+				std::cout << "Option chosen : " << ptr->wholePath() << std::endl;
 				std::cout << "Current choise : " << windowManager.path_at<gui::AreaObject>("main.area").getOption() << std::endl;
 			}
-			if (evt.eventId == attr::gui::InputGainFocus) {
-				std::cout << "Input gain focus : " << evt[attr::gui::InputPath].cast<std::string>() << std::endl;
+			if (auto ptr = evt->getIf<gui::Events::InputGainFocus>()) {
+				std::cout << "Input gain focus : " << ptr->wholePath() << std::endl;
 			}
-			if (evt.eventId == attr::gui::InputLoseFocus) {
-				std::cout << "Input lose focus : " << evt[attr::gui::InputPath].cast<std::string>() << std::endl;
+			if (auto ptr = evt->getIf<gui::Events::InputLoseFocus>()) {
+				std::cout << "Input lose focus : " << ptr->wholePath() << std::endl;
 			}
 		}
 		window.clear();
