@@ -248,15 +248,18 @@ int main() {
 			if (auto ptr=evt->getIf<gui::Events::ButtonPressed>()) {
 				std::cout << "Button pressed : " << ptr->wholePath() << std::endl;
 			}
-			if (auto ptr = evt->getIf<gui::Events::OptionChosen>()) {
-				std::cout << "Option chosen : " << ptr->wholePath() << std::endl;
+			if (auto ptr = evt->getIf<gui::Events::OptionSelected>()) {
+				std::cout << "Option selected : " << ptr->wholePath() << std::endl;
 				std::cout << "Current choise : " << windowManager.path_at<gui::AreaObject>("main.area").getOption() << std::endl;
 			}
-			if (auto ptr = evt->getIf<gui::Events::InputGainFocus>()) {
-				std::cout << "Input gain focus : " << ptr->wholePath() << std::endl;
+			if (auto ptr = evt->getIf<gui::Events::OptionDeselected>()) {
+				std::cout << "Option deselected : " << ptr->wholePath() << std::endl;
 			}
-			if (auto ptr = evt->getIf<gui::Events::InputLoseFocus>()) {
-				std::cout << "Input lose focus : " << ptr->wholePath() << std::endl;
+			if (auto ptr = evt->getIf<gui::Events::InputSelected>()) {
+				std::cout << "Input selected : " << ptr->wholePath() << std::endl;
+			}
+			if (auto ptr = evt->getIf<gui::Events::InputDeselected>()) {
+				std::cout << "Input deselected : " << ptr->wholePath() << std::endl;
 			}
 		}
 		window.clear();

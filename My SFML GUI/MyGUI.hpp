@@ -11,34 +11,18 @@
 #define ensure(existCondition,condition) (!(existCondition)||((existCondition)&&(condition)))
 namespace gui {
 	namespace Events{
-		struct ButtonPressed : public EventBase {
+		struct UIEventBase : public EventBase {
 			std::string path;
 			std::string name;
 			const std::string wholePath() const {
 				return path + '_' + name;
 			}
 		};
-		struct OptionChosen : public EventBase {
-			std::string path;
-			std::string name;
-			const std::string wholePath() const {
-				return path + '_' + name;
-			}
-		};
-		struct InputGainFocus : public EventBase {
-			std::string path;
-			std::string name;
-			const std::string wholePath() const {
-				return path + '_' + name;
-			}
-		};
-		struct InputLoseFocus : public EventBase {
-			std::string path;
-			std::string name;
-			const std::string wholePath() const {
-				return path + '_' + name;
-			}
-		};
+		struct ButtonPressed : public UIEventBase {};
+		struct OptionDeselected : public UIEventBase {};
+		struct OptionSelected : public UIEventBase {};
+		struct InputSelected : public UIEventBase {};
+		struct InputDeselected : public UIEventBase {};
 	}
 	class WindowManager;
 	class Style {
@@ -880,9 +864,9 @@ namespace gui {
 				areaOverPtr = updateOver(true);
 
 				if (focus.is<InputObject>() && over != focus)
-					event.push(gui::Events::InputLoseFocus{ .path = focus.path,.name = focus.name });
+					event.push(gui::Events::InputDeselected{ {.path = focus.path,.name = focus.name} });
 				if (over.is<InputObject>() && over != focus)
-					event.push(gui::Events::InputGainFocus{ .path = over.path,.name = over.name });
+					event.push(gui::Events::InputSelected{ {.path = focus.path,.name = focus.name} });
 
 				if (auto ptr = objectPathVisit(focus, areaFocusPtr))
 					ptr->setStatu(gui::UIBase::Normal, true);
@@ -916,18 +900,22 @@ namespace gui {
 				if (areaFocusPtr != nullptr && focus.is<ButtonObject>()) {
 					if (over == focus) {
 						if (!isDragScrolling)
-							event.push(gui::Events::ButtonPressed{ .path = focus.path,.name = focus.name });
+							event.push(gui::Events::ButtonPressed{ {.path = focus.path,.name = focus.name} });
 						areaFocusPtr->sub.at<ButtonObject>(focus.name).setStatu(gui::UIBase::Over, true);
 					}
 					else areaFocusPtr->sub.at<ButtonObject>(focus.name).setStatu(gui::UIBase::Normal, true);
 				}
 				if (areaFocusPtr != nullptr && focus.is<OptionObject>()) {
-					if (areaFocusPtr->option!="")
-						areaFocusPtr->sub.at<OptionObject>(areaFocusPtr->option).setStatu(gui::UIBase::Normal, true);
 					if (over == focus) {
 						if (!isDragScrolling) {
-							areaFocusPtr->option = focus.name;
-							event.push(gui::Events::OptionChosen{ .path = focus.path,.name = focus.name });
+							if (focus.name != areaFocusPtr->option) {
+								if (areaFocusPtr->option != "") {
+									areaFocusPtr->sub.at<OptionObject>(areaFocusPtr->option).setStatu(gui::UIBase::Normal, true);
+									event.push(gui::Events::OptionDeselected{ {.path = focus.path,.name = areaFocusPtr->option} });
+								}
+								areaFocusPtr->option = focus.name;
+								event.push(gui::Events::OptionSelected{ {.path = focus.path,.name = focus.name} });
+							}
 						}
 					}
 					else areaFocusPtr->sub.at<OptionObject>(focus.name).setStatu(gui::UIBase::Normal, true);
