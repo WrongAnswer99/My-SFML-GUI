@@ -695,7 +695,14 @@ namespace gui {
 					return window(temp);
 				else return areaPtr->sub.get<T>(temp);
 			}
-			else return areaPtr->sub.get<T>(temp);
+			else {
+				if (areaPtr != nullptr)
+					return areaPtr->sub.get<T>(temp);
+				else {
+					std::cerr << "[WindowManager::path_get] Path error. Â·¾¶´íÎó\n  path: " << path << "\n";
+					throw std::runtime_error("[WindowManager::path_get] Path error. Â·¾¶´íÎó\n  path: " + path + "\n");
+				}
+			}
 		}
 		template<typename T>
 		T& path_at(const std::string& path) {
@@ -715,7 +722,14 @@ namespace gui {
 					return window(temp);
 				else return areaPtr->sub.at<T>(temp);
 			}
-			else return areaPtr->sub.at<T>(temp);
+			else {
+				if (areaPtr != nullptr)
+					return areaPtr->sub.at<T>(temp);
+				else {
+					std::cerr << "[WindowManager::path_at] Path error. Â·¾¶´íÎó\n  path: " << path << "\n";
+					throw std::runtime_error("[WindowManager::path_at] Path error. Â·¾¶´íÎó\n  path: " + path + "\n");
+				}
+			}
 		}
 		template<typename T>
 		T* path_find(const std::string& path) {

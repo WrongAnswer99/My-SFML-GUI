@@ -207,6 +207,7 @@ private:
 	inline static TypeOperationStruct TypeOperation;
 	template<typename T>
 	size_t getTypeIndexAutoCreate() {
+		static_assert(VarianTmap<Base>::template isDerivedType<T>);
 		auto iter = TypeIndexMap.find(std::type_index(typeid(T)));
 		if (iter == TypeIndexMap.end()) {
 			const size_t TypeIndex = TypeIndexMap.size();
@@ -220,6 +221,7 @@ private:
 	}
 	template<typename T>
 	std::optional<size_t> getTypeIndex() const {
+		static_assert(VarianTmap<Base>::template isDerivedType<T>);
 		auto ti = std::type_index(typeid(T));
 		auto iter = TypeIndexMap.find(ti);
 		if (iter == TypeIndexMap.end()) {
