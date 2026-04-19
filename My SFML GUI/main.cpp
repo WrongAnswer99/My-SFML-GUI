@@ -219,8 +219,6 @@ static void init() {
 		.setSize(sf::Vector2f(200, 200))
 		.setStyle(style["stdbn"], style["stdbn"], style["stdbn"])
 		.setPosition(sf::Vector2f(600, 450));
-	Main.path_get<gui::AreaObject>("area")
-		.setScrollLimitAuto();
 }
 int main() {
 	fontManager.loadFont("ht", "FZHTJW.TTF");

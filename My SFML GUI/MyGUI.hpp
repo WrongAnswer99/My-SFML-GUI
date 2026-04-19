@@ -462,14 +462,6 @@ namespace gui {
 				rect.size.y = point.y - rect.position.y;
 			}
 		}
-	public:
-		AreaObject& setScrollLimit(sf::FloatRect rect) {
-			scrollLimit = sf::FloatRect(sf::Vector2f(), posRect.size);
-			addPoint(scrollLimit, rect.position);
-			addPoint(scrollLimit, rect.position + rect.size);
-			scrollLimit.size -= posRect.size;
-			return *this;
-		}
 		AreaObject& setScrollLimitAuto() {
 			scrollLimit = sf::FloatRect(sf::Vector2f(), posRect.size);
 			for (auto& elem : sub) {
@@ -479,6 +471,7 @@ namespace gui {
 			scrollLimit.size -= posRect.size;
 			return *this;
 		}
+	public:
 		friend inline BinaryFStream& operator>>(BinaryFStream& bf, AreaObject& x) {
 			bf >> static_cast<UIBase&>(x);
 			x.sub.read<AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>(bf);
@@ -503,7 +496,7 @@ namespace gui {
 			}
 			return *this;
 		}
-		AreaObject& setOptionNull() {
+		AreaObject& setOption() {
 			if (option != "") {
 				if (auto ptr = sub.find_named<OptionObject>(option))
 					ptr->setStatu(gui::UIBase::Normal, true);
@@ -527,6 +520,7 @@ namespace gui {
 			}
 		}
 		void ensureScrollLimit() {
+			setScrollLimitAuto();
 			if (-scroll.x < scrollLimit.position.x) {
 				scroll.x = -(scrollLimit.position.x);
 			}
@@ -880,7 +874,7 @@ namespace gui {
 				if (focus.is<InputObject>() && over != focus)
 					event.push(gui::Events::InputDeselected{ {.path = focus.path,.name = focus.name} });
 				if (over.is<InputObject>() && over != focus)
-					event.push(gui::Events::InputSelected{ {.path = focus.path,.name = focus.name} });
+					event.push(gui::Events::InputSelected{ {.path = over.path,.name = over.name} });
 
 				if (auto ptr = objectPathVisit(focus, areaFocusPtr))
 					ptr->setStatu(gui::UIBase::Normal, true);
