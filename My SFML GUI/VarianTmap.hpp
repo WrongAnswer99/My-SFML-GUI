@@ -697,7 +697,7 @@ public:
 	//访问数据只能从键访问对应的值
 
 	template<typename T>
-	T& at(const std::string& key) const {
+	const T& at(const std::string& key) const {
 		T* pointer = find_named<T>(key);
 		if (pointer == nullptr) {
 			std::cerr
@@ -707,6 +707,10 @@ public:
 			throw std::runtime_error("[VarianTmap::at] Data not found.\n  Type: "s + typeid(T).name() + "\n  Key: " + key + "\n");
 		}
 		else return *pointer;
+	}
+	template<typename T>
+	T& at(const std::string& key) {
+		return const_cast<T&>(std::as_const(*this).at<T>(key));
 	}
 	template<typename T>
 	T& get(const std::string& key) {

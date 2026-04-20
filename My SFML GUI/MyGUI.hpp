@@ -551,8 +551,8 @@ namespace gui {
 			return areaPtr->sub.get<T>(temp);
 		}
 		template<typename T>
-		T& path_at(const std::string& path) const {
-			AreaObject* areaPtr = this;
+		const T& path_at(const std::string& path) const {
+			const AreaObject* areaPtr = this;
 			std::string temp = "";
 			for (int i = 0; i < path.size(); i++) {
 				if (path[i] == '_' || path[i] == '.') {
@@ -562,6 +562,10 @@ namespace gui {
 				else temp.push_back(path[i]);
 			}
 			return areaPtr->sub.at<T>(temp);
+		}
+		template<typename T>
+		T& path_at(const std::string& path) {
+			return const_cast<T&>(std::as_const(*this).path_at<T>(path));
 		}
 		template<typename T>
 		T* path_find(const std::string& path) const {
