@@ -227,7 +227,7 @@ namespace gui {
 			characterSize = _characterSize;
 			return *this;
 		}
-		TextObject& setSpacing(Skippable<int> _letterSpacing, Skippable<int> _lineSpacing) {
+		TextObject& setSpacing(Skippable<float> _letterSpacing, Skippable<float> _lineSpacing) {
 			_letterSpacing.assignTo(letterSpacing);
 			_lineSpacing.assignTo(lineSpacing);
 			return *this;
