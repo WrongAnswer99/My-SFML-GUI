@@ -1,12 +1,12 @@
 #pragma once
 #include <set>
-#include "Event.hpp"
-#include "Tag.hpp"
-#include "Skippable.hpp"
-#include "BinaryFileStreamSFML.hpp"
-#include "SFMLBase.hpp"
-#include "VarianTmap.hpp"
-#include "RollArray.hpp"
+#include "engine/event/Event.hpp"
+#include "engine/data/Tag.hpp"
+#include "engine/data/Skippable.hpp"
+#include "engine/serialization/BinaryFileStream.hpp"
+#include "engine/core/SFMLBase.hpp"
+#include "engine/data/VarianTmap.hpp"
+#include "engine/data/RollArray.hpp"
 //if exist then check condition
 #define ensure(existCondition,condition) (!(existCondition)||((existCondition)&&(condition)))
 namespace gui {
@@ -591,7 +591,7 @@ namespace gui {
 		WindowManager(const WindowManager&) = delete;
 		WindowManager& operator=(const WindowManager&) = delete;
 	private:
-		//…Ë÷√
+		//Á™óÂè£ÁÆ°ÁêÜ
 
 		//cursorBlinkRate : how many ticks the cursor blinks
 		unsigned int cursorBlinkRate = 30;
@@ -638,23 +638,23 @@ namespace gui {
 		}
 		void open(const std::string& id) {
 			if (layer.find_named<AreaObject>(id)) {
-				std::cerr << "[WindowManager::open] Window ID already exists ¥∞ø⁄ID÷ÿ∏¥\n  id: " << id << "\n";
-				throw std::runtime_error("[WindowManager::open] Window ID already exists ¥∞ø⁄ID÷ÿ∏¥\n  id: " + id + "\n");
+				std::cerr << "[WindowManager::open] Window ID already exists Á™óÂè£IDÈáçÂ§ç\n  id: " << id << "\n";
+				throw std::runtime_error("[WindowManager::open] Window ID already exists Á™óÂè£IDÈáçÂ§ç\n  id: " + id + "\n");
 			}
 			layer.emplace_named<AreaObject>(layer.end(),id);
 		}
 		void open(const std::string& id,const AreaObject& Window) {
 			if (layer.find_named<AreaObject>(id)) {
-				std::cerr << "[WindowManager::open] Window ID already exists ¥∞ø⁄ID÷ÿ∏¥\n  id: " << id << "\n";
-				throw std::runtime_error("[WindowManager::open] Window ID already exists ¥∞ø⁄ID÷ÿ∏¥\n  id: " + id + "\n");
+				std::cerr << "[WindowManager::open] Window ID already exists Á™óÂè£IDÈáçÂ§ç\n  id: " << id << "\n";
+				throw std::runtime_error("[WindowManager::open] Window ID already exists Á™óÂè£IDÈáçÂ§ç\n  id: " + id + "\n");
 			}
 			auto ptr=layer.push_back_named(id, Window);
 			ptr->updateOption();
 		}
 		void open(const std::string& id, AreaObject&& Window) {
 			if (layer.find_named<AreaObject>(id)) {
-				std::cerr << "[WindowManager::open] Window ID already exists ¥∞ø⁄ID÷ÿ∏¥\n  id: " << id << "\n";
-				throw std::runtime_error("[WindowManager::open] Window ID already exists ¥∞ø⁄ID÷ÿ∏¥\n  id: " + id + "\n");
+				std::cerr << "[WindowManager::open] Window ID already exists Á™óÂè£IDÈáçÂ§ç\n  id: " << id << "\n";
+				throw std::runtime_error("[WindowManager::open] Window ID already exists Á™óÂè£IDÈáçÂ§ç\n  id: " + id + "\n");
 			}
 			auto ptr = layer.push_back_named(id, Window);
 			ptr->updateOption();
@@ -671,8 +671,8 @@ namespace gui {
 			if (auto ptr = layer.find_named<AreaObject>(id))
 				return *ptr;
 			else {
-				std::cerr << "[WindowManager::window] Window ID not found Œ¥’“µΩ÷∏∂®¥∞ø⁄ID\n  id: " << id << "\n";
-				throw std::runtime_error("[WindowManager::window] Window ID not found Œ¥’“µΩ÷∏∂®¥∞ø⁄ID\n  id: " + id + "\n");
+				std::cerr << "[WindowManager::window] Window ID not found Êú™ÊâæÂà∞ÊåáÂÆöÁöÑÁ™óÂè£ID\n  id: " << id << "\n";
+				throw std::runtime_error("[WindowManager::window] Window ID not found Êú™ÊâæÂà∞ÊåáÂÆöÁöÑÁ™óÂè£ID\n  id: " + id + "\n");
 			}
 		}
 		template<typename T>
@@ -697,8 +697,8 @@ namespace gui {
 				if (areaPtr != nullptr)
 					return areaPtr->sub.get<T>(temp);
 				else {
-					std::cerr << "[WindowManager::path_get] Path error. ¬∑æ∂¥ÌŒÛ\n  path: " << path << "\n";
-					throw std::runtime_error("[WindowManager::path_get] Path error. ¬∑æ∂¥ÌŒÛ\n  path: " + path + "\n");
+					std::cerr << "[WindowManager::path_get] Path error. Ë∑ØÂæÑÈîôËØØ\n  path: " << path << "\n";
+					throw std::runtime_error("[WindowManager::path_get] Path error. Ë∑ØÂæÑÈîôËØØ\n  path: " + path + "\n");
 				}
 			}
 		}
@@ -724,8 +724,8 @@ namespace gui {
 				if (areaPtr != nullptr)
 					return areaPtr->sub.at<T>(temp);
 				else {
-					std::cerr << "[WindowManager::path_at] Path error. ¬∑æ∂¥ÌŒÛ\n  path: " << path << "\n";
-					throw std::runtime_error("[WindowManager::path_at] Path error. ¬∑æ∂¥ÌŒÛ\n  path: " + path + "\n");
+					std::cerr << "[WindowManager::path_at] Path error. Ë∑ØÂæÑÈîôËØØ\n  path: " << path << "\n";
+					throw std::runtime_error("[WindowManager::path_at] Path error. Ë∑ØÂæÑÈîôËØØ\n  path: " + path + "\n");
 				}
 			}
 		}

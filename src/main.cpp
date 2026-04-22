@@ -1,6 +1,6 @@
 //Author : WrongAnswer99
 
-#include "MyGUI.hpp"
+#include "engine/gui/MyGUI.hpp"
 std::unordered_map<std::string, gui::Style>style;
 int windowWidth = 800, windowHeight = 600;
 gui::WindowManager windowManager;
@@ -18,14 +18,14 @@ static void init() {
 		.setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
 
 	Main.path_get<gui::ButtonObject>("button")
-		.setText(L"°´Å¥")
+		.setText(L"æŒ‰é’®")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(650, 500))
 		.setSize(sf::Vector2f(100, 50));
 
 	Main.path_get<gui::TextObject>("text")
-		.setText(L"ÕâÊÇÍâ²ã´°¿Ú£¬±»ÉèÖÃÎª²»¿ÉÍÏ¶¯")
+		.setText(L"è¿™æ˜¯å¤–å±‚çª—å£ï¼Œè¢«è®¾ç½®ä¸ºä¸å¯æ‹–åŠ¨")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(400, 25))
@@ -38,7 +38,7 @@ static void init() {
 		.setSize(sf::Vector2f(700, 450));
 
 	Main.path_get<gui::TextObject>("area.text2")
-		.setText(L"¡ı¡ı¡ıÏòÏÂ»¬¡ı¡ı¡ı\nµ±°´ÏÂ°´Å¥Ê±ÍÏ¶¯£¬\n²Ù×÷½«×ª»¯ÎªÍÏ¶¯£¬\nÇÒ²»»á´¥·¢°´Å¥")
+		.setText(L"â†“â†“â†“å‘ä¸‹æ»‘â†“â†“â†“\nå½“æŒ‰ä¸‹æŒ‰é’®æ—¶æ‹–åŠ¨ï¼Œ\næ“ä½œå°†è½¬åŒ–ä¸ºæ‹–åŠ¨ï¼Œ\nä¸”ä¸ä¼šè§¦å‘æŒ‰é’®")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 500));
@@ -49,14 +49,14 @@ static void init() {
 
 	
 	Main.path_get<gui::TextObject>("area.top")
-		.setText(L"¡ü¶¥²¿£¬ÎŞ·¨¼ÌĞøÉÏÀ­")
+		.setText(L"â†‘é¡¶éƒ¨ï¼Œæ— æ³•ç»§ç»­ä¸Šæ‹‰")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 25))
 		.setCenter();
 
 	Main.path_get<gui::TextObject>("area.text")
-		.setText(L"ÕâÊÇÄÚ²ã´°¿Ú£¬±»ÉèÖÃÎª¿ÉÍÏ¶¯\nÏÖÒÑÖ§³Ö¹ßĞÔ»¬¶¯")
+		.setText(L"è¿™æ˜¯å†…å±‚çª—å£ï¼Œè¢«è®¾ç½®ä¸ºå¯æ‹–åŠ¨\nç°å·²æ”¯æŒæƒ¯æ€§æ»‘åŠ¨")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 100))
@@ -67,7 +67,7 @@ static void init() {
 		//.setTypeLimit(attr::gui::Float)
 		//.setTypeLimit(attr::gui::Int)
 		//.setStringTypeLimit(true, { L'_' }, { {L'A',L'Z'},{L'a',L'z'}})
-		.setText(L"ÕâÊÇÒ»¸öÎÄ±¾¿ò")
+		.setText(L"è¿™æ˜¯ä¸€ä¸ªæ–‡æœ¬æ¡†")
 		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		.setFont("ht")
 		.setCharacterSize(50)
@@ -78,7 +78,7 @@ static void init() {
 		.setCenter();
 
 	Main.path_get<gui::ButtonObject>("area.button")
-		.setText(L"°´Å¥").setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setText(L"æŒ‰é’®").setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 275))
@@ -86,35 +86,35 @@ static void init() {
 		.setCenter();
 
 	Main.path_get<gui::OptionObject>("area.option1")
-		.setText(L"Ñ¡Ïî1")
+		.setText(L"é€‰é¡¹1")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 750))
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
 	Main.path_get<gui::OptionObject>("area.option2")
-		.setText(L"Ñ¡Ïî2")
+		.setText(L"é€‰é¡¹2")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 800))
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
 	Main.path_get<gui::OptionObject>("area.option3")
-		.setText(L"Ñ¡Ïî3")
+		.setText(L"é€‰é¡¹3")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 850))
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
 	Main.path_get<gui::OptionObject>("area.option4")
-		.setText(L"Ñ¡Ïî4")
+		.setText(L"é€‰é¡¹4")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 900))
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
 	Main.path_get<gui::OptionObject>("area.option5")
-		.setText(L"Ñ¡Ïî5")
+		.setText(L"é€‰é¡¹5")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 950))
@@ -193,7 +193,7 @@ static void init() {
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
 	Main.path_get<gui::TextObject>("area.bottom")
-		.setText(L"¡ıµ×²¿")
+		.setText(L"â†“åº•éƒ¨")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 2200))
@@ -221,7 +221,7 @@ static void init() {
 		.setPosition(sf::Vector2f(600, 450));
 }
 int main() {
-	fontManager.loadFont("ht", "FZHTJW.TTF");
+	fontManager.loadFont("ht", "resources/FZHTJW.TTF");
 	init();
 	/*
 	BinaryFStream fs("D:\\1.bin");
@@ -231,7 +231,7 @@ int main() {
 	*/
 
 	windowManager.open("main",Main);
-	window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"²âÊÔ", sf::Style::Close, sf::State::Windowed);
+	window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"æµ‹è¯•", sf::Style::Close, sf::State::Windowed);
 	window.setFramerateLimit(60);
 	while (true) {
 		while (const std::optional sfEvt=window.pollEvent()) {

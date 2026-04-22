@@ -1,7 +1,10 @@
 #pragma once
 #include <unordered_map>
+#include <map>
+#include <filesystem>
+#include <iostream>
 #include "SFML/Graphics.hpp"
-#include "BinaryFileStreamSFML.hpp"
+#include "engine/serialization/BinaryFileStream.hpp"
 
 extern sf::Texture nullTexture;
 
@@ -34,7 +37,7 @@ public:
 };
 inline FontManager fontManager;
 
-//´æ´¢Í¼Æ¬Texture
+//å­˜å‚¨å›¾ç‰‡Texture
 class ImageManager {
 private:
 	std::map<std::string, sf::Texture>image;
@@ -87,7 +90,7 @@ public:
 	}
 };
 
-//¿ìËÙ»æÖÆ¼òµ¥Í¼ÐÎ
+//å¿«é€Ÿç»˜åˆ¶ç®€å›¾
 namespace Draw {
 	inline void Rect(sf::RenderTarget& r, const sf::Vector2f& point1, const sf::Vector2f& point2, sf::Color fillcolor, sf::Color linecolor = sf::Color::Transparent, float thickness = 0) {
 		sf::RectangleShape rect;

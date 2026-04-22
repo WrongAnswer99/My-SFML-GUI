@@ -9,7 +9,12 @@
 #include <optional>
 #include <functional>
 #include <array>
+#include <type_traits>
 struct EventBase {};
+
+template<typename T>
+inline constexpr bool isEventType = std::is_base_of_v<EventBase, T>;
+
 class Event {
 	friend class EventQueue;
 private:
@@ -17,7 +22,7 @@ private:
 	std::any Data;
 	Event(std::type_index Type, std::any Data) :Type(std::move(Type)), Data(std::move(Data)) {}
 public:
-	template<typename T, typename = std::enable_if_t<EventQueue::isDerivedType<T>>>
+	template<typename T, typename = std::enable_if_t<isEventType<T>>>
 	const T* getIf() const {
 		if (std::type_index(typeid(T)) == Type)
 			return std::any_cast<T>(&Data);
@@ -46,7 +51,7 @@ private:
 
 
 
-	//类型管理
+	//绫诲瀷绠＄悊
 
 	class TypeOperationStruct {
 		friend class EventQueue;
@@ -105,7 +110,7 @@ private:
 
 
 
-	//添加数据
+	//娣诲姞鏁版嵁
 
 	template<typename T, typename InsertDataFunc, typename = std::enable_if_t<isDerivedType<T>>>
 	inline void insertHelper(InsertDataFunc&& insertDataFunc) {
@@ -135,7 +140,7 @@ public:
 
 
 
-	//访问数据
+	//璁块棶鏁版嵁
 
 	const std::optional<Event> pollEvent() {
 		if (Order.empty())return std::nullopt;
@@ -146,7 +151,7 @@ public:
 
 
 
-	//其他函数
+	//鍏朵粬鍑芥暟
 
 	size_t size() const {
 		return Order.size();
