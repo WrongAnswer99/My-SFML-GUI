@@ -3,40 +3,43 @@ project(My_SFML_GUI LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
-# Include FetchContent module for automatic dependency download
-include(FetchContent)
+# Check for SFML
+set(SFML_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/SFML")
+if(NOT EXISTS "${SFML_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR 
+        "SFML not found in thirdparty/SFML directory.\n"
+        "Please manually download SFML 3.0.0 from:\n"
+        "  https://github.com/SFML/SFML/releases/tag/3.0.0\n"
+        "And extract it to: ${SFML_DIR}\n"
+        "\n"
+        "Or clone it with:\n"
+        "  git clone --depth 1 --branch 3.0.0 https://github.com/SFML/SFML.git ${SFML_DIR}"
+    )
+endif()
+message(STATUS "Found SFML in ${SFML_DIR}")
 
-# Disable SFML components we don't need
-set(SFML_BUILD_AUDIO FALSE CACHE BOOL "" FORCE)
-set(SFML_BUILD_NETWORK FALSE CACHE BOOL "" FORCE)
-set(SFML_BUILD_DOCS FALSE CACHE BOOL "" FORCE)
-set(SFML_BUILD_EXAMPLES FALSE CACHE BOOL "" FORCE)
-set(SFML_INSTALL_PKGCONFIG_FILES FALSE CACHE BOOL "" FORCE)
-set(SFML_INSTALL_CMAKEDIR FALSE CACHE BOOL "" FORCE)
+# Disable SFML modules we don't need (avoid FetchContent for audio deps)
+set(SFML_BUILD_AUDIO OFF CACHE BOOL "Disable SFML Audio module" FORCE)
+set(SFML_BUILD_NETWORK OFF CACHE BOOL "Disable SFML Network module" FORCE)
 
-# Fetch SFML (will automatically download freetype as a dependency)
-FetchContent_Declare(
-    sfml
-    GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.0
-    GIT_SHALLOW TRUE
-    GIT_PROGRESS TRUE
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/SFML
-)
-FetchContent_MakeAvailable(sfml)
+add_subdirectory(${SFML_DIR} ${CMAKE_CURRENT_BINARY_DIR}/sfml-build)
 
-# Fetch nlohmann/json (single-include header-only library)
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.3
-    GIT_SHALLOW TRUE
-    GIT_PROGRESS TRUE
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/json
-)
-FetchContent_MakeAvailable(nlohmann_json)
+# Check for nlohmann/json
+set(NLOHMANN_JSON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/json")
+if(NOT EXISTS "${NLOHMANN_JSON_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR 
+        "nlohmann/json not found in thirdparty/json directory.\n"
+        "Please manually download nlohmann/json v3.11.3 from:\n"
+        "  https://github.com/nlohmann/json/releases/tag/v3.11.3\n"
+        "And extract it to: ${NLOHMANN_JSON_DIR}\n"
+        "\n"
+        "Or clone it with:\n"
+        "  git clone --depth 1 --branch v3.11.3 https://github.com/nlohmann/json.git ${NLOHMANN_JSON_DIR}"
+    )
+endif()
+message(STATUS "Found nlohmann/json in ${NLOHMANN_JSON_DIR}")
+add_subdirectory(${NLOHMANN_JSON_DIR} ${CMAKE_CURRENT_BINARY_DIR}/json-build)
 
 set(SOURCES
     src/main.cpp
