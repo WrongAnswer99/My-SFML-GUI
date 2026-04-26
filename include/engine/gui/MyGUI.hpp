@@ -34,11 +34,11 @@ namespace gui {
 			_outlineColor.assignTo(outlineColor);
 			_outlineThickness.assignTo(outlineThickness);
 		}
-		friend inline BinaryFStream& operator>>(BinaryFStream& bf, Style& x) {
-			return bf.structIn(x.backgroundColor, x.outlineColor, x.outlineThickness);
+		friend inline BinaryFileStream& read(BinaryFileStream& bf, Style& x) {
+			return bf.readStruct(x.backgroundColor, x.outlineColor, x.outlineThickness);
 		}
-		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const Style& x) {
-			return bf.structOut(x.backgroundColor, x.outlineColor, x.outlineThickness);
+		friend inline BinaryFileStream& write(BinaryFileStream& bf, const Style& x) {
+			return bf.writeStruct(x.backgroundColor, x.outlineColor, x.outlineThickness);
 		}
 	};
 	class UIBase {
@@ -109,11 +109,11 @@ namespace gui {
 			}
 		}
 	public:
-		friend inline BinaryFStream& operator>>(BinaryFStream& bf, UIBase& x) {
-			return bf.structIn(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
+		friend inline BinaryFileStream& read(BinaryFileStream& bf, UIBase& x) {
+			return bf.readStruct(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
 		}
-		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const UIBase& x) {
-			return bf.structOut(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
+		friend inline BinaryFileStream& write(BinaryFileStream& bf, const UIBase& x) {
+			return bf.writeStruct(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
 		}
 	};
 	class ImageObject :public UIBase {
@@ -162,14 +162,12 @@ namespace gui {
 			imageId = _imageId;
 			return *this;
 		}
-		friend inline BinaryFStream& operator>>(BinaryFStream& bf, ImageObject& x) {
-			bf >> static_cast<UIBase&>(x);
-			bf.structIn(x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
+		friend inline BinaryFileStream& read(BinaryFileStream& bf, ImageObject& x) {
+			bf.readStruct(static_cast<UIBase&>(x), x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
 			return bf;
 		}
-		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ImageObject& x) {
-			bf << static_cast<const UIBase&>(x);
-			bf.structOut(x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
+		friend inline BinaryFileStream& write(BinaryFileStream& bf, const ImageObject& x) {
+			bf.writeStruct(static_cast<const UIBase&>(x), x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
 			return bf;
 		}
 	};
@@ -247,16 +245,14 @@ namespace gui {
 		const sf::String& getText() const {
 			return text;
 		}
-		friend inline BinaryFStream& operator>>(BinaryFStream& bf, TextObject& x) {
-			bf >> static_cast<UIBase&>(x);
-			bf.structIn(x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
+		friend inline BinaryFileStream& read(BinaryFileStream& bf, TextObject& x) {
+			bf.readStruct(static_cast<UIBase&>(x), x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
 				x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 			x.textRender.setFont(fontManager[x.font]);
 			return bf;
 		}
-		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const TextObject& x) {
-			bf << static_cast<const UIBase&>(x);
-			bf.structOut(x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
+		friend inline BinaryFileStream& write(BinaryFileStream& bf, const TextObject& x) {
+			bf.writeStruct(static_cast<const UIBase&>(x), x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
 				x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 			return bf;
 		}
@@ -315,12 +311,12 @@ namespace gui {
 				}
 				return pos;
 			}
-			friend inline BinaryFStream& operator>>(BinaryFStream& bf, InputLimit& x) {
-				bf.structIn(x.isAllowList, x.single, x.range);
+			friend inline BinaryFileStream& read(BinaryFileStream& bf, InputLimit& x) {
+				bf.readStruct(x.isAllowList, x.single, x.range);
 				return bf;
 			}
-			friend inline BinaryFStream& operator<<(BinaryFStream& bf, const InputLimit& x) {
-				bf.structOut(x.isAllowList, x.single, x.range);
+			friend inline BinaryFileStream& write(BinaryFileStream& bf, const InputLimit& x) {
+				bf.writeStruct(x.isAllowList, x.single, x.range);
 				return bf;
 			}
 		}inputLimit;
@@ -413,15 +409,13 @@ namespace gui {
 			cursor = text.getSize();
 			return *this;
 		}
-		friend inline BinaryFStream& operator>>(BinaryFStream& bf, InputObject& x) {
-			bf >> static_cast<TextObject&>(x);
-			bf.structIn(x.sizeLimit, x.typeLimit, x.inputLimit);
+		friend inline BinaryFileStream& read(BinaryFileStream& bf, InputObject& x) {
+			bf.readStruct(static_cast<TextObject&>(x), x.sizeLimit, x.typeLimit, x.inputLimit);
 			x.cursor = x.text.getSize();
 			return bf;
 		}
-		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const InputObject& x) {
-			bf << static_cast<const TextObject&>(x);
-			bf.structOut(x.sizeLimit, x.typeLimit, x.inputLimit);
+		friend inline BinaryFileStream& write(BinaryFileStream& bf, const InputObject& x) {
+			bf.writeStruct(static_cast<const TextObject&>(x), x.sizeLimit, x.typeLimit, x.inputLimit);
 			return bf;
 		}
 	};
@@ -472,16 +466,12 @@ namespace gui {
 			return *this;
 		}
 	public:
-		friend inline BinaryFStream& operator>>(BinaryFStream& bf, AreaObject& x) {
-			bf >> static_cast<UIBase&>(x);
-			x.sub.read<AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>(bf);
-			bf.structIn(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
+		friend inline BinaryFileStream& read(BinaryFileStream& bf, AreaObject& x) {
+			bf.readStruct(static_cast<UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
 			return bf;
 		}
-		friend inline BinaryFStream& operator<<(BinaryFStream& bf, const AreaObject& x) {
-			bf << static_cast<const UIBase&>(x);
-			x.sub.write<AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>(bf);
-			bf.structOut(x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
+		friend inline BinaryFileStream& write(BinaryFileStream& bf, const AreaObject& x) {
+			bf.writeStruct(static_cast<const UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
 			return bf;
 		}
 		AreaObject& setOption(const std::string& key) {

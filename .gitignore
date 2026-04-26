@@ -19,6 +19,8 @@ Makefile
 *.swo
 *~
 
+.trae/
+
 # Compiled files
 *.o
 *.obj

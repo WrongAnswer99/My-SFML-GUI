@@ -223,12 +223,25 @@ static void init() {
 int main() {
 	fontManager.loadFont("ht", "resources/FZHTJW.TTF");
 	init();
-	/*
-	BinaryFStream fs("D:\\1.bin");
-	fs.clear();
-	fs << imageManager;
-	fs << Main;
-	*/
+
+	// 序列化测试：先保存到文件
+	{
+		BinaryFileStream fs("D:\\1.bin");
+		fs.clear();
+		fs.write(VarianTmapSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub});
+		std::cout << "Saved to D:\\1.bin" << std::endl;
+	}
+
+	// 清空 Main
+	Main.sub.clear();
+	std::cout << "Main cleared, size: " << Main.sub.size() << std::endl;
+
+	// 从文件读取
+	{
+		BinaryFileStream fs("D:\\1.bin");
+		fs.read(VarianTmapSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub});
+		std::cout << "Loaded from D:\\1.bin, size: " << Main.sub.size() << std::endl;
+	}
 
 	windowManager.open("main",Main);
 	window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"测试", sf::Style::Close, sf::State::Windowed);

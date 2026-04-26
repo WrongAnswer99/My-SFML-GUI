@@ -52,12 +52,12 @@ public:
 	sf::Texture& operator[](const std::string& name) {
 		return image[name];
 	}
-	friend inline BinaryFStream& operator>>(BinaryFStream& bf, ImageManager& x) {
-		bf >> x.image;
+	friend inline BinaryFileStream& read(BinaryFileStream& bf, ImageManager& x) {
+		bf.read(x.image);
 		return bf;
 	}
-	friend inline BinaryFStream& operator<<(BinaryFStream& bf, const ImageManager& x) {
-		bf << x.image;
+	friend inline BinaryFileStream& write(BinaryFileStream& bf, const ImageManager& x) {
+		bf.write(x.image);
 		return bf;
 	}
 };

@@ -29,26 +29,27 @@ template<typename Base = void>
 class VarianTmap {
 public:
 	VarianTmap() {}
+
 	void copyHelper(const VarianTmap<Base>& other) {
-		this->TypeIndexMap = other.TypeIndexMap;
-		this->Type.resize(other.Type.size());
+		this->Type.reserve(other.Type.size());
 		std::unordered_map<Base*, Base*> PointerMap{};
-		for (size_t TypeIndex = 0; TypeIndex < this->Type.size(); TypeIndex++) {
-			this->Type[TypeIndex].TypeOperationIndex = other.Type[TypeIndex].TypeOperationIndex;
-			TypeOperation.Operation[this->Type[TypeIndex].TypeOperationIndex].CopyHelper(this->pool, this->Type[TypeIndex].Data, other.Type[TypeIndex].Data, this->DataFinder, other.DataFinder, PointerMap);
-			for (auto& elem : other.Type[TypeIndex].Key) {
-				this->Type[TypeIndex].Key.emplace(elem.first, PointerMap.at(elem.second));
+		for (const auto& TypeElem : other.Type) {
+			publicTypeOperation.Operation[TypeElem.first].CopyMergeHelper(this->pool, this->Type[TypeElem.first].Data, TypeElem.second.Data, this->DataFinder, other.DataFinder, PointerMap, true);
+			for (const auto& KeyElem : TypeElem.second.Key) {
+				this->Type[TypeElem.first].Key.emplace(KeyElem.first, PointerMap.at(KeyElem.second));
 			}
 		}
-		for (auto& elem : other.Order) {
+		for (const auto& elem : other.Order) {
 			Base* NewBasePointer = PointerMap.at(elem);
 			this->Order.push_back(NewBasePointer);
 			this->DataFinder.at(NewBasePointer).Order = std::prev(Order.end());
 		}
 	}
+
 	VarianTmap(const VarianTmap<Base>& other) {
 		copyHelper(other);
 	}
+
 	VarianTmap<Base>& operator=(const VarianTmap<Base>& other) {
 		if (this != &other) {
 			this->clear();
@@ -56,15 +57,17 @@ public:
 		}
 		return *this;
 	}
+
 	void moveHelper(VarianTmap<Base>&& other) {
-		this->TypeIndexMap = std::move(other.TypeIndexMap);
 		this->Order = std::move(other.Order);
 		this->DataFinder = std::move(other.DataFinder);
 		this->Type = std::move(other.Type);
 	}
+
 	VarianTmap(VarianTmap<Base>&& other) noexcept {
 		moveHelper(std::move(other));
 	}
+
 	VarianTmap<Base>& operator=(VarianTmap<Base>&& other) noexcept {
 		if (this != &other) {
 			this->clear();
@@ -88,12 +91,13 @@ private:
 	static constexpr bool isDerivedType = std::is_base_of_v<Base, T> || std::is_same_v<Base, void>;
 
 	std::pmr::unsynchronized_pool_resource pool;
+
 	class auto_cast_pointer {
 		friend class VarianTmap;
 	private:
-		Base* pointer = nullptr;//基础指针，存储数据池中的地址
+		Base* pointer = nullptr;//数据指针，即数据池中的地址
 		std::pmr::list<Base*>::const_iterator orderIter;
-		//备份，std::pmr::list<Base*>::const_iterator在遍历中容易失效，因为insert时可能触发扩容，x.order().end()无法直接进行比较，需要在循环中使用或者重新获取
+		//特别地，把std::pmr::list<Base*>::const_iterator单独列出来，是因为insert时可能传入合法的x.order().end()，而x.order().end()无法直接解引用，需要后续判断使用场景后再决定
 	public:
 		auto_cast_pointer(Base* pointer) :pointer(pointer) {}
 
@@ -106,6 +110,7 @@ private:
 		auto_cast_pointer(T* pointer) :pointer(static_cast<Base*>(const_cast<std::remove_const_t<T>*>(pointer))) {}
 
 		auto_cast_pointer(std::pmr::list<Base*>::const_iterator pointer) :orderIter(pointer) {}
+
 		template<
 			typename U,
 			typename = std::void_t<typename std::iterator_traits<U>::value_type>,
@@ -121,83 +126,66 @@ private:
 
 
 
-	std::unordered_map<std::type_index, size_t>TypeIndexMap;
 	std::pmr::list<Base*> Order;
 
 	class DataPointerStruct {
 		friend class VarianTmap;
 	private:
-		size_t TypeIndex;
+		std::type_index TypeIndex=std::type_index(typeid(void));
 		std::string Key;
 		std::any/*store std::pmr::list<T>::iterator in std::any*/ Data;
 		std::pmr::list<Base*>::iterator Order;
-		DataPointerStruct(size_t TypeIndex, std::string Key, std::any Data, std::pmr::list<Base*>::iterator Order) :
+	public:
+		DataPointerStruct(std::type_index TypeIndex, std::string Key, std::any Data, std::pmr::list<Base*>::iterator Order) :
 			TypeIndex(TypeIndex), Key(std::move(Key)), Data(std::move(Data)), Order(std::move(Order)) {
 		};
-		DataPointerStruct(size_t TypeIndex, std::string Key, std::any Data) :
+
+		DataPointerStruct(std::type_index TypeIndex, std::string Key, std::any Data) :
 			TypeIndex(TypeIndex), Key(std::move(Key)), Data(std::move(Data)) {
 		};
-	public:
 	};
+
 	std::unordered_map<Base*, DataPointerStruct>DataFinder;
+
 	class TypeStruct {
 		friend class VarianTmap;
 	private:
 		std::map<std::string, Base*> Key;
 		std::any/*store std::shared_ptr<std::pmr::list<T>> in std::any*/ Data;
-		size_t TypeOperationIndex{};
 	public:
 		TypeStruct() = default;
 	};
-	std::vector<TypeStruct>Type;
+
+	std::unordered_map<std::type_index,TypeStruct>Type;
 
 
 
 	//类型管理
 
-	class TypeOperationStruct {
+	class PublicTypeOperationStruct {
 		friend class VarianTmap;
-		std::unordered_map<std::type_index, size_t>TypeIndexMap;
 		
 		class OperationStruct {
 			friend class VarianTmap;
 			std::function<void(std::any&, std::any&)>Destructor;
-			std::function<void(std::pmr::unsynchronized_pool_resource&, std::any&, const std::any&, std::unordered_map<Base*, DataPointerStruct>&, const std::unordered_map<Base*, DataPointerStruct>&, std::unordered_map<Base*, Base*>&)>CopyHelper;
-			std::function<void(std::pmr::unsynchronized_pool_resource&, std::any&, const std::any&, std::unordered_map<Base*, DataPointerStruct>&, const std::unordered_map<Base*, DataPointerStruct>&, std::unordered_map<Base*, Base*>&, size_t, bool)>MergeHelper;
+			std::function<void(std::pmr::unsynchronized_pool_resource&, std::any&, const std::any&, std::unordered_map<Base*, DataPointerStruct>&, const std::unordered_map<Base*, DataPointerStruct>&, std::unordered_map<Base*, Base*>&, bool)>CopyMergeHelper;
 		public:
 			OperationStruct() = default;
 		};
 	public:
-		std::vector<OperationStruct>Operation;
+		std::unordered_map<std::type_index,OperationStruct>Operation;
+
 		template<typename T>
-		size_t registerType() {
-			auto iter = TypeIndexMap.find(std::type_index(typeid(T)));
-			if (iter == TypeIndexMap.end()) {
-				const size_t TypeIndex = TypeIndexMap.size();
-				TypeIndexMap[std::type_index(typeid(T))] = TypeIndex;
-				Operation.emplace_back();
-				Operation.back().Destructor = [](std::any& Data, std::any& Iter) {
+		void registerType() {
+			std::type_index TypeIndex = std::type_index(typeid(T));
+			auto iter = Operation.find(TypeIndex);
+			if (iter == Operation.end()) {
+				Operation[TypeIndex].Destructor = [](std::any& Data, std::any& Iter) {
 					auto& DataList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(Data);
 					DataList.erase(std::any_cast<typename std::pmr::list<T>::iterator&>(Iter));
 					return;
 					};
-				Operation.back().CopyHelper = [](std::pmr::unsynchronized_pool_resource& pool, std::any& Data, const std::any& OtherData, std::unordered_map<Base*, DataPointerStruct>& Finder, const std::unordered_map<Base*, DataPointerStruct>& OtherFinder, std::unordered_map<Base*, Base*>& PointerMap) {
-					const auto& OtherDataList = *std::any_cast<const std::shared_ptr<std::pmr::list<T>>&>(OtherData);
-					Data = std::make_shared<std::pmr::list<T>>(
-						std::pmr::polymorphic_allocator<T>(static_cast<std::pmr::memory_resource*>(&pool))
-					);
-					auto& DataList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(Data);
-					for (auto& elem : OtherDataList) {
-						DataList.push_back(elem);
-						typename std::pmr::list<T>::iterator DataIter = std::prev(DataList.end());
-						Base* BasePointer = const_cast<T*>(std::addressof(elem));
-						Base* NewBasePointer = static_cast<Base*>(std::addressof(*DataIter));
-						const DataPointerStruct& DataPointer = OtherFinder.at(BasePointer);
-						Finder.emplace(NewBasePointer, DataPointerStruct(DataPointer.TypeIndex, DataPointer.Key, DataIter));
-						PointerMap.emplace(BasePointer, NewBasePointer);
-					}
-					};
-				Operation.back().MergeHelper = [](std::pmr::unsynchronized_pool_resource& pool, std::any& Data, const std::any& OtherData, std::unordered_map<Base*, DataPointerStruct>& Finder, const std::unordered_map<Base*, DataPointerStruct>& OtherFinder, std::unordered_map<Base*, Base*>& PointerMap, size_t NewTypeIndex, bool CreateNew) {
+				Operation[TypeIndex].CopyMergeHelper = [](std::pmr::unsynchronized_pool_resource& pool, std::any& Data, const std::any& OtherData, std::unordered_map<Base*, DataPointerStruct>& Finder, const std::unordered_map<Base*, DataPointerStruct>& OtherFinder, std::unordered_map<Base*, Base*>& PointerMap, bool CreateNew) {
 					const auto& OtherDataList = *std::any_cast<const std::shared_ptr<std::pmr::list<T>>&>(OtherData);
 					if (CreateNew)
 						Data = std::make_shared<std::pmr::list<T>>(
@@ -210,46 +198,44 @@ private:
 						Base* BasePointer = const_cast<T*>(std::addressof(elem));
 						Base* NewBasePointer = static_cast<Base*>(std::addressof(*DataIter));
 						const DataPointerStruct& DataPointer = OtherFinder.at(BasePointer);
-						Finder.emplace(NewBasePointer, DataPointerStruct(NewTypeIndex, DataPointer.Key, DataIter));
+						Finder.emplace(NewBasePointer, DataPointerStruct(std::type_index(typeid(T)), DataPointer.Key, DataIter));
 						PointerMap.emplace(BasePointer, NewBasePointer);
 					}
 					};
-				return TypeIndex;
 			}
-			else return iter->second;
 		}
 	};
-	inline static TypeOperationStruct TypeOperation;
+
+	inline static PublicTypeOperationStruct publicTypeOperation;
+
 	template<typename T>
-	size_t getTypeIndexAutoCreate() {
+	void ensureTypeRegistered() {
 		static_assert(VarianTmap<Base>::template isDerivedType<T>);
-		auto iter = TypeIndexMap.find(std::type_index(typeid(T)));
-		if (iter == TypeIndexMap.end()) {
-			const size_t TypeIndex = TypeIndexMap.size();
-			TypeIndexMap.emplace(std::type_index(typeid(T)), TypeIndex);
-			Type.emplace_back();
-			Type.back().Data = std::make_shared<std::pmr::list<T>>(
+		std::type_index TypeIndex = std::type_index(typeid(T));
+		auto iter = Type.find(TypeIndex);
+		if (iter == Type.end()) {
+			publicTypeOperation.template registerType<T>();
+			Type[TypeIndex].Data = std::make_shared<std::pmr::list<T>>(
 				std::pmr::polymorphic_allocator<T>(static_cast<std::pmr::memory_resource*>(&pool))
 			);
-			Type.back().TypeOperationIndex = TypeOperation.template registerType<T>();
-			return TypeIndex;
 		}
-		else return iter->second;
 	}
+
+public:
+
 	template<typename T>
-	std::optional<size_t> getTypeIndex() const {
-		static_assert(VarianTmap<Base>::template isDerivedType<T>);
-		auto ti = std::type_index(typeid(T));
-		auto iter = TypeIndexMap.find(ti);
-		if (iter == TypeIndexMap.end()) {
-			return std::nullopt;
-		}
-		else return iter->second;
+	bool isTypeRegistered() const {
+		std::type_index TypeIndex = std::type_index(typeid(T));
+		return Type.find(TypeIndex) != Type.end();
 	}
 
-
+	bool isTypeRegistered(const std::type_index& TypeIndex) const {
+		return Type.find(TypeIndex) != Type.end();
+	}
 
 	//插入、添加数据
+
+private:
 
 	void checkInsertable(auto_cast_pointer& Where) {
 		if (Where.pointer != nullptr) {
@@ -269,9 +255,11 @@ private:
 			//else pointer=nullptr; 若为Order.end()，pointer仍保持nullptr
 		}
 	}
+
 	template<typename T, typename InsertDataFunc, typename InsertOrderFunc, typename = std::enable_if_t<isDerivedType<T>>>
 	inline T* insertHelper(const std::string& key, InsertDataFunc&& insertDataFunc, InsertOrderFunc&& insertOrderFunc) {
-		const size_t TypeIndex = getTypeIndexAutoCreate<T>();
+		ensureTypeRegistered<T>();
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		if (Type[TypeIndex].Key.count(key)) {
 			std::cerr << "[VarianTmap::insert] Key already exists." << std::endl << "  Key: " << key << std::endl;
 			throw std::runtime_error("[VarianTmap::insert] Key already exists.\n  Key: "s + key + "\n");
@@ -287,36 +275,23 @@ private:
 			Type[TypeIndex].Key.emplace(key, BasePointer);
 		return TypedPointer;
 	}
-	void mergeHelper(const VarianTmap<Base>& other, std::unordered_map<Base*, Base*>& PointerMap) {
-		for (const auto& elem : other.TypeIndexMap) {
-			const size_t& TypeIndex = elem.second;
-			size_t NewTypeIndex = 0;
-			for (; NewTypeIndex < this->Type.size(); NewTypeIndex++) {
-				if (this->Type[NewTypeIndex].TypeOperationIndex == other.Type[TypeIndex].TypeOperationIndex) {
-					TypeOperation.Operation[other.Type[TypeIndex].TypeOperationIndex].MergeHelper(this->pool, this->Type[NewTypeIndex].Data, other.Type[TypeIndex].Data, this->DataFinder, other.DataFinder, PointerMap, NewTypeIndex, false);
-					for (auto& elem : other.Type[TypeIndex].Key) {
-						if (this->Type[NewTypeIndex].Key.count(elem.first)) {
-							std::cerr << "[VarianTmap::merge] Key already exists." << std::endl << "  Key: " << elem.first << std::endl;
-							throw std::runtime_error("[VarianTmap::merge] Key already exists.\n  Key: "s + elem.first + "\n");
-						}
-						this->Type[NewTypeIndex].Key.emplace(elem.first, PointerMap.at(elem.second));
-					}
-					goto typefound;
-				}
-			}
-			NewTypeIndex = TypeIndexMap.size();
-			this->TypeIndexMap.emplace(elem.first, NewTypeIndex);
-			Type.emplace_back();
-			this->Type[NewTypeIndex].TypeOperationIndex = other.Type[TypeIndex].TypeOperationIndex;
-			TypeOperation.Operation[other.Type[TypeIndex].TypeOperationIndex].MergeHelper(this->pool, this->Type[NewTypeIndex].Data, other.Type[TypeIndex].Data, this->DataFinder, other.DataFinder, PointerMap, NewTypeIndex, true);
-			for (auto& elem : other.Type[TypeIndex].Key) {
-				this->Type[NewTypeIndex].Key.emplace(elem.first, PointerMap.at(elem.second));
-			}
-		typefound:;
-		}
 
+	void mergeHelper(const VarianTmap<Base>& other, std::unordered_map<Base*, Base*>& PointerMap) {
+		for (const auto& TypeElem : other.Type) {
+			const std::type_index& TypeIndex = TypeElem.first;
+			bool NeedCreate = !isTypeRegistered(TypeIndex);
+			publicTypeOperation.Operation[TypeIndex].CopyMergeHelper(this->pool, this->Type[TypeIndex].Data, TypeElem.second.Data, this->DataFinder, other.DataFinder, PointerMap, NeedCreate);
+			for (auto& KeyElem : TypeElem.second.Key) {
+				if (this->Type[TypeIndex].Key.count(KeyElem.first)) {
+					std::cerr << "[VarianTmap::merge] Key already exists." << std::endl << "  Key: " << KeyElem.first << std::endl;
+					throw std::runtime_error("[VarianTmap::merge] Key already exists.\n  Key: "s + KeyElem.first + "\n");
+				}
+				this->Type[TypeIndex].Key.emplace(KeyElem.first, PointerMap.at(KeyElem.second));
+			}
+		}
 	}
 public:
+
 	template<typename U = void, typename V>
 	auto push_back_named(const std::string& key, V&& value) {
 		using T = std::conditional_t<std::is_same_v<U, void>, std::remove_cvref_t<V>, U>;
@@ -332,6 +307,7 @@ public:
 			}
 		);
 	}
+
 	template<typename U = void, typename V>
 	auto push_back(V&& value) {
 		return push_back_named<U>("", std::forward<V>(value));
@@ -367,6 +343,7 @@ public:
 			}
 		);
 	}
+
 	template<typename U = void, typename V>
 	auto insert(auto_cast_pointer Where, V&& value) {
 		return insert_named<U>(Where, "", std::forward<V>(value));
@@ -388,6 +365,7 @@ public:
 			}
 		);
 	}
+
 	template<typename U = void, typename V>
 	auto push_front(V&& value) {
 		return push_front_named<U>("", std::forward<V>(value));
@@ -416,10 +394,12 @@ public:
 			}
 		);
 	}
+
 	template<typename T, typename... Args>
 	auto emplace(auto_cast_pointer Where, Args&&... args) {
 		return emplace_named<T>(Where, "", std::forward<Args>(args)...);
 	}
+
 	void merge(const VarianTmap<Base>& other) {
 		std::unordered_map<Base*, Base*> PointerMap{};
 		mergeHelper(other, PointerMap);
@@ -429,6 +409,7 @@ public:
 			this->DataFinder.at(NewBasePointer).Order = std::prev(Order.end());
 		}
 	}
+
 	void merge(auto_cast_pointer Where, const VarianTmap<Base>& other) {
 		checkInsertable(Where);
 		std::unordered_map<Base*, Base*> PointerMap{};
@@ -455,32 +436,38 @@ public:
 	const std::pmr::list<Base*>& order() const {
 		return Order;
 	}
+
 	const std::pmr::list<Base*>& iterate() const {
 		return Order;
 	}
+
 	const auto riterate() const {
 		return std::views::reverse(Order);
 	}
+
 	template<typename T>
 	std::pmr::list<T>& iterate() {
-		const size_t TypeIndex = getTypeIndexAutoCreate<T>();
+		ensureTypeRegistered<T>();
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		return *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(Type[TypeIndex].Data);
 	}
+
 	template<typename T>
 	const std::pmr::list<T>& iterate() const {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		if (!TypeIndexOptional.has_value()) {
+		if (!isTypeRegistered<T>()) {
 			std::cerr
 				<< "[VarianTmap::iterate(const)] Type not found." << std::endl
 				<< "  Type: " << typeid(T).name() << std::endl;
-			throw std::runtime_error("[VarianTmap::rename_named] Type not found.\n  Type: "s + typeid(T).name() + "\n");
+			throw std::runtime_error("[VarianTmap::iterate(const)] Type not found.\n  Type: "s + typeid(T).name() + "\n");
 		}
-		const size_t TypeIndex = *TypeIndexOptional;
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		return *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(Type[TypeIndex].Data);
 	}
+
 	typename std::pmr::list<Base*>::const_iterator begin() const {
 		return Order.begin();
 	}
+
 	typename std::pmr::list<Base*>::const_iterator end() const {
 		return Order.end();
 	}
@@ -491,18 +478,19 @@ public:
 
 	template<typename T>
 	T* find_named(const std::string& key) const {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		if (!TypeIndexOptional.has_value())
+		if (!isTypeRegistered<T>()) {
 			return nullptr;
-		const size_t TypeIndex = *TypeIndexOptional;
-		auto KeyFindIter = Type[TypeIndex].Key.find(key);
-		if (KeyFindIter == Type[TypeIndex].Key.end()) {
+		}
+		std::type_index TypeIndex = std::type_index(typeid(T));
+		auto KeyFindIter = Type.at(TypeIndex).Key.find(key);
+		if (KeyFindIter == Type.at(TypeIndex).Key.end()) {
 			return nullptr;
 		}
 		else {
 			return static_cast<T*>(KeyFindIter->second);
 		}
 	}
+
 	Base* find(auto_cast_pointer Pointer) const {
 		if (Pointer.pointer == nullptr) {
 			if (Pointer.orderIter == Order.end())return nullptr;
@@ -510,12 +498,13 @@ public:
 		}
 		return DataFinder.count(Pointer.pointer) ? Pointer.pointer : nullptr;
 	}
+
 	template<typename T>
 	T* find(auto_cast_pointer Pointer) const {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		if (!TypeIndexOptional.has_value())
+		if (!isTypeRegistered<T>()) {
 			return nullptr;
-		const size_t TypeIndex = *TypeIndexOptional;
+		}
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		if (Pointer.pointer == nullptr) {
 			if (Pointer.orderIter == Order.end())return nullptr;
 			Pointer.pointer = *Pointer.orderIter;
@@ -529,14 +518,15 @@ public:
 			return static_cast<T*>(Pointer.pointer);
 		}
 	}
+
 	template<typename T>
 	std::pmr::list<Base*>::const_iterator find_order_named(const std::string& key) const {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		if (!TypeIndexOptional.has_value())
+		std::type_index TypeIndex = std::type_index(typeid(T));
+		if (!isTypeRegistered<T>()) {
 			return Order.end();
-		const size_t TypeIndex = *TypeIndexOptional;
-		auto KeyFindIter = Type[TypeIndex].Key.find(key);
-		if (KeyFindIter == Type[TypeIndex].Key.end()) {
+		}
+		auto KeyFindIter = Type.at(TypeIndex).Key.find(key);
+		if (KeyFindIter == Type.at(TypeIndex).Key.end()) {
 			return Order.end();
 		}
 		else {
@@ -544,6 +534,7 @@ public:
 			return iter->second.Order;
 		}
 	}
+
 	std::pmr::list<Base*>::const_iterator find_order(auto_cast_pointer Pointer) const {
 		if (Pointer.pointer == nullptr) {
 			if (Pointer.orderIter == Order.end())return Order.end();
@@ -557,6 +548,7 @@ public:
 			return iter->second.Order;
 		}
 	}
+
 	const std::string& find_key(auto_cast_pointer Pointer) const {
 		typename std::unordered_map<Base*, DataPointerStruct>::const_iterator iter;
 		if (Pointer.pointer == nullptr) {
@@ -579,18 +571,38 @@ public:
 		throw std::runtime_error("[VarianTmap::find_key] Data not found.\n  Type: Unknown\n  Pointer: "s + std::format("0x{:x}", reinterpret_cast<uintptr_t>(Pointer.pointer)) + "\n");
 	}
 
+	std::type_index find_type_index(auto_cast_pointer Pointer) const {
+		typename std::unordered_map<Base*, DataPointerStruct>::const_iterator iter;
+		if (Pointer.pointer == nullptr) {
+			if (Pointer.orderIter == Order.end())goto notfound_find_type_index;
+			Pointer.pointer = *Pointer.orderIter;
+		}
+		iter = DataFinder.find(Pointer.pointer);
+		if (iter == DataFinder.end()) {
+			goto notfound_find_type_index;
+		}
+		else {
+			const DataPointerStruct& DataPointer = iter->second;
+			return DataPointer.TypeIndex;
+		}
+	notfound_find_type_index:;
+		std::cerr
+			<< "[VarianTmap::find_type_index] Data not found." << std::endl
+			<< "  Type: Unknown" << std::endl
+			<< "  Pointer: " << std::format("0x{:x}", reinterpret_cast<uintptr_t>(Pointer.pointer)) << std::endl;
+		throw std::runtime_error("[VarianTmap::find_type_index] Data not found.\n  Type: Unknown\n  Pointer: "s + std::format("0x{:x}", reinterpret_cast<uintptr_t>(Pointer.pointer)) + "\n");
+	}
+
 
 	//重命名
 
 	template<typename T>
 	void rename_named(const std::string& key, const std::string& NewKey) {
-		auto TypeIndexOptional = getTypeIndex<T>();
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		typename std::map<std::string, Base*>::iterator KeyFindIter;
-		size_t TypeIndex;
-		if (!TypeIndexOptional.has_value()) {
+		if (!isTypeRegistered<T>()) {
 			goto notfound_rename_named;
 		}
-		TypeIndex = *TypeIndexOptional;
 		KeyFindIter = Type[TypeIndex].Key.find(key);
 		if (KeyFindIter == Type[TypeIndex].Key.end()) {
 			goto notfound_rename_named;
@@ -621,19 +633,18 @@ public:
 			<< "  New Key: " << NewKey << std::endl;
 		throw std::runtime_error("[VarianTmap::rename_named] New key already exists.\n  Type: "s + typeid(T).name() + "\n  Key: " + key + "\n  New Key: " + NewKey + "\n");
 	}
+
 	template<typename T>
 	void rename(auto_cast_pointer Pointer, const std::string& NewKey) {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		size_t TypeIndex = 0;
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		typename std::unordered_map<Base*, DataPointerStruct>::iterator iter;
+		if (!isTypeRegistered<T>()) {
+			goto notfound_rename_typed;
+		}
 		if (Pointer.pointer == nullptr) {
 			if (Pointer.orderIter == Order.end())goto notfound_rename_typed;
 			Pointer.pointer = *Pointer.orderIter;
 		}
-		if (!TypeIndexOptional.has_value()) {
-			goto notfound_rename_typed;
-		}
-		TypeIndex = *TypeIndexOptional;
 		iter = DataFinder.find(Pointer.pointer);
 		if (iter == DataFinder.end()) {
 			goto notfound_rename_typed;
@@ -666,6 +677,7 @@ public:
 			<< "  New Key: " << NewKey << std::endl;
 		throw std::runtime_error("[VarianTmap::rename] New key already exists.\n  Type: "s + typeid(T).name() + "\n  Pointer: " + std::format("0x{:x}", reinterpret_cast<uintptr_t>(Pointer.pointer)) + "\n  New Key: " + NewKey + "\n");
 	}
+
 	void rename(auto_cast_pointer Pointer, const std::string& NewKey) {
 		if (Pointer.pointer == nullptr) {
 			if (Pointer.orderIter == Order.end())goto notfound_rename_untyped;
@@ -678,7 +690,7 @@ public:
 		}
 		else {
 			DataPointerStruct& DataPointer = iter->second;
-			size_t TypeIndex = DataPointer.TypeIndex;
+			std::type_index TypeIndex = DataPointer.TypeIndex;
 			if (Type[TypeIndex].Key.count(NewKey))
 				goto alreadyexist_rename_untyped;
 			Base* BasePointer = Pointer.pointer;
@@ -721,10 +733,12 @@ public:
 		}
 		else return *pointer;
 	}
+
 	template<typename T>
 	T& at(const std::string& key) {
 		return const_cast<T&>(std::as_const(*this).template at<T>(key));
 	}
+
 	template<typename T>
 	T& get(const std::string& key) {
 		T* pointer = find_named<T>(key);
@@ -739,13 +753,11 @@ public:
 
 	template<typename T>
 	void erase_named(const std::string& key) {
-		auto TypeIndexOptional = getTypeIndex<T>();
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		typename std::map<std::string, Base*>::iterator KeyFindIter;
-		size_t TypeIndex;
-		if (!TypeIndexOptional.has_value()) {
+		if (!isTypeRegistered<T>()) {
 			goto notfound_erase_named;
 		}
-		TypeIndex = *TypeIndexOptional;
 		KeyFindIter = Type[TypeIndex].Key.find(key);
 		if (KeyFindIter == Type[TypeIndex].Key.end()) {
 			goto notfound_erase_named;
@@ -768,19 +780,18 @@ public:
 			<< "  Key: " << key << std::endl;
 		throw std::runtime_error("[VarianTmap::erase_named] Data not found.\n  Type: "s + typeid(T).name() + "\n  Key: " + key + "\n");
 	}
+
 	template<typename T>
 	void erase(auto_cast_pointer Pointer) {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		size_t TypeIndex = 0;
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		typename std::unordered_map<Base*, DataPointerStruct>::iterator iter;
+		if (!isTypeRegistered<T>()) {
+			goto notfound_erase;
+		}
 		if (Pointer.pointer == nullptr) {
 			if (Pointer.orderIter == Order.end())goto notfound_erase;
 			Pointer.pointer = *Pointer.orderIter;
 		}
-		if (!TypeIndexOptional.has_value()) {
-			goto notfound_erase;
-		}
-		TypeIndex = *TypeIndexOptional;
 		iter = DataFinder.find(Pointer.pointer);
 		if (iter == DataFinder.end()) {
 			goto notfound_erase;
@@ -794,7 +805,9 @@ public:
 			std::pmr::list<T>& DataList = *list_ptr;
 			Base* BasePointer = Pointer.pointer;
 			Order.erase(DataPointer.Order);
-			Type[TypeIndex].Key.erase(DataPointer.Key);
+			if (DataPointer.Key != "") {
+				Type[TypeIndex].Key.erase(DataPointer.Key);
+			}
 			DataList.erase(std::any_cast<typename std::pmr::list<T>::iterator&>(DataPointer.Data));
 			DataFinder.erase(iter);
 			return;
@@ -806,6 +819,7 @@ public:
 			<< "  Pointer: " << std::format("0x{:x}", reinterpret_cast<uintptr_t>(Pointer.pointer)) << std::endl;
 		throw std::runtime_error("[VarianTmap::erase] Data not found.\n  Type: "s + typeid(T).name() + "\n  Pointer: " + std::format("0x{:x}", reinterpret_cast<uintptr_t>(Pointer.pointer)) + "\n");
 	}
+
 	void erase(auto_cast_pointer Pointer) {
 		typename std::unordered_map<Base*, DataPointerStruct>::iterator iter;
 		if (Pointer.pointer == nullptr) {
@@ -818,11 +832,13 @@ public:
 		}
 		else {
 			DataPointerStruct& DataPointer = iter->second;
-			size_t TypeIndex = DataPointer.TypeIndex;
+			std::type_index TypeIndex = DataPointer.TypeIndex;
 			Base* BasePointer = Pointer.pointer;
 			Order.erase(DataPointer.Order);
-			Type[TypeIndex].Key.erase(DataPointer.Key);
-			TypeOperation.Operation[Type[TypeIndex].TypeOperationIndex].Destructor(Type[TypeIndex].Data, DataPointer.Data);
+			if (DataPointer.Key != "") {
+				Type[TypeIndex].Key.erase(DataPointer.Key);
+			}
+			publicTypeOperation.Operation[TypeIndex].Destructor(Type[TypeIndex].Data, DataPointer.Data);
 			DataFinder.erase(iter);
 			return;
 		}
@@ -843,13 +859,11 @@ public:
 	*/
 	template<typename T>
 	T extract_named(const std::string& key) {
-		auto TypeIndexOptional = getTypeIndex<T>();
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		typename std::map<std::string, Base*>::iterator KeyFindIter;
-		size_t TypeIndex;
-		if (!TypeIndexOptional.has_value()) {
+		if (!isTypeRegistered<T>()) {
 			goto notfound_extract_named;
 		}
-		TypeIndex = *TypeIndexOptional;
 		KeyFindIter = Type[TypeIndex].Key.find(key);
 		if (KeyFindIter == Type[TypeIndex].Key.end()) {
 			goto notfound_extract_named;
@@ -874,22 +888,21 @@ public:
 			<< "  Key: " << key << std::endl;
 		throw std::runtime_error("[VarianTmap::extract_named] Data not found.\n  Type: "s + typeid(T).name() + "\n  Key: " + key + "\n");
 	}
+
 	/*
 	* @attention 受`std::pmr::list`限制，与`std::map`、`set`或`unordered_*`的`extract`不同，该`extract`直接从容器中删去，并返回对应的值，而不是指针
 	*/
 	template<typename T>
 	T extract(auto_cast_pointer Pointer) {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		size_t TypeIndex = 0;
+		std::type_index TypeIndex = std::type_index(typeid(T));
 		typename std::unordered_map<Base*, DataPointerStruct>::iterator iter;
 		if (Pointer.pointer == nullptr) {
 			if (Pointer.orderIter == Order.end())goto notfound_extract;
 			Pointer.pointer = *Pointer.orderIter;
 		}
-		if (!TypeIndexOptional.has_value()) {
+		if (!isTypeRegistered<T>()) {
 			goto notfound_extract;
 		}
-		TypeIndex = *TypeIndexOptional;
 		iter = DataFinder.find(Pointer.pointer);
 		if (iter == DataFinder.end()) {
 			goto notfound_extract;
@@ -925,22 +938,23 @@ public:
 	size_t size() const {
 		return Order.size();
 	}
+
 	bool empty() const {
 		return Order.size() == 0;
 	}
+
 	void clear() {
-		this->TypeIndexMap.clear();
 		this->Order.clear();
 		this->DataFinder.clear();
 		this->Type.clear();
 	}
+	
 	template<typename T>
 	void clear() {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		if (!TypeIndexOptional.has_value()) {
+		std::type_index TypeIndex = std::type_index(typeid(T));
+		if (!isTypeRegistered<T>()) {
 			return;
 		}
-		size_t TypeIndex = *TypeIndexOptional;
 		Type[TypeIndex].Key.clear();
 		std::pmr::list<T>& DataList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(Type[TypeIndex].Data);
 		for (auto& elem : DataList) {
@@ -949,120 +963,5 @@ public:
 			DataFinder.erase(iter);
 		}
 		DataList.clear();
-	}
-
-
-
-	//序列化
-
-	/*
-	* TypeOrderIndex为用户定义的类型顺序编号，与内部的TypeIndex类型编号不相同
-	* StreamType应为二进制流
-	* 格式如下：
-	* [Type0的长度(size_t)][Type0按Order顺序的值]...[TypeN的长度(size_t)][TypeN按Order顺序的值][Order的长度(size_t)][每个基类指针的TypeOrderIndex]
-	* 例:
-	* 当Args为Type0,Type1,Type2,Type3，但是未存储Type2，Order中有6个元素，顺序为Type1,Type0,Type3,Type0,Type1,Type1时，输出格式如下：
-	* [2][Type0Data0][Type0Data1] [3][Type1Data0][Type1Data1][Type1Data2] [0] [1][Type3Data0] [6][1][0][3][0][1][1]
-	* @attention 反序列化时会先读取每种类型的数据并插入到VarianTmap中，最后再根据Order的顺序将这些数据的基类指针插入到Order中，因此要求用户定义的类型顺序必须与写入时相同，否则会出现数据错乱
-	*/
-private:
-	template<typename T, typename ...Args>
-	void readHelper(auto& stream, size_t TypeOrderIndex, std::queue<Base*> DataPointerQue[]) {
-		size_t TypeIndex = getTypeIndexAutoCreate<T>();
-		size_t DataListSize = 0;
-		stream >> DataListSize;
-		std::string key{};
-		T Data{};
-		auto& list_ptr = std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(Type[TypeIndex].Data);
-		std::pmr::list<T>& DataList = *list_ptr;
-		for (size_t i = 0; i < DataListSize; i++) {
-			stream >> key;
-			DataList.emplace_back();
-			stream >> DataList.back();
-			typename std::pmr::list<T>::iterator DataIter = std::prev(DataList.end());
-			Base* BasePointer = static_cast<Base*>(std::addressof(*DataIter));
-			DataFinder.emplace(BasePointer, DataPointerStruct(TypeIndex, key, DataIter));
-			DataPointerQue[TypeOrderIndex].push(BasePointer);
-			if (key != "")
-				Type[TypeIndex].Key.emplace(key, BasePointer);
-		}
-		if constexpr (sizeof...(Args) > 0)
-			readHelper<Args...>(stream, TypeOrderIndex + 1, DataPointerQue);
-	}
-	template<typename T, typename ...Args>
-	void writeTypeOrderMapBuildHelper(size_t TypeOrderIndex, std::unordered_map<size_t, size_t>& TypeOrderMap) const {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		if (TypeIndexOptional.has_value()) {
-			const size_t TypeIndex = *TypeIndexOptional;
-			TypeOrderMap.emplace(TypeIndex, TypeOrderIndex);
-		}
-		if constexpr (sizeof...(Args) > 0)
-			writeTypeOrderMapBuildHelper<Args...>(TypeOrderIndex + 1, TypeOrderMap);
-	}
-	template<typename T, typename ...Args>
-	void writeHelper(auto& stream, size_t TypeOrderIndex, std::queue<Base*> DataPointerQue[]) const {
-		auto TypeIndexOptional = getTypeIndex<T>();
-		if (TypeIndexOptional.has_value()) {
-			const size_t TypeIndex = *TypeIndexOptional;
-			stream << DataPointerQue[TypeOrderIndex].size();
-			while (!DataPointerQue[TypeOrderIndex].empty()) {
-				Base* BasePointer = DataPointerQue[TypeOrderIndex].front();
-				const DataPointerStruct& DataPointer = DataFinder.at(BasePointer);
-				stream << DataPointer.Key;
-				stream << *static_cast<const T*>(BasePointer);//Order中的基类指针必然存在，并且已经检查过TypeIndex，可以直接static_cast
-				DataPointerQue[TypeOrderIndex].pop();
-			}
-		}
-		else {
-			stream << static_cast<size_t>(0);
-		}
-		if constexpr (sizeof...(Args) > 0)
-			writeHelper<Args...>(stream, TypeOrderIndex + 1, DataPointerQue);
-	}
-public:
-	template<typename ...T>
-	void read(auto& stream) {
-		if constexpr (sizeof...(T) == 0)return;
-		if (Order.size() != 0) {
-			std::cerr
-				<< "[VarianTmap::read] Container is NOT empty." << std::endl;
-			throw std::runtime_error("[VarianTmap::read] Container is NOT empty.\n");
-		}
-		clear();
-		std::queue<Base*>DataPointerQue[sizeof...(T)];
-		readHelper<T...>(stream, 0, DataPointerQue);
-		size_t OrderSize = 0;
-		stream >> OrderSize;
-		for (size_t i = 0; i < OrderSize; i++) {
-			size_t TypeOrderIndex = 0;
-			stream >> TypeOrderIndex;
-			Base* BasePointer = DataPointerQue[TypeOrderIndex].front();
-			DataPointerQue[TypeOrderIndex].pop();
-			Order.push_back(BasePointer);
-			typename std::pmr::list<Base*>::iterator OrderPointer = std::prev(Order.end());
-			DataFinder.at(BasePointer).Order = OrderPointer;
-		}
-	}
-	template<typename ...T>
-	void write(auto& stream) const {
-		if constexpr (sizeof...(T) == 0)return;
-		std::unordered_map<size_t, size_t> TypeOrderMap;
-		TypeOrderMap.reserve(sizeof...(T));
-		writeTypeOrderMapBuildHelper<T...>(0, TypeOrderMap);
-		std::queue<Base*>DataPointerQue[sizeof...(T)];
-		std::vector<size_t>TypeOrderIndexVec{};
-		for (auto& elem : Order) {
-			const DataPointerStruct& DataPointer = DataFinder.at(elem);
-			auto iter = TypeOrderMap.find(DataPointer.TypeIndex);
-			if (iter != TypeOrderMap.end()) {
-				DataPointerQue[iter->second].push(elem);
-				TypeOrderIndexVec.push_back(iter->second);
-			}
-		}
-		writeHelper<T...>(stream, 0, DataPointerQue);
-		stream << TypeOrderIndexVec.size();
-		for (auto& elem : TypeOrderIndexVec) {
-			stream << elem;
-		}
 	}
 };
