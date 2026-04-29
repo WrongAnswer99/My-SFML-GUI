@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <cassert>
+#include <cstring>
 //tag = {"name1", value1, "name2", value2, ...};
 //tag["name"] = value;
 //T val = tag["name"].cast<T>();
@@ -32,10 +33,10 @@ protected:
 		//返回:转化为指定类型的值
 		template <typename T>
 		T& cast() {
-			return any_cast<T&>(data);
+			return std::any_cast<T&>(data);
 		}
 		castable_any& operator[](std::string name) {
-			return any_cast<AnyTag&>(data)[name];
+			return std::any_cast<AnyTag&>(data)[name];
 		}
 	};
 	std::unordered_map<std::string, castable_any>data;
@@ -43,7 +44,7 @@ public:
 	AnyTag() {}
 	AnyTag(std::initializer_list<castable_any> list) {
 		for (auto i = list.begin(); i != list.end(); i++) {
-			std::string name = any_cast<std::string>(i->data);
+			std::string name = std::any_cast<std::string>(i->data);
 			i++;
 			data[name] = *i;
 		}
@@ -69,7 +70,7 @@ public:
 					return false;
 			}
 			else {
-				if (any_cast<T2>(data[static_cast<std::string>(name)].data) != val)
+				if (std::any_cast<T2>(data[static_cast<std::string>(name)].data) != val)
 					return false;
 			}
 		}
