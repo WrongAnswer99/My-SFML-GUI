@@ -1,8 +1,6 @@
 #pragma once
 #include <set>
 #include "engine/event/Event.hpp"
-#include "engine/data/Tag.hpp"
-#include "engine/data/Skippable.hpp"
 #include "engine/serialization/BinaryFileStream.hpp"
 #include "engine/core/SFMLBase.hpp"
 #include "engine/data/VarianTmap.hpp"
@@ -29,10 +27,10 @@ namespace gui {
 	public:
 		sf::Color backgroundColor = sf::Color(0, 0, 0, 0), outlineColor = sf::Color(0, 0, 0, 0);
 		float outlineThickness = 1;
-		void set(Skippable<sf::Color> _backgroundColor, Skippable<sf::Color>_outlineColor, Skippable<float>_outlineThickness) {
-			_backgroundColor.assignTo(backgroundColor);
-			_outlineColor.assignTo(outlineColor);
-			_outlineThickness.assignTo(outlineThickness);
+		void set(sf::Color _backgroundColor, sf::Color _outlineColor, float _outlineThickness) {
+			backgroundColor = _backgroundColor;
+			outlineColor = _outlineColor;
+			outlineThickness = _outlineThickness;
 		}
 		friend inline BinaryFileStream& read(BinaryFileStream& bf, Style& x) {
 			return bf.readStruct(x.backgroundColor, x.outlineColor, x.outlineThickness);
@@ -54,7 +52,6 @@ namespace gui {
 	public:
 		enum Statu { Normal = 0, Over = 1, Focus = 2 };
 		enum Justification { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
-		Tag tag;
 		UIBase& setPosition(sf::Vector2f _pos) {
 			posRect.position = _pos;
 			return *this;
@@ -79,10 +76,10 @@ namespace gui {
 		sf::FloatRect getPosRect() const {
 			return posRect;
 		}
-		UIBase& setStyle(Skippable<Style>_normalStyle, Skippable<Style>_overStyle, Skippable<Style>_focusStyle) {
-			_normalStyle.assignTo(styles[gui::UIBase::Normal]);
-			_overStyle.assignTo(styles[gui::UIBase::Over]);
-			_focusStyle.assignTo(styles[gui::UIBase::Focus]);
+		UIBase& setStyle(const Style& _normalStyle, const Style& _overStyle, const Style& _focusStyle) {
+			styles[gui::UIBase::Normal] = _normalStyle;
+			styles[gui::UIBase::Over] = _overStyle;
+			styles[gui::UIBase::Focus] = _focusStyle;
 			return *this;
 		}
 		Style& style(int id) {
@@ -132,10 +129,10 @@ namespace gui {
 		sf::Vector2i justification = { gui::UIBase::Mid,gui::UIBase::Mid };
 		sf::Vector2f scale = sf::Vector2f(1, 1);
 		sf::Color imageColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
-		ImageObject& setImageColor(Skippable<sf::Color>_normalColor, Skippable<sf::Color>_overColor, Skippable<sf::Color>_focusColor) {
-			_normalColor.assignTo(imageColors[gui::UIBase::Normal]);
-			_overColor.assignTo(imageColors[gui::UIBase::Over]);
-			_focusColor.assignTo(imageColors[gui::UIBase::Focus]);
+		ImageObject& setImageColor(const sf::Color& _normalColor, const sf::Color& _overColor, const sf::Color& _focusColor) {
+			imageColors[gui::UIBase::Normal] = _normalColor;
+			imageColors[gui::UIBase::Over] = _overColor;
+			imageColors[gui::UIBase::Focus] = _focusColor;
 			return *this;
 		}
 		sf::Color& imageColor(int id) {
@@ -143,9 +140,9 @@ namespace gui {
 		}
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 	public:
-		ImageObject& setJustification(Skippable<gui::UIBase::Justification> xJus, Skippable<gui::UIBase::Justification> yJus) {
-			xJus.assignTo(justification.x);
-			yJus.assignTo(justification.y);
+		ImageObject& setJustification(gui::UIBase::Justification xJus, gui::UIBase::Justification yJus) {
+			justification.x = xJus;
+			justification.y = yJus;
 			return *this;
 		}
 		ImageObject& setScale(sf::Vector2f _scale) {
@@ -175,14 +172,14 @@ namespace gui {
 		friend class WindowManager;
 	public:
 		TextObject() {
-			textStyles[gui::UIBase::Normal].set(sf::Color::Black, sf::Color::Black, Skip);
-			textStyles[gui::UIBase::Over].set(sf::Color::Black, sf::Color::Black, Skip);
-			textStyles[gui::UIBase::Focus].set(sf::Color::Black, sf::Color::Black, Skip);
+			textStyles[gui::UIBase::Normal].set(sf::Color::Black, sf::Color::Black, 1);
+			textStyles[gui::UIBase::Over].set(sf::Color::Black, sf::Color::Black, 1);
+			textStyles[gui::UIBase::Focus].set(sf::Color::Black, sf::Color::Black, 1);
 		}
-		TextObject& setTextStyle(Skippable<Style>_normalStyle, Skippable<Style>_overStyle, Skippable<Style>_focusStyle) {
-			_normalStyle.assignTo(textStyles[gui::UIBase::Normal]);
-			_overStyle.assignTo(textStyles[gui::UIBase::Over]);
-			_focusStyle.assignTo(textStyles[gui::UIBase::Focus]);
+		TextObject& setTextStyle(const Style& _normalStyle, const Style& _overStyle, const Style& _focusStyle) {
+			textStyles[gui::UIBase::Normal] = _normalStyle;
+			textStyles[gui::UIBase::Over] = _overStyle;
+			textStyles[gui::UIBase::Focus] = _focusStyle;
 			return *this;
 		}
 		Style& textStyle(int id) {
@@ -225,14 +222,14 @@ namespace gui {
 			characterSize = _characterSize;
 			return *this;
 		}
-		TextObject& setSpacing(Skippable<float> _letterSpacing, Skippable<float> _lineSpacing) {
-			_letterSpacing.assignTo(letterSpacing);
-			_lineSpacing.assignTo(lineSpacing);
+		TextObject& setSpacing(float _letterSpacing, float _lineSpacing) {
+			letterSpacing = _letterSpacing;
+			lineSpacing = _lineSpacing;
 			return *this;
 		}
-		TextObject& setJustification(Skippable<gui::UIBase::Justification> xJus, Skippable<gui::UIBase::Justification> yJus) {
-			xJus.assignTo(justification.x);
-			yJus.assignTo(justification.y);
+		TextObject& setJustification(gui::UIBase::Justification xJus, gui::UIBase::Justification yJus) {
+			justification.x = xJus;
+			justification.y = yJus;
 			return *this;
 		}
 		TextObject& setText(sf::String _text) {
@@ -434,9 +431,9 @@ namespace gui {
 			styles[gui::UIBase::Focus].set(sf::Color::White, sf::Color(200, 200, 200), 2);
 		}
 		VarianTmap<UIBase>sub;
-		AreaObject& setScrollable(Skippable<sf::Vector2i> _mouseDragScrollable, Skippable<sf::Vector2i> _mouseWheelScrollable) {
-			_mouseDragScrollable.assignTo(mouseDragScrollable);
-			_mouseWheelScrollable.assignTo(mouseWheelScrollable);
+		AreaObject& setScrollable(sf::Vector2i _mouseDragScrollable, sf::Vector2i _mouseWheelScrollable) {
+			mouseDragScrollable = _mouseDragScrollable;
+			mouseWheelScrollable = _mouseWheelScrollable;
 			return *this;
 		}
 	protected:
