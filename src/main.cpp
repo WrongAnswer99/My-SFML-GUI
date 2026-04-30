@@ -41,11 +41,10 @@ static void init() {
 		.setText(L"↓↓↓向下滑↓↓↓\n当按下按钮时拖动，\n操作将转化为拖动，\n且不会触发按钮")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 500));
-
-	Main.path_get<gui::TextObject>("area_text2")
 		.setSizeAuto()
+		.setPosition(sf::Vector2f(350, 500))
 		.setCenter();
+
 
 	
 	Main.path_get<gui::TextObject>("area.top")
@@ -63,18 +62,31 @@ static void init() {
 		.setCenter();
 	
 	Main.path_get<gui::InputObject>("area.input")
-		//.setSizeLimit(10)
-		//.setTypeLimit(attr::gui::Float)
-		//.setTypeLimit(attr::gui::Int)
-		//.setStringTypeLimit(true, { L'_' }, { {L'A',L'Z'},{L'a',L'z'}})
 		.setText(L"这是一个文本框")
 		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 225))
-		.setSize(sf::Vector2f(400, 50));
-	Main.path_get<gui::InputObject>("area.input")
 		.setSizeAuto()
+		.setPosition(sf::Vector2f(350, 175))
+		.setCenter();
+
+	Main.path_get<gui::InputObject>("area.inputSlim")
+		.setText(L"这是一个窄文本框")
+		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setFont("ht")
+		.setCharacterSize(50)
+		.setPosition(sf::Vector2f(350, 225))
+		.setSize(sf::Vector2f(400, 35))
+		.setCenter();
+	
+	Main.path_get<gui::InputObject>("area.inputFloat")
+		.setTypeLimit(gui::InputObject::Float)
+		.setText(L"123.456")
+		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setFont("ht")
+		.setCharacterSize(50)
+		.setSizeAuto()
+		.setPosition(sf::Vector2f(1000, 225))
 		.setCenter();
 
 	Main.path_get<gui::ButtonObject>("area.button")

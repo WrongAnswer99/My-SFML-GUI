@@ -110,10 +110,15 @@ namespace gui {
 			}
 			else scroll.x = 0;
 			if (textRect.size.y > posRect.size.y) {
-				if (cursorPos.y < 0)
+				if (posRect.size.y < characterSize){
 					scroll.y += 0 - cursorPos.y;
-				else if (cursorPos.y + characterSize > posRect.size.y)
-					scroll.y += posRect.size.y - (cursorPos.y + characterSize);
+				}
+				else {
+					if (cursorPos.y < 0)
+						scroll.y += 0 - cursorPos.y;
+					else if (cursorPos.y + characterSize > posRect.size.y)
+						scroll.y += posRect.size.y - (cursorPos.y + characterSize);
+				}
 				if (textRect.position.y + scroll.y + textRect.size.y < posRect.size.y)
 					scroll.y += posRect.size.y - (textRect.position.y + scroll.y + textRect.size.y);
 				if (textRect.position.y + scroll.y > 0)
