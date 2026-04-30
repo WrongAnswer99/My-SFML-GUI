@@ -386,6 +386,39 @@ namespace gui {
 				}
 			}
 		}
+		void updateCursorByMousePos(sf::Vector2f mousePos) {
+			textRender.setFont(fontManager[font]);
+			textRender.setCharacterSize(characterSize);
+			textRender.setLineSpacing(lineSpacing);
+			textRender.setLetterSpacing(letterSpacing);
+			textRender.setString(text);
+			textRender.setPosition({ 0,0 });
+			sf::Vector2f offsetFix;
+			offsetFix.x = textRender.getGlobalBounds().position.x;
+			offsetFix.y = textRender.getGlobalBounds().position.y + textRender.getGlobalBounds().size.y - characterSize;
+			textRect.size.x = 0;
+			for (int i = 0; i <= text.getSize(); i++) {
+				if (textRender.findCharacterPos(i).x > textRect.size.x)
+					textRect.size.x = textRender.findCharacterPos(i).x;
+			}
+			textRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
+			textRender.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) + scroll);
+			textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification));
+			size_t bestCursor = 0;
+			float minDist = std::numeric_limits<float>::max();
+			for (size_t i = 0; i <= text.getSize(); i++) {
+				sf::Vector2f charPos = textRender.findCharacterPos(i);
+				charPos += offsetFix;
+				float distX = std::abs(charPos.x - mousePos.x);
+				float distY = std::abs((charPos.y + characterSize / 2.f) - mousePos.y);
+				float dist = distX * distX + distY * distY;
+				if (dist < minDist) {
+					minDist = dist;
+					bestCursor = i;
+				}
+			}
+			cursor = bestCursor;
+		}
 	public:
 		enum InputType { String = 0, Int = 1, Float = 2 };
 		InputObject& setSizeLimit(int _sizeLimit) {
@@ -873,6 +906,11 @@ namespace gui {
 					areaFocusPtr->updateOption();
 				if (auto ptr = objectPathVisit(over, areaOverPtr))
 					ptr->setStatu(gui::UIBase::Focus);
+				if (over.is<InputObject>()) {
+					InputObject& input = areaOverPtr->sub.at<InputObject>(over.name);
+					sf::Vector2f mouseInLocal = mousePos.back() - areaOverPtr->posRect.position - areaOverPtr->scroll - input.posRect.position;
+					input.updateCursorByMousePos(mouseInLocal);
+				}
 
 				focus = over;
 				return true;
