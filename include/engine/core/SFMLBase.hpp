@@ -52,13 +52,11 @@ public:
 	sf::Texture& operator[](const std::string& name) {
 		return image[name];
 	}
-	friend inline BinaryFileStream& read(BinaryFileStream& bf, ImageManager& x) {
+	friend inline void read(BinaryFileStream& bf, ImageManager& x) {
 		bf.read(x.image);
-		return bf;
 	}
-	friend inline BinaryFileStream& write(BinaryFileStream& bf, const ImageManager& x) {
+	friend inline void write(BinaryFileStream& bf, const ImageManager& x) {
 		bf.write(x.image);
-		return bf;
 	}
 };
 inline ImageManager imageManager;

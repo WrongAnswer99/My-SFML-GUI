@@ -36,18 +36,16 @@ public:
 class EventQueue {
 	friend class Event;
 private:
-	std::unordered_map<std::type_index, size_t>TypeIndexMap;
-	std::queue<size_t>Order;
+	std::queue<std::type_index> Order;
 
 	class TypeStruct {
 		friend class EventQueue;
 	private:
 		std::any/*store std::queue<T> in std::any*/ Data;
-		size_t TypeOperationIndex{};
 	public:
 		TypeStruct() = default;
 	};
-	std::vector<TypeStruct>Type;
+	std::unordered_map<std::type_index, TypeStruct> Type;
 
 
 
@@ -55,7 +53,6 @@ private:
 
 	class TypeOperationStruct {
 		friend class EventQueue;
-		std::unordered_map<std::type_index, size_t>TypeIndexMap;
 		class OperationStruct {
 			friend class EventQueue;
 			std::function<Event(std::any&)>extractHelper;
@@ -63,47 +60,42 @@ private:
 			OperationStruct() = default;
 		};
 	public:
-		std::vector<OperationStruct>Operation;
+		std::unordered_map<std::type_index, OperationStruct> Operation;
 		template<typename T>
-		size_t registerType() {
-			auto iter = TypeIndexMap.find(std::type_index(typeid(T)));
-			if (iter == TypeIndexMap.end()) {
-				const size_t TypeIndex = TypeIndexMap.size();
-				TypeIndexMap[std::type_index(typeid(T))] = TypeIndex;
-				Operation.emplace_back();
-				Operation.back().extractHelper = [](std::any& Data)->Event {
+		void registerType() {
+			std::type_index TypeIndex = std::type_index(typeid(T));
+			auto iter = Operation.find(TypeIndex);
+			if (iter == Operation.end()) {
+				Operation[TypeIndex].extractHelper = [](std::any& Data)->Event {
 					auto& DataQueue = std::any_cast<std::queue<T>&>(Data);
 					Event event(std::type_index(typeid(T)), std::move(DataQueue.front()));
 					DataQueue.pop();
 					return event;
 					};
-				return TypeIndex;
 			}
-			else return iter->second;
 		}
 	};
 	inline static TypeOperationStruct TypeOperation;
 	template<typename T>
-	size_t getTypeIndexAutoCreate() {
-		auto iter = TypeIndexMap.find(std::type_index(typeid(T)));
-		if (iter == TypeIndexMap.end()) {
-			const size_t TypeIndex = TypeIndexMap.size();
-			TypeIndexMap.emplace(std::type_index(typeid(T)), TypeIndex);
-			Type.emplace_back();
-			Type.back().Data = std::queue<T>{};
-			Type.back().TypeOperationIndex = TypeOperation.registerType<T>();
+	std::type_index getTypeIndexAutoCreate() {
+		std::type_index TypeIndex = std::type_index(typeid(T));
+		auto iter = Type.find(TypeIndex);
+		if (iter == Type.end()) {
+			Type.emplace(TypeIndex, TypeStruct{});
+			Type[TypeIndex].Data = std::queue<T>{};
+			TypeOperation.registerType<T>();
 			return TypeIndex;
 		}
-		else return iter->second;
+		else return TypeIndex;
 	}
 	template<typename T>
-	std::optional<size_t> getTypeIndex() const {
-		auto ti = std::type_index(typeid(T));
-		auto iter = TypeIndexMap.find(ti);
-		if (iter == TypeIndexMap.end()) {
+	std::optional<std::type_index> getTypeIndex() const {
+		std::type_index TypeIndex = std::type_index(typeid(T));
+		auto iter = Type.find(TypeIndex);
+		if (iter == Type.end()) {
 			return std::nullopt;
 		}
-		else return iter->second;
+		else return TypeIndex;
 	}
 	template<typename T>
 	static constexpr bool isDerivedType = std::is_base_of_v<EventBase, T>;
@@ -114,7 +106,7 @@ private:
 
 	template<typename T, typename InsertDataFunc, typename = std::enable_if_t<isDerivedType<T>>>
 	inline void insertHelper(InsertDataFunc&& insertDataFunc) {
-		const size_t TypeIndex = getTypeIndexAutoCreate<T>();
+		std::type_index TypeIndex = getTypeIndexAutoCreate<T>();
 		std::queue<T>& DataQueue = std::any_cast<std::queue<T>&>(Type[TypeIndex].Data);
 		insertDataFunc(DataQueue);
 		Order.push(TypeIndex);
@@ -144,9 +136,9 @@ public:
 
 	const std::optional<Event> pollEvent() {
 		if (Order.empty())return std::nullopt;
-		size_t TypeIndex = Order.front();
+		std::type_index TypeIndex = Order.front();
 		Order.pop();
-		return TypeOperation.Operation[Type[TypeIndex].TypeOperationIndex].extractHelper(Type[TypeIndex].Data);
+		return TypeOperation.Operation[TypeIndex].extractHelper(Type[TypeIndex].Data);
 	}
 
 
@@ -160,7 +152,6 @@ public:
 		return Order.size() == 0;
 	}
 	void clear() {
-		this->TypeIndexMap.clear();
 		while (!Order.empty()) {
 			Order.pop();
 		}

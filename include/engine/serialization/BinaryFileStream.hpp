@@ -16,16 +16,16 @@ class BinaryFileStream;
 // Uses dependent name lookup - read/write are resolved at instantiation time via ADL
 // 使用依赖名查找机制 —— read/write 函数在实例化阶段通过ADL实参依赖查找完成解析
 template<typename T>
-inline BinaryFileStream& dispatch_read_reference(BinaryFileStream& bf, T& x) {
-	return read(bf, x);
+inline void dispatch_read_reference(BinaryFileStream& bf, T& x) {
+	read(bf, x);
 }
 template<typename T>
-inline BinaryFileStream& dispatch_read_wrapper(BinaryFileStream& bf, T x) {
-	return read(bf, x);
+inline void dispatch_read_wrapper(BinaryFileStream& bf, T x) {
+	read(bf, x);
 }
 template<typename T>
-inline BinaryFileStream& dispatch_write(BinaryFileStream& bf, const T& x) {
-	return write(bf, x);
+inline void dispatch_write(BinaryFileStream& bf, const T& x) {
+	write(bf, x);
 }
 
 //二进制文件输入输出流
@@ -131,12 +131,11 @@ public:
 	//使用 if constexpr 延迟检测，避免特化顺序问题
 	//左值走 reference 路径，右值（wrapper临时对象）走 wrapper 路径
 	template<typename T>
-	inline BinaryFileStream& read(T&& x) {
+	inline void read(T&& x) {
 		if constexpr(isSafeType<std::decay_t<T>>) {
 			ensureMode(InMode);
 			if (fileIn.good() && isFileInGood)
 				fileIn.read(reinterpret_cast<char*>(&x), sizeof(x));
-			return *this;
 		}
 		else if constexpr(std::is_same_v<std::decay_t<T>, size_t>) {
 			ensureMode(InMode);
@@ -145,7 +144,6 @@ public:
 				fileIn.read(reinterpret_cast<char*>(&ullx), sizeof(ullx));
 				x = static_cast<size_t>(ullx);
 			}
-			return *this;
 		}
 		else if constexpr(std::is_same_v<std::decay_t<T>, std::string>) {
 			ensureMode(InMode);
@@ -155,13 +153,12 @@ public:
 				x.resize(size);
 				fileIn.read(&x[0], size);
 			}
-			return *this;
 		}
 		else if constexpr(std::is_lvalue_reference_v<T&&>) {
-			return dispatch_read_reference(*this, x);
+			dispatch_read_reference(*this, x);
 		}
 		else {
-			return dispatch_read_wrapper(*this, std::forward<T>(x));
+			dispatch_read_wrapper(*this, std::forward<T>(x));
 		}
 	}
 
@@ -169,38 +166,34 @@ public:
 	//若读取大型结构体，建议使用readStruct
 	//readStruct会自动处理struct嵌套
 	template<typename T,typename U,typename ...Args>
-	inline BinaryFileStream& read(T&& t,U&& u,Args&&...args){
+	inline void read(T&& t,U&& u,Args&&...args){
 		this->read(std::forward<T>(t));
 		this->read(std::forward<U>(u));
 		if constexpr(sizeof...(Args)>0)
 			this->read(std::forward<Args>(args)...);
-		return *this;
 	}
 
 	//外部定义函数写入
-	//只需要类型在外部有BinaryFileStream& write(BinaryFileStream&,const T&)函数，即可自动调用
+	//只需要类型在外部有void write(BinaryFileStream&,const T&)函数，即可自动调用
 	//使用 if constexpr 延迟检测，避免特化顺序问题
 	template<typename T>
-	inline BinaryFileStream& write(T&& x) {
+	inline void write(T&& x) {
 		if constexpr(isSafeType<std::decay_t<T>>) {
 			ensureMode(OutMode);
 			fileOut.write(reinterpret_cast<const char*>(&x), sizeof(x));
-			return *this;
 		}
 		else if constexpr(std::is_same_v<std::decay_t<T>, size_t>) {
 			ensureMode(OutMode);
 			const unsigned long long ullx = static_cast<const unsigned long long>(x);
 			fileOut.write(reinterpret_cast<const char*>(&ullx), sizeof(ullx));
-			return *this;
 		}
 		else if constexpr(std::is_same_v<std::decay_t<T>, std::string>) {
 			ensureMode(OutMode);
 			this->write(x.size());
 			fileOut.write(x.data(), x.size());
-			return *this;
 		}
 		else {
-			return dispatch_write(*this, x);
+			dispatch_write(*this, x);
 		}
 	}
 
@@ -208,12 +201,11 @@ public:
 	//若写入大型结构体，建议使用writeStruct
 	//writeStruct会自动处理struct嵌套
 	template<typename T,typename U,typename ...Args>
-	inline BinaryFileStream& write(T&& t, U&& u, Args&&...args){
+	inline void write(T&& t, U&& u, Args&&...args){
 		this->write(std::forward<T>(t));
 		this->write(std::forward<U>(u));
 		if constexpr(sizeof...(Args)>0)
 			this->write(std::forward<Args>(args)...);
-		return *this;
 	}
 
 	//关闭文件输入与输出
@@ -244,31 +236,41 @@ public:
 	}
 
 	template <typename ...Args>
-	inline BinaryFileStream& readStruct(Args&&...args) {
+	inline void readStruct(Args&&...args) {
 		readStructHelper(1, 0, std::forward<Args>(args)...);
-		return *this;
 	}
 
 	template <typename ...Args>
-	inline BinaryFileStream& writeStruct(Args&&...args) {
+	inline void writeStruct(Args&&...args) {
 		writeStructHelper(1, std::forward<Args>(args)...);
+	}
+
+	//仅作为语法兼容，外部仍需要写friend read()和friend write()
+	template<typename T>
+	inline BinaryFileStream& operator>>(T& x) {
+		read(x);
+		return *this;
+	}
+
+	//仅作为语法兼容，外部仍需要写friend read()和friend write()
+	template<typename T>
+	inline BinaryFileStream& operator<<(const T& x) {
+		write(x);
 		return *this;
 	}
 };
 
 // Standard container serialization
 template<typename T, typename U>
-inline BinaryFileStream& read(BinaryFileStream& bf, std::pair<T, U>& x) {
+inline void read(BinaryFileStream& bf, std::pair<T, U>& x) {
 	bf.read(x.first,x.second);
-	return bf;
 }
 template<typename T, typename U>
-inline BinaryFileStream& write(BinaryFileStream& bf, const std::pair<T, U>& x) {
+inline void write(BinaryFileStream& bf, const std::pair<T, U>& x) {
 	bf.write(x.first,x.second);
-	return bf;
 }
 template<typename T, typename U>
-inline BinaryFileStream& read(BinaryFileStream& bf, std::unordered_map<T, U>& x) {
+inline void read(BinaryFileStream& bf, std::unordered_map<T, U>& x) {
 	size_t size;
 	bf.read(size);
 	x.clear();
@@ -281,18 +283,16 @@ inline BinaryFileStream& read(BinaryFileStream& bf, std::unordered_map<T, U>& x)
 		t = T{};
 		u = U{};
 	}
-	return bf;
 }
 template<typename T, typename U>
-inline BinaryFileStream& write(BinaryFileStream& bf, const std::unordered_map<T, U>& x) {
+inline void write(BinaryFileStream& bf, const std::unordered_map<T, U>& x) {
 	bf.write(x.size());
 	for (auto& elem : x) {
 		bf.write(elem.first,elem.second);
 	}
-	return bf;
 }
 template<typename T, typename U>
-inline BinaryFileStream& read(BinaryFileStream& bf, std::map<T, U>& x) {
+inline void read(BinaryFileStream& bf, std::map<T, U>& x) {
 	size_t size;
 	bf.read(size);
 	x.clear();
@@ -304,18 +304,16 @@ inline BinaryFileStream& read(BinaryFileStream& bf, std::map<T, U>& x) {
 		t = T{};
 		u = U{};
 	}
-	return bf;
 }
 template<typename T, typename U>
-inline BinaryFileStream& write(BinaryFileStream& bf, const std::map<T, U>& x) {
+inline void write(BinaryFileStream& bf, const std::map<T, U>& x) {
 	bf.write(x.size());
 	for (auto& elem : x) {
 		bf.write(elem.first,elem.second);
 	}
-	return bf;
 }
 template<typename T>
-inline BinaryFileStream& read(BinaryFileStream& bf, std::vector<T>& x) {
+inline void read(BinaryFileStream& bf, std::vector<T>& x) {
 	size_t size;
 	bf.read(size);
 	T t{};
@@ -326,86 +324,72 @@ inline BinaryFileStream& read(BinaryFileStream& bf, std::vector<T>& x) {
 		x.emplace_back(std::move(t));
 		t = T{};
 	}
-	return bf;
 }
 template<typename T>
-inline BinaryFileStream& write(BinaryFileStream& bf, const std::vector<T>& x) {
+inline void write(BinaryFileStream& bf, const std::vector<T>& x) {
 	bf.write(x.size());
 	for (auto& elem : x) {
 		bf.write(elem);
 	}
-	return bf;
 }
 
 // SFML type serialization
 #include "SFML/Graphics.hpp"
 
-inline BinaryFileStream& read(BinaryFileStream& bf, sf::Color& x) {
+inline void read(BinaryFileStream& bf, sf::Color& x) {
 	bf.read(x.r,x.g,x.b,x.a);
-	return bf;
 }
-inline BinaryFileStream& write(BinaryFileStream& bf, const sf::Color& x) {
+inline void write(BinaryFileStream& bf, const sf::Color& x) {
 	bf.write(x.r,x.g,x.b,x.a);
-	return bf;
 }
 template<typename T>
-inline BinaryFileStream& read(BinaryFileStream& bf, sf::Vector2<T>& x) {
+inline void read(BinaryFileStream& bf, sf::Vector2<T>& x) {
 	bf.read(x.x,x.y);
-	return bf;
 }
 template<typename T>
-inline BinaryFileStream& write(BinaryFileStream& bf, const sf::Vector2<T>& x) {
+inline void write(BinaryFileStream& bf, const sf::Vector2<T>& x) {
 	bf.write(x.x,x.y);
-	return bf;
 }
 template<typename T>
-inline BinaryFileStream& read(BinaryFileStream& bf, sf::Rect<T>& x) {
+inline void read(BinaryFileStream& bf, sf::Rect<T>& x) {
 	bf.read(x.position,x.size);
-	return bf;
 }
 template<typename T>
-inline BinaryFileStream& write(BinaryFileStream& bf, const sf::Rect<T>& x) {
+inline void write(BinaryFileStream& bf, const sf::Rect<T>& x) {
 	bf.write(x.position,x.size);
-	return bf;
 }
-inline BinaryFileStream& read(BinaryFileStream& bf, sf::String& x) {
+inline void read(BinaryFileStream& bf, sf::String& x) {
 	std::string s;
 	bf.read(s);
 	x = sf::String::fromUtf8(s.begin(), s.end());
-	return bf;
 }
-inline BinaryFileStream& write(BinaryFileStream& bf, const sf::String& x) {
+inline void write(BinaryFileStream& bf, const sf::String& x) {
 	auto utf8 = x.toUtf8();
 	bf.write(utf8.size());
 	for (auto& elem : utf8)
 		bf.write(elem);
-	return bf;
 }
-inline BinaryFileStream& read(BinaryFileStream& bf, sf::Image& x) {
+inline void read(BinaryFileStream& bf, sf::Image& x) {
 	std::string s;
 	bf.read(s);
 	if (!x.loadFromMemory(s.data(), s.size())) {
 		std::cerr << "[BinaryFileStream] Image Read Failed" << std::endl;
 		throw std::runtime_error("[BinaryFileStream] Image Read Failed");
 	}
-	return bf;
 }
-inline BinaryFileStream& write(BinaryFileStream& bf, const sf::Image& x) {
+inline void write(BinaryFileStream& bf, const sf::Image& x) {
 	bf.write(*x.saveToMemory("png"));
-	return bf;
 }
-inline BinaryFileStream& read(BinaryFileStream& bf, sf::Texture& x) {
+inline void read(BinaryFileStream& bf, sf::Texture& x) {
 	std::string s;
 	bf.read(s);
 	if (!x.loadFromImage(sf::Image(s.data(), s.size()))) {
 		std::cerr << "[BinaryFileStream] Texture Read Failed" << std::endl;
 		throw std::runtime_error("[BinaryFileStream] Texture Read Failed");
 	}
-	return bf;
 }
-inline BinaryFileStream& write(BinaryFileStream& bf, const sf::Texture& x) {
+inline void write(BinaryFileStream& bf, const sf::Texture& x) {
 	bf.write(*x.copyToImage().saveToMemory("png"));
-	return bf;
 }
 
 // VarianTmap serialization
@@ -418,8 +402,8 @@ public:
 	VarianTmapSerializerWrapper(VarianTmap<Base>& data) : data(&data) {}
 	VarianTmapSerializerWrapper(const VarianTmap<Base>& data) : data(const_cast<VarianTmap<Base>*>(&data)) {}
 
-	friend BinaryFileStream& read(BinaryFileStream& bf, VarianTmapSerializerWrapper<Base,T...> x) {
-		if constexpr (sizeof...(T) == 0)return bf;
+	friend void read(BinaryFileStream& bf, VarianTmapSerializerWrapper<Base,T...> x) {
+		if constexpr (sizeof...(T) == 0)return;
 		x.data->clear();
 		size_t TypeOrderIndex = 0;
 		std::unordered_map<size_t,std::type_index> TypeOrderIndexMap;
@@ -438,10 +422,9 @@ public:
 			bf.read(TypeIndex);
 			readHelper[TypeOrderIndexMap.at(TypeIndex)](bf);
 		}
-		return bf;
 	}
-	friend BinaryFileStream& write(BinaryFileStream& bf, const VarianTmapSerializerWrapper<Base,T...>& x) {
-		if constexpr (sizeof...(T) == 0)return bf;
+	friend void write(BinaryFileStream& bf, const VarianTmapSerializerWrapper<Base,T...>& x) {
+		if constexpr (sizeof...(T) == 0)return;
 		size_t TypeOrderIndex = 0;
 		std::unordered_map<std::type_index, size_t> TypeOrderIndexMap;
 		((TypeOrderIndexMap.emplace(std::type_index(typeid(T)), TypeOrderIndex++)),...);
@@ -459,6 +442,5 @@ public:
 			if (writeHelper.find(x.data->find_type_index(elem)) != writeHelper.end())
 				writeHelper[x.data->find_type_index(elem)](bf, elem);
 		}
-		return bf;
 	}
 };

@@ -255,6 +255,26 @@ int main() {
 		std::cout << "Loaded from D:\\1.bin, size: " << Main.sub.size() << std::endl;
 	}
 
+	{
+		nlohmann::json j = VarianTmapJsonSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub};
+		std::ofstream out("D:\\1.json");
+		out << j.dump(4);
+		out.close();
+		std::cout << "Saved to D:\\1.json" << std::endl;
+	}
+
+	Main.sub.clear();
+	std::cout << "Main cleared, size: " << Main.sub.size() << std::endl;
+
+	{
+		std::ifstream in("D:\\1.json");
+		nlohmann::json j = nlohmann::json::parse(in);
+		in.close();
+		auto wrapper = VarianTmapJsonSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub};
+		j.get_to(wrapper);
+		std::cout << "Loaded from D:\\1.json, size: " << Main.sub.size() << std::endl;
+	}
+
 	windowManager.open("main",Main);
 	window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"测试", sf::Style::Close, sf::State::Windowed);
 	window.setFramerateLimit(60);

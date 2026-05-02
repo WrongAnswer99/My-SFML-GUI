@@ -2,6 +2,7 @@
 #include <set>
 #include "engine/event/Event.hpp"
 #include "engine/serialization/BinaryFileStream.hpp"
+#include "engine/serialization/JsonExtensions.hpp"
 #include "engine/core/SFMLBase.hpp"
 #include "engine/data/VarianTmap.hpp"
 #include "engine/data/RollArray.hpp"
@@ -32,11 +33,19 @@ namespace gui {
 			outlineColor = _outlineColor;
 			outlineThickness = _outlineThickness;
 		}
-		friend inline BinaryFileStream& read(BinaryFileStream& bf, Style& x) {
-			return bf.readStruct(x.backgroundColor, x.outlineColor, x.outlineThickness);
+		friend inline void read(BinaryFileStream& bf, Style& x) {
+			bf.readStruct(x.backgroundColor, x.outlineColor, x.outlineThickness);
 		}
-		friend inline BinaryFileStream& write(BinaryFileStream& bf, const Style& x) {
-			return bf.writeStruct(x.backgroundColor, x.outlineColor, x.outlineThickness);
+		friend inline void write(BinaryFileStream& bf, const Style& x) {
+			bf.writeStruct(x.backgroundColor, x.outlineColor, x.outlineThickness);
+		}
+		friend inline void to_json(nlohmann::json& j, const Style& x) {
+			j = nlohmann::json{ {"backgroundColor", x.backgroundColor}, {"outlineColor", x.outlineColor}, {"outlineThickness", x.outlineThickness} };
+		}
+		friend inline void from_json(const nlohmann::json& j, Style& x) {
+			j.at("backgroundColor").get_to(x.backgroundColor);
+			j.at("outlineColor").get_to(x.outlineColor);
+			j.at("outlineThickness").get_to(x.outlineThickness);
 		}
 	};
 	class UIBase {
@@ -106,11 +115,21 @@ namespace gui {
 			}
 		}
 	public:
-		friend inline BinaryFileStream& read(BinaryFileStream& bf, UIBase& x) {
-			return bf.readStruct(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
+		friend inline void read(BinaryFileStream& bf, UIBase& x) {
+			bf.readStruct(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
 		}
-		friend inline BinaryFileStream& write(BinaryFileStream& bf, const UIBase& x) {
-			return bf.writeStruct(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
+		friend inline void write(BinaryFileStream& bf, const UIBase& x) {
+			bf.writeStruct(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
+		}
+		friend inline void to_json(nlohmann::json& j, const UIBase& x) {
+			j = nlohmann::json{ {"posRect", x.posRect}, {"normalStyle", x.styles[gui::UIBase::Normal]}, {"overStyle", x.styles[gui::UIBase::Over]}, {"focusStyle", x.styles[gui::UIBase::Focus]}, {"isShow", x.isShow} };
+		}
+		friend inline void from_json(const nlohmann::json& j, UIBase& x) {
+			j.at("posRect").get_to(x.posRect);
+			j.at("normalStyle").get_to(x.styles[gui::UIBase::Normal]);
+			j.at("overStyle").get_to(x.styles[gui::UIBase::Over]);
+			j.at("focusStyle").get_to(x.styles[gui::UIBase::Focus]);
+			j.at("isShow").get_to(x.isShow);
 		}
 	};
 	class ImageObject :public UIBase {
@@ -159,13 +178,26 @@ namespace gui {
 			imageId = _imageId;
 			return *this;
 		}
-		friend inline BinaryFileStream& read(BinaryFileStream& bf, ImageObject& x) {
+		friend inline void read(BinaryFileStream& bf, ImageObject& x) {
 			bf.readStruct(static_cast<UIBase&>(x), x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
-			return bf;
 		}
-		friend inline BinaryFileStream& write(BinaryFileStream& bf, const ImageObject& x) {
+		friend inline void write(BinaryFileStream& bf, const ImageObject& x) {
 			bf.writeStruct(static_cast<const UIBase&>(x), x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
-			return bf;
+		}
+		friend inline void to_json(nlohmann::json& j, const ImageObject& x) {
+			nlohmann::json base = static_cast<const UIBase&>(x);
+			j = nlohmann::json{ {"UIBase", base}, {"imageId", x.imageId}, {"scale", x.scale}, {"justification", x.justification}, {"normalImageColor", x.imageColors[gui::UIBase::Normal]}, {"overImageColor", x.imageColors[gui::UIBase::Over]}, {"focusImageColor", x.imageColors[gui::UIBase::Focus]} };
+		}
+		friend inline void from_json(const nlohmann::json& j, ImageObject& x) {
+			nlohmann::json base;
+			j.at("UIBase").get_to(base);
+			base.get_to(static_cast<UIBase&>(x));
+			j.at("imageId").get_to(x.imageId);
+			j.at("scale").get_to(x.scale);
+			j.at("justification").get_to(x.justification);
+			j.at("normalImageColor").get_to(x.imageColors[gui::UIBase::Normal]);
+			j.at("overImageColor").get_to(x.imageColors[gui::UIBase::Over]);
+			j.at("focusImageColor").get_to(x.imageColors[gui::UIBase::Focus]);
 		}
 	};
 	class TextObject :public UIBase {
@@ -242,16 +274,33 @@ namespace gui {
 		const sf::String& getText() const {
 			return text;
 		}
-		friend inline BinaryFileStream& read(BinaryFileStream& bf, TextObject& x) {
+		friend inline void read(BinaryFileStream& bf, TextObject& x) {
 			bf.readStruct(static_cast<UIBase&>(x), x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
 				x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
 			x.textRender.setFont(fontManager[x.font]);
-			return bf;
 		}
-		friend inline BinaryFileStream& write(BinaryFileStream& bf, const TextObject& x) {
+		friend inline void write(BinaryFileStream& bf, const TextObject& x) {
 			bf.writeStruct(static_cast<const UIBase&>(x), x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
 				x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
-			return bf;
+		}
+		friend inline void to_json(nlohmann::json& j, const TextObject& x) {
+			nlohmann::json base = static_cast<const UIBase&>(x);
+			j = nlohmann::json{ {"UIBase", base}, {"normalTextStyle", x.textStyles[gui::UIBase::Normal]}, {"overTextStyle", x.textStyles[gui::UIBase::Over]}, {"focusTextStyle", x.textStyles[gui::UIBase::Focus]}, {"font", x.font}, {"characterSize", x.characterSize}, {"justification", x.justification}, {"letterSpacing", x.letterSpacing}, {"lineSpacing", x.lineSpacing}, {"text", x.text} };
+		}
+		friend inline void from_json(const nlohmann::json& j, TextObject& x) {
+			nlohmann::json base;
+			j.at("UIBase").get_to(base);
+			base.get_to(static_cast<UIBase&>(x));
+			j.at("normalTextStyle").get_to(x.textStyles[gui::UIBase::Normal]);
+			j.at("overTextStyle").get_to(x.textStyles[gui::UIBase::Over]);
+			j.at("focusTextStyle").get_to(x.textStyles[gui::UIBase::Focus]);
+			j.at("font").get_to(x.font);
+			j.at("characterSize").get_to(x.characterSize);
+			j.at("justification").get_to(x.justification);
+			j.at("letterSpacing").get_to(x.letterSpacing);
+			j.at("lineSpacing").get_to(x.lineSpacing);
+			j.at("text").get_to(x.text);
+			x.textRender.setFont(fontManager[x.font]);
 		}
 	};
 	class ButtonObject :public TextObject {
@@ -308,13 +357,19 @@ namespace gui {
 				}
 				return pos;
 			}
-			friend inline BinaryFileStream& read(BinaryFileStream& bf, InputLimit& x) {
+			friend inline void read(BinaryFileStream& bf, InputLimit& x) {
 				bf.readStruct(x.isAllowList, x.single, x.range);
-				return bf;
 			}
-			friend inline BinaryFileStream& write(BinaryFileStream& bf, const InputLimit& x) {
+			friend inline void write(BinaryFileStream& bf, const InputLimit& x) {
 				bf.writeStruct(x.isAllowList, x.single, x.range);
-				return bf;
+			}
+			friend inline void to_json(nlohmann::json& j, const InputLimit& x) {
+				j = nlohmann::json{ {"isAllowList", x.isAllowList}, {"single", x.single}, {"range", x.range} };
+			}
+			friend inline void from_json(const nlohmann::json& j, InputLimit& x) {
+				j.at("isAllowList").get_to(x.isAllowList);
+				j.at("single").get_to(x.single);
+				j.at("range").get_to(x.range);
 			}
 		}inputLimit;
 		size_t cursor = 0;
@@ -439,14 +494,25 @@ namespace gui {
 			cursor = text.getSize();
 			return *this;
 		}
-		friend inline BinaryFileStream& read(BinaryFileStream& bf, InputObject& x) {
+		friend inline void read(BinaryFileStream& bf, InputObject& x) {
 			bf.readStruct(static_cast<TextObject&>(x), x.sizeLimit, x.typeLimit, x.inputLimit);
 			x.cursor = x.text.getSize();
-			return bf;
 		}
-		friend inline BinaryFileStream& write(BinaryFileStream& bf, const InputObject& x) {
+		friend inline void write(BinaryFileStream& bf, const InputObject& x) {
 			bf.writeStruct(static_cast<const TextObject&>(x), x.sizeLimit, x.typeLimit, x.inputLimit);
-			return bf;
+		}
+		friend inline void to_json(nlohmann::json& j, const InputObject& x) {
+			nlohmann::json base = static_cast<const TextObject&>(x);
+			j = nlohmann::json{ {"TextObject", base}, {"sizeLimit", x.sizeLimit}, {"typeLimit", x.typeLimit}, {"inputLimit", x.inputLimit} };
+		}
+		friend inline void from_json(const nlohmann::json& j, InputObject& x) {
+			nlohmann::json base;
+			j.at("TextObject").get_to(base);
+			base.get_to(static_cast<TextObject&>(x));
+			j.at("sizeLimit").get_to(x.sizeLimit);
+			j.at("typeLimit").get_to(x.typeLimit);
+			j.at("inputLimit").get_to(x.inputLimit);
+			x.cursor = x.text.getSize();
 		}
 	};
 	class AreaObject :public UIBase {
@@ -496,13 +562,26 @@ namespace gui {
 			return *this;
 		}
 	public:
-		friend inline BinaryFileStream& read(BinaryFileStream& bf, AreaObject& x) {
+		friend inline void read(BinaryFileStream& bf, AreaObject& x) {
 			bf.readStruct(static_cast<UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
-			return bf;
 		}
-		friend inline BinaryFileStream& write(BinaryFileStream& bf, const AreaObject& x) {
+		friend inline void write(BinaryFileStream& bf, const AreaObject& x) {
 			bf.writeStruct(static_cast<const UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
-			return bf;
+		}
+		friend inline void to_json(nlohmann::json& j, const AreaObject& x) {
+			nlohmann::json base = static_cast<const UIBase&>(x);
+			j = nlohmann::json{ {"UIBase", base}, {"sub", VarianTmapJsonSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{const_cast<VarianTmap<UIBase>&>(x.sub)}}, {"mouseDragScrollable", x.mouseDragScrollable}, {"mouseWheelScrollable", x.mouseWheelScrollable}, {"scrollLimit", x.scrollLimit}, {"option", x.option} };
+		}
+		friend inline void from_json(const nlohmann::json& j, AreaObject& x) {
+			nlohmann::json base;
+			j.at("UIBase").get_to(base);
+			base.get_to(static_cast<UIBase&>(x));
+			auto subWrapper = VarianTmapJsonSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub};
+			j.at("sub").get_to(subWrapper);
+			j.at("mouseDragScrollable").get_to(x.mouseDragScrollable);
+			j.at("mouseWheelScrollable").get_to(x.mouseWheelScrollable);
+			j.at("scrollLimit").get_to(x.scrollLimit);
+			j.at("option").get_to(x.option);
 		}
 		AreaObject& setOption(const std::string& key) {
 			if (option!="") {
