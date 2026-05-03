@@ -23,7 +23,7 @@ using namespace std::string_literals;
 /*
 * Varian<T> map
 * 使用std::pmr::list优化，遍历效率提升，插入效率略微下降
-* 注:find只搜Key,不搜索Val
+* 优点：无需提前声明类型，可解决某些场景下提前声明和类实现循环依赖的问题，无需手动管理顺序指针
 */
 template<typename Base = void>
 class VarianTmap {
