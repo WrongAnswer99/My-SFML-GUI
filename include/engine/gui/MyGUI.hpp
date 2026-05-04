@@ -200,21 +200,43 @@ namespace gui {
 			j.at("focusImageColor").get_to(x.imageColors[gui::UIBase::Focus]);
 		}
 	};
+	class TextStyle{
+	public:
+		sf::Color fillColor;
+		sf::Color outlineColor;
+		void set(sf::Color _fillColor, sf::Color _outlineColor) {
+			fillColor = _fillColor;
+			outlineColor = _outlineColor;
+		}
+		friend inline void read(BinaryFileStream& bf, TextStyle& x) {
+			bf.readStruct(x.fillColor, x.outlineColor);
+		}
+		friend inline void write(BinaryFileStream& bf, const TextStyle& x) {
+			bf.writeStruct(x.fillColor, x.outlineColor);
+		}
+		friend inline void to_json(nlohmann::json& j, const TextStyle& x) {
+			j = nlohmann::json{ {"fillColor", x.fillColor}, {"outlineColor", x.outlineColor} };
+		}
+		friend inline void from_json(const nlohmann::json& j, TextStyle& x) {
+			j.at("fillColor").get_to(x.fillColor);
+			j.at("outlineColor").get_to(x.outlineColor);
+		}
+	};
 	class TextObject :public UIBase {
 		friend class WindowManager;
 	public:
 		TextObject() {
-			textStyles[gui::UIBase::Normal].set(sf::Color::Black, sf::Color::Black, 1);
-			textStyles[gui::UIBase::Over].set(sf::Color::Black, sf::Color::Black, 1);
-			textStyles[gui::UIBase::Focus].set(sf::Color::Black, sf::Color::Black, 1);
+			textStyles[gui::UIBase::Normal].set(sf::Color::Black, sf::Color::Black);
+			textStyles[gui::UIBase::Over].set(sf::Color::Black, sf::Color::Black);
+			textStyles[gui::UIBase::Focus].set(sf::Color::Black, sf::Color::Black);
 		}
-		TextObject& setTextStyle(const Style& _normalStyle, const Style& _overStyle, const Style& _focusStyle) {
+		TextObject& setTextStyle(const TextStyle& _normalStyle, const TextStyle& _overStyle, const TextStyle& _focusStyle) {
 			textStyles[gui::UIBase::Normal] = _normalStyle;
 			textStyles[gui::UIBase::Over] = _overStyle;
 			textStyles[gui::UIBase::Focus] = _focusStyle;
 			return *this;
 		}
-		Style& textStyle(int id) {
+		TextStyle& textStyle(int id) {
 			return textStyles[id];
 		}
 		//use this setter
@@ -242,7 +264,7 @@ namespace gui {
 		sf::Text textRender{ fontManager[font] };
 		sf::FloatRect textRect;
 		sf::Vector2i justification = { gui::UIBase::Mid,gui::UIBase::Mid };
-		Style textStyles[3];
+		TextStyle textStyles[3];
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 	public:
 		TextObject& setFont(const std::string& _font) {

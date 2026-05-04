@@ -36,7 +36,7 @@ namespace gui {
 		textRender.setCharacterSize(characterSize);
 		textRender.setLineSpacing(lineSpacing);
 		textRender.setLetterSpacing(letterSpacing);
-		textRender.setFillColor(textStyles[currentStatu].backgroundColor);
+		textRender.setFillColor(textStyles[currentStatu].fillColor);
 		textRender.setOutlineColor(textStyles[currentStatu].outlineColor);
 		textRender.setPosition({ 0,0 });
 		//fix position offset
@@ -60,7 +60,7 @@ namespace gui {
 				textRect.position - displayArea.position,
 				textRect.position - displayArea.position + textRect.size,
 				sf::Color::Red
-				//styles[currentStatu].backgroundColor
+				//textStyles[currentStatu].fillColor
 			);*/
 			r.draw(textRender);
 		}
@@ -80,7 +80,7 @@ namespace gui {
 			textRender.setCharacterSize(characterSize);
 			textRender.setLineSpacing(lineSpacing);
 			textRender.setLetterSpacing(letterSpacing);
-			textRender.setFillColor(textStyles[currentStatu].backgroundColor);
+			textRender.setFillColor(textStyles[currentStatu].fillColor);
 			textRender.setOutlineColor(textStyles[currentStatu].outlineColor);
 			textRender.setPosition({ 0,0 });
 			//fix position offset
@@ -131,7 +131,7 @@ namespace gui {
 				textRect.position - displayAreaCur.position,
 				textRect.position - displayAreaCur.position + textRect.size,
 				sf::Color::Red
-				//styles[currentStatu].backgroundColor
+				//textStyles[currentStatu].fillColor
 			);*/
 			rCur.draw(textRender);
 
@@ -141,7 +141,7 @@ namespace gui {
 					rCur,
 					cursorPos,
 					cursorPos + sf::Vector2f(0, (float)characterSize),
-					textStyles[currentStatu].backgroundColor,
+					textStyles[currentStatu].fillColor,
 					2.0f
 				);
 			}

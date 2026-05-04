@@ -211,7 +211,7 @@ static void init() {
 		.setPosition(sf::Vector2f(350, 2200))
 		.setSize(sf::Vector2f(150, 50))
 		.setCenter();
-	imageManager.loadImage("test","D:\\test.png");
+	imageManager.loadImage("test","D:/test.png");
 	Main.path_get<gui::ImageObject>("area.image")
 		.setImageId("test")
 		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
@@ -238,10 +238,10 @@ int main() {
 
 	// 序列化测试：先保存到文件
 	{
-		BinaryFileStream fs("D:\\1.bin");
+		BinaryFileStream fs("D:/1.bin");
 		fs.clear();
 		fs.write(VarianTmapSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub});
-		std::cout << "Saved to D:\\1.bin" << std::endl;
+		std::cout << "Saved to D:/1.bin" << std::endl;
 	}
 
 	// 清空 Main
@@ -250,29 +250,30 @@ int main() {
 
 	// 从文件读取
 	{
-		BinaryFileStream fs("D:\\1.bin");
+		BinaryFileStream fs("D:/1.bin");
 		fs.read(VarianTmapSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub});
-		std::cout << "Loaded from D:\\1.bin, size: " << Main.sub.size() << std::endl;
+		std::cout << "Loaded from D:/1.bin, size: " << Main.sub.size() << std::endl;
 	}
 
+	// JSON 序列化测试：先保存到文件
 	{
-		nlohmann::json j = VarianTmapJsonSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub};
-		std::ofstream out("D:\\1.json");
-		out << j.dump(4);
-		out.close();
-		std::cout << "Saved to D:\\1.json" << std::endl;
+		nlohmann::json j = Main;
+		std::ofstream ofs("D:/1.json");
+		ofs << j.dump(1, '\t');
+		std::cout << "Saved to D:/1.json" << std::endl;
 	}
 
+	// 清空 Main
 	Main.sub.clear();
-	std::cout << "Main cleared, size: " << Main.sub.size() << std::endl;
+	std::cout << "Main cleared (JSON test), size: " << Main.sub.size() << std::endl;
 
+	// 从 JSON 文件读取
 	{
-		std::ifstream in("D:\\1.json");
-		nlohmann::json j = nlohmann::json::parse(in);
-		in.close();
-		auto wrapper = VarianTmapJsonSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub};
-		j.get_to(wrapper);
-		std::cout << "Loaded from D:\\1.json, size: " << Main.sub.size() << std::endl;
+		std::ifstream ifs("D:/1.json");
+		nlohmann::json j;
+		ifs >> j;
+		j.get_to(Main);
+		std::cout << "Loaded from D:/1.json, size: " << Main.sub.size() << std::endl;
 	}
 
 	windowManager.open("main",Main);
