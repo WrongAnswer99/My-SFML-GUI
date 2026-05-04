@@ -138,7 +138,7 @@ public:
 		}), ...);
 		for (const auto& elem : j) {
 			size_t TypeIndex;
-			elem.at("!type_index").get_to(TypeIndex);
+			elem.at("type_index").get_to(TypeIndex);
 			readHelper[TypeOrderIndexMap.at(TypeIndex)](elem);
 		}
 	}
