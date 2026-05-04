@@ -178,6 +178,10 @@ namespace gui {
 			imageId = _imageId;
 			return *this;
 		}
+		const std::string& getImageId() const { return imageId; }
+		sf::Vector2f getScale() const { return scale; }
+		sf::Vector2i getJustification() const { return justification; }
+		const sf::Color& getImageColor(int id) const { return imageColors[id]; }
 		friend inline void read(BinaryFileStream& bf, ImageObject& x) {
 			bf.readStruct(static_cast<UIBase&>(x), x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
 		}
@@ -296,6 +300,11 @@ namespace gui {
 		const sf::String& getText() const {
 			return text;
 		}
+		const std::string& getFont() const { return font; }
+		unsigned int getCharacterSize() const { return characterSize; }
+		float getLetterSpacing() const { return letterSpacing; }
+		float getLineSpacing() const { return lineSpacing; }
+		sf::Vector2i getJustification() const { return justification; }
 		friend inline void read(BinaryFileStream& bf, TextObject& x) {
 			bf.readStruct(static_cast<UIBase&>(x), x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
 				x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
@@ -516,6 +525,8 @@ namespace gui {
 			cursor = text.getSize();
 			return *this;
 		}
+		int getTypeLimit() const { return typeLimit; }
+		size_t getSizeLimit() const { return sizeLimit; }
 		friend inline void read(BinaryFileStream& bf, InputObject& x) {
 			bf.readStruct(static_cast<TextObject&>(x), x.sizeLimit, x.typeLimit, x.inputLimit);
 			x.cursor = x.text.getSize();
@@ -632,6 +643,8 @@ namespace gui {
 		const std::string getOption() const {
 			return option;
 		}
+		sf::Vector2i getMouseDragScrollable() const { return mouseDragScrollable; }
+		sf::Vector2i getMouseWheelScrollable() const { return mouseWheelScrollable; }
 	protected:
 		void updateOption() {
 			if (option!="") {
@@ -690,7 +703,7 @@ namespace gui {
 		}
 		template<typename T>
 		T* path_find(const std::string& path) const {
-			AreaObject* areaPtr = this;
+			const AreaObject* areaPtr = this;
 			std::string temp = "";
 			for (int i = 0; i < path.size(); i++) {
 				if (path[i] == '_' || path[i] == '.') {
@@ -701,6 +714,10 @@ namespace gui {
 				else temp.push_back(path[i]);
 			}
 			return areaPtr->sub.find_named<T>(temp);
+		}
+		template<typename T>
+		T* path_find(const std::string& path) {
+			return const_cast<T*>(std::as_const(*this).path_find<T>(path));
 		}
 	};
 	class WindowManager {

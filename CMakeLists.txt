@@ -57,13 +57,28 @@ set(HEADERS
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
+add_executable(UIdesigner tools/UIdesigner.cpp src/MyGUI.cpp ${HEADERS})
+
 target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_include_directories(UIdesigner PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wa,-mbig-obj)
 
+target_compile_options(UIdesigner PRIVATE -Wa,-mbig-obj)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    sfml-graphics
+    sfml-window
+    sfml-system
+    nlohmann_json::nlohmann_json
+)
+
+target_link_libraries(UIdesigner PRIVATE
     sfml-graphics
     sfml-window
     sfml-system
