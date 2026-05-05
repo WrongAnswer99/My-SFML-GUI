@@ -98,7 +98,9 @@ namespace attr {
 		def(main_save);
 		def(main_saveas);
 		def(main_split);
-		def(main_exportattr);
+		def(main_exportJSON);
+		def(main_exportBinary);
+		def(main_exportReflection);
 		def(main_about);
 		def(main_new);
 		def(main_delete);
@@ -451,13 +453,21 @@ static void init() {
 	Init::loadAndAddButton(Main, "save", "resources/iconsource/save.png", L"    保存", sf::Vector2f(40 + 124 * 2, 0));
 	Init::loadAndAddButton(Main, "saveas", "resources/iconsource/saveas.png", L"    另存", sf::Vector2f(40 + 124 * 3, 0));
 
-	imageManager.loadImage("exportcode", "resources/iconsource/exportcode.png");
-	Init::addSimpleImage(Main, "exportattr", "exportcode", sf::Vector2f(40 + 124 * 4 + 40, 0));
-	Init::addAutoButton(Main, "exportattr", L"    导出attr属性代码", sf::Vector2f(40 + 124 * 4 + 40, 0));
-	Init::addSimpleImage(Main, "exportcxx", "exportcode", sf::Vector2f(40 + 124 * 4 + 40 + 340, 0));
-	Init::addAutoButton(Main, "exportcxx", L"    导出c++设置代码", sf::Vector2f(40 + 124 * 4 + 40 + 340, 0));
+	imageManager.loadImage("export", "resources/iconsource/export.png");
+	Init::addSimpleImage(Main, "exportJSON", "export", sf::Vector2f(40 + 124 * 4 + 40, 0));
+	Init::addAutoButton(Main, "exportJSON", L"    导出JSON", sf::Vector2f(40 + 124 * 4 + 40, 0));
+	{
+		auto* btn = Main.sub.find_named<gui::ButtonObject>("exportJSON");
+		sf::Vector2f nextPos(btn->getPosition().x + btn->getSize().x, 0);
+		Init::addSimpleImage(Main, "exportBinary", "export", nextPos);
+		Init::addAutoButton(Main, "exportBinary", L"    导出二进制文件", nextPos);
+		btn = Main.sub.find_named<gui::ButtonObject>("exportBinary");
+		nextPos = sf::Vector2f(btn->getPosition().x + btn->getSize().x, 0);
+		Init::addSimpleImage(Main, "exportReflection", "export", nextPos);
+		Init::addAutoButton(Main, "exportReflection", L"    导出反射", nextPos);
+	}
 
-	Init::loadAndAddButton(Main, "about", "resources/iconsource/about.png", L"    关于", sf::Vector2f(static_cast<float>(windowWidth - 40 - 124), 0));
+	Init::loadAndAddButton(Main, "about", "resources/iconsource/about.png", L"    关于", sf::Vector2f(static_cast<float>(windowWidth - 40 - 124), static_cast<float>(windowHeight - 40)));
 
 	float halfWindowWidth = static_cast<float>((windowWidth - 40 * 2 - 10) / 2);
 	Init::addSimpleArea(Main, "list", sf::Vector2f(40, 42), sf::Vector2f(halfWindowWidth, static_cast<float>(windowHeight - 42 * 2)), sf::Vector2i(0, 0), sf::Vector2i(1, 1));
@@ -560,7 +570,7 @@ static void init() {
 	///
 	int UIBaseLine = 0;
 
-	Init::addTitleText(settings::UIBase, "UIBaseSettingsTitle", L"UIBaseSettings", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::UIBase, "UIBaseSettings", L"基础设置", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40));
 	UIBaseLine++;
 
 	Init::addSimpleText(settings::UIBase, "SetLeftUpPosition", L"左上坐标:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
@@ -589,7 +599,7 @@ static void init() {
 	//
 	int AreaLine = UIBaseLine;
 
-	Init::addTitleText(settings::Area, "AreaSettingsTitle", L"AreaSettings", sf::Vector2f(0, static_cast<float>(40 * AreaLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::Area, "AreaSettings", L"Area设置", sf::Vector2f(0, static_cast<float>(40 * AreaLine)), sf::Vector2f(halfWindowWidth, 40));
 	AreaLine++;
 
 	Init::addSimpleText(settings::Area, "SetOption", L"默认子Option:", sf::Vector2f(0, static_cast<float>(40 * AreaLine)));
@@ -606,7 +616,7 @@ static void init() {
 	//
 	int TextLine = UIBaseLine;
 
-	Init::addTitleText(settings::Text, "TextSettingsTitle", L"TextSettings", sf::Vector2f(0, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::Text, "TextSettings", L"文字设置", sf::Vector2f(0, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth, 40));
 	TextLine++;
 
 	Init::addTextStyleInputs(settings::Text, "Normal", TextLine, 200, halfWindowWidth);
@@ -643,7 +653,7 @@ static void init() {
 	//
 	int ImageLine = UIBaseLine;
 
-	Init::addTitleText(settings::Image, "ImageSettingsTitle", L"ImageSettings", sf::Vector2f(0, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::Image, "ImageSettings", L"图片设置", sf::Vector2f(0, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth, 40));
 	ImageLine++;
 
 	Init::addSimpleText(settings::Image, "SetImageId", L"图片ID:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
@@ -667,7 +677,7 @@ static void init() {
 
 	int InputLine = TextLine;
 
-	Init::addTitleText(settings::Input, "InputSettingsTitle", L"InputSettings", sf::Vector2f(0, static_cast<float>(40 * InputLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::Input, "InputSettings", L"输入框设置", sf::Vector2f(0, static_cast<float>(40 * InputLine)), sf::Vector2f(halfWindowWidth, 40));
 	InputLine++;
 
 	Init::addSimpleText(settings::Input, "SetTypeLimit", L"输入类型:", sf::Vector2f(0, static_cast<float>(40 * InputLine)));
@@ -718,8 +728,10 @@ namespace designer {
 	}
 	//预览相关的辅助函数
 	namespace Preview {
-		//将指定的窗口数据复制到预览窗口
+		std::string currentWindowName; //当前正在预览的窗口名称
+		//将指定的窗口数据复制到预览窗口（仅在切换窗口时调用）
 		void copyWindowToPreview(const std::string& windowName, gui::AreaObject& previewData) {
+			if (currentWindowName == windowName) return;
 			//清空现有的预览数据
 			previewData.sub.clear();
 			//从data中找到对应的窗口并复制到预览
@@ -732,6 +744,170 @@ namespace designer {
 				}
 				//将窗口的子元素合并到预览数据
 				previewData.sub.merge(windowPtr->sub);
+			}
+			currentWindowName = windowName;
+		}
+		//根据dataPath在preview中找到对应的对象并应用修改
+		template<typename T>
+		void syncUIBase(T* src, T* dst) {
+			dst->setPosition(src->getPosition());
+			dst->setSize(src->getSize());
+			dst->setShow(src->getShow());
+			for (int i = 0; i < 3; i++) {
+				dst->style(i) = src->style(i);
+			}
+		}
+		template<typename T>
+		void syncText(T* src, T* dst) {
+			syncUIBase(src, dst);
+			dst->setText(src->getText());
+			dst->setFont(src->getFont());
+			dst->setCharacterSize(src->getCharacterSize());
+			dst->setSpacing(src->getLetterSpacing(), src->getLineSpacing());
+			auto just = src->getJustification();
+			dst->setJustification(static_cast<gui::UIBase::Justification>(just.x),
+								   static_cast<gui::UIBase::Justification>(just.y));
+			for (int i = 0; i < 3; i++) {
+				dst->textStyle(i) = src->textStyle(i);
+			}
+		}
+		//从dataPath中提取窗口名
+		std::string extractWindowName(const std::string& dataPath) {
+			std::string::size_type dashPos = dataPath.find('_');
+			return (dashPos != std::string::npos) ? dataPath.substr(0, dashPos) : dataPath;
+		}
+		void applyToPreview(const std::string& type, const std::string& dataPath) {
+			std::cout << "  [applyToPreview] type=" << type << " dataPath=" << dataPath << " currentWindow=" << currentWindowName << std::endl;
+			if (currentWindowName == "") return;
+			gui::AreaObject& previewData = previewManager.window("preview");
+			std::string windowName = extractWindowName(dataPath);
+			//如果dataPath是窗口本身，直接同步previewData
+			if (dataPath == windowName) {
+				if (type == attr::designer::type::area) {
+					auto* src = data.path_find<gui::AreaObject>(dataPath);
+					if (!src) return;
+					syncUIBase(src, &previewData);
+					previewData.setOption(src->getOption());
+				}
+				return;
+			}
+			//否则在子元素中查找（去掉窗口名前缀）
+			std::string subPath = dataPath.substr(windowName.length() + 1);
+			if (type == attr::designer::type::area) {
+				auto* src = data.path_find<gui::AreaObject>(dataPath);
+				auto* dst = previewData.path_find<gui::AreaObject>(subPath);
+				std::cout << "    src=" << (src ? "found" : "NULL") << " dst=" << (dst ? "found" : "NULL") << std::endl;
+				if (!src || !dst) return;
+				syncUIBase(src, dst);
+				dst->setOption(src->getOption());
+			}
+			else if (type == attr::designer::type::button) {
+				auto* src = data.path_find<gui::ButtonObject>(dataPath);
+				auto* dst = previewData.path_find<gui::ButtonObject>(subPath);
+				std::cout << "    src=" << (src ? "found" : "NULL") << " dst=" << (dst ? "found" : "NULL") << std::endl;
+				if (!src || !dst) return;
+				syncText(src, dst);
+			}
+			else if (type == attr::designer::type::image) {
+				auto* src = data.path_find<gui::ImageObject>(dataPath);
+				auto* dst = previewData.path_find<gui::ImageObject>(subPath);
+				std::cout << "    src=" << (src ? "found" : "NULL") << " dst=" << (dst ? "found" : "NULL") << std::endl;
+				if (!src || !dst) return;
+				syncUIBase(src, dst);
+				dst->setImageId(src->getImageId());
+				dst->setScale(src->getScale());
+				dst->setImageColor(src->getImageColor(0), src->getImageColor(1), src->getImageColor(2));
+				auto just = src->getJustification();
+				dst->setJustification(static_cast<gui::UIBase::Justification>(just.x),
+									   static_cast<gui::UIBase::Justification>(just.y));
+			}
+			else if (type == attr::designer::type::input) {
+				auto* src = data.path_find<gui::InputObject>(dataPath);
+				auto* dst = previewData.path_find<gui::InputObject>(subPath);
+				std::cout << "    src=" << (src ? "found" : "NULL") << " dst=" << (dst ? "found" : "NULL") << std::endl;
+				if (!src || !dst) return;
+				syncText(src, dst);
+				dst->setSizeLimit(src->getSizeLimit());
+				dst->setTypeLimit(static_cast<gui::InputObject::InputType>(src->getTypeLimit()));
+			}
+			else if (type == attr::designer::type::option) {
+				auto* src = data.path_find<gui::OptionObject>(dataPath);
+				auto* dst = previewData.path_find<gui::OptionObject>(subPath);
+				std::cout << "    src=" << (src ? "found" : "NULL") << " dst=" << (dst ? "found" : "NULL") << std::endl;
+				if (!src || !dst) return;
+				syncText(src, dst);
+			}
+			else if (type == attr::designer::type::text) {
+				auto* src = data.path_find<gui::TextObject>(dataPath);
+				auto* dst = previewData.path_find<gui::TextObject>(subPath);
+				std::cout << "    src=" << (src ? "found" : "NULL") << " dst=" << (dst ? "found" : "NULL") << std::endl;
+				if (!src || !dst) return;
+				syncText(src, dst);
+			}
+		}
+		//从preview窗口中删除对应的元素
+		void removeFromPreview(const std::string& dataPath) {
+			if (currentWindowName == "") return;
+			gui::AreaObject& previewData = previewManager.window("preview");
+			//提取路径的第一段作为窗口名，后面的作为子路径
+			std::string::size_type dashPos = dataPath.find('_');
+			std::string subPath = (dashPos != std::string::npos) ? dataPath.substr(dashPos + 1) : "";
+			if (subPath == "") {
+				//删除的是窗口本身，重新拷贝
+				currentWindowName = "";
+			}
+			else {
+				//收集所有要删除的名称（当前元素 + 所有子元素）
+				std::vector<std::string> toErase;
+				toErase.push_back(subPath);
+				auto* nameListPtr = &designer::nameList;
+				auto iter = nameListPtr->find_order_named<std::string>(dataPath);
+				if (iter != nameListPtr->end()) {
+					iter++;
+					while (iter != nameListPtr->end()) {
+						std::string& nextName = *nameListPtr->find<std::string>(iter);
+						if (nextName.find(dataPath) != 0) break;
+						//提取子路径
+						std::string childSubPath = nextName.substr(dashPos + 1);
+						toErase.push_back(childSubPath);
+						iter++;
+					}
+				}
+				//从preview中删除
+				for (const auto& name : toErase) {
+					if (auto* ptr = previewData.sub.find_named<gui::OptionObject>(name)) {
+						previewData.sub.erase(ptr);
+					}
+					if (auto* ptr = previewData.sub.find_named<gui::ImageObject>(name)) {
+						previewData.sub.erase(ptr);
+					}
+					if (auto* ptr = previewData.sub.find_named<gui::ButtonObject>(name)) {
+						previewData.sub.erase(ptr);
+					}
+					if (auto* ptr = previewData.sub.find_named<gui::InputObject>(name)) {
+						previewData.sub.erase(ptr);
+					}
+					if (auto* ptr = previewData.sub.find_named<gui::TextObject>(name)) {
+						previewData.sub.erase(ptr);
+					}
+					if (auto* ptr = previewData.sub.find_named<gui::AreaObject>(name)) {
+						previewData.sub.erase(ptr);
+					}
+				}
+			}
+		}
+		//窗口大小改变时同步preview窗口大小
+		void syncWindowSize() {
+			if (currentWindowName == "") return;
+			if (auto* windowPtr = data.sub.find_named<gui::AreaObject>(currentWindowName)) {
+				sf::Vector2f pos = windowPtr->getPosition();
+				sf::Vector2f size = windowPtr->getSize();
+				unsigned int newWidth = std::max(static_cast<unsigned int>(windowWidth), static_cast<unsigned int>(pos.x + size.x));
+				unsigned int newHeight = std::max(static_cast<unsigned int>(windowHeight), static_cast<unsigned int>(pos.y + size.y));
+				if (static_cast<unsigned int>(preview.getSize().x) != newWidth || static_cast<unsigned int>(preview.getSize().y) != newHeight) {
+					preview.setSize(sf::Vector2u(newWidth, newHeight));
+					preview.setView(sf::View(sf::FloatRect(sf::Vector2f(0.f, 0.f), sf::Vector2f(static_cast<float>(newWidth), static_cast<float>(newHeight)))));
+				}
 			}
 		}
 	}
@@ -885,6 +1061,20 @@ namespace designer {
 			mainSettings.path_get<gui::InputObject>("SetCharacterSize").setText(toStr(obj->getCharacterSize()));
 			mainSettings.path_get<gui::InputObject>("SetLetterSpacing").setText(floatToStr(obj->getLetterSpacing()));
 			mainSettings.path_get<gui::InputObject>("SetLineSpacing").setText(floatToStr(obj->getLineSpacing()));
+			//填充对齐选项
+			{
+				std::string hOpts[] = { "Left", "Mid", "Right" };
+				std::string vOpts[] = { "Top", "Mid", "Bottom" };
+				int jx = static_cast<int>(obj->getJustification().x);
+				int jy = static_cast<int>(obj->getJustification().y);
+				auto* justXArea = mainSettings.sub.find_named<gui::AreaObject>("SetJustificationX");
+				auto* justYArea = mainSettings.sub.find_named<gui::AreaObject>("SetJustificationY");
+				std::cout << "  fillTextSettings justification: jx=" << hOpts[jx] << " jy=" << vOpts[jy]
+						  << " justXArea=" << (justXArea ? "found" : "NOT_FOUND")
+						  << " justYArea=" << (justYArea ? "found" : "NOT_FOUND") << std::endl;
+				if (justXArea) justXArea->setOption(hOpts[jx]);
+				if (justYArea) justYArea->setOption(vOpts[jy]);
+			}
 			for (int i = 0; i < 3; i++) {
 				std::string stateName[] = { "TextNormal", "TextOver", "TextFocus" };
 				mainSettings.path_get<gui::InputObject>("Set" + stateName[i] + "BackgroundColorR").setText(toStr(obj->textStyle(i).fillColor.r));
@@ -1097,6 +1287,9 @@ namespace designer {
 				if (!obj) return;
 				applyTextSettings(obj, mainSettings);
 			}
+			//同步到preview窗口
+			designer::Preview::applyToPreview(type, dataPath);
+			designer::Preview::syncWindowSize();
 		}
 		void switchOption(const std::string& type,const std::string& name) {
 			gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
@@ -1381,6 +1574,11 @@ int main() {
 								designer::Name::switchOption(type,path);
 								mainList.setOption(OptionName);
 								ChosenOptionName = OptionName;
+								//同步到preview窗口
+								std::string dataPath = designer::toDataPath(path);
+								designer::Preview::currentWindowName = ""; //重置以强制重新拷贝
+								designer::Preview::copyWindowToPreview(designer::Name::getWindowName(path), previewManager.window("preview"));
+								designer::Preview::syncWindowSize();
 								menuManager.close("main");
 							}
 						}
@@ -1447,6 +1645,8 @@ int main() {
 						designer::Name::removeHelper::removeFromNameList(toDelete);
 						//从data中删除对应的UI对象及其所有子对象
 						designer::Data::remove(designer::toDataPath(ChosenPath));
+						//同步删除preview窗口
+						designer::Preview::removeFromPreview(ChosenPath);
 						//清空settings面板
 						mainSettings.sub.clear();
 						//清空选中状态
@@ -1460,7 +1660,7 @@ int main() {
 			if (auto evt = evtptr->getIf<gui::Events::InputDeselected>()) {
 				std::cout << "Input deselected : " << evt->wholePath() << std::endl;
 				//将settings面板中的修改应用到data中对应的对象
-				if (evt->path == attr::garea::main_settings) {
+				if (evt->path.find(attr::garea::main_settings) == 0) {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();
 					//先同步pos/centerpos联动
@@ -1495,7 +1695,7 @@ int main() {
 				std::cout << "=========================" << std::endl;
 			}
 			//settings面板中的选项被选中时（如justification/typeLimit），应用设置到data
-			if (evt->path == attr::garea::main_settings) {
+			if (evt->path.find(attr::garea::main_settings) == 0) {
 				gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 				std::string ChosenOptionName = mainList.getOption();
 				if (ChosenOptionName != "") {
@@ -1511,26 +1711,17 @@ int main() {
 				}
 			}
 		}
-		//同步选中的窗口到预览窗口
+		//切换窗口时更新预览
 		{
 			gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 			std::string ChosenOptionName = mainList.getOption();
 			if (ChosenOptionName != "") {
-				//从选项名称中提取窗口名称（格式为"(type)windowName-..."）
 				auto [type, fullPath] = designer::getType(ChosenOptionName);
 				std::string windowName = designer::Name::getWindowName(fullPath);
-				//将对应窗口的数据复制到预览
+				//只在切换窗口时才拷贝
 				designer::Preview::copyWindowToPreview(windowName, previewManager.window("preview"));
 				//根据窗口大小调整preview窗口大小
-				if (auto* windowPtr = designer::data.sub.find_named<gui::AreaObject>(windowName)) {
-					sf::Vector2f pos = windowPtr->getPosition();
-					sf::Vector2f size = windowPtr->getSize();
-					unsigned int newWidth = std::max(static_cast<unsigned int>(windowWidth), static_cast<unsigned int>(pos.x + size.x));
-					unsigned int newHeight = std::max(static_cast<unsigned int>(windowHeight), static_cast<unsigned int>(pos.y + size.y));
-					if (static_cast<unsigned int>(preview.getSize().x) != newWidth || static_cast<unsigned int>(preview.getSize().y) != newHeight) {
-						preview.setSize(sf::Vector2u(newWidth, newHeight));
-					}
-				}
+				designer::Preview::syncWindowSize();
 			}
 		}
 		
