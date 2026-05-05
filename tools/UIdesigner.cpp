@@ -24,6 +24,13 @@ namespace attr {
 	namespace gtext {
 		def(new_isSub);
 		def(new_isSubDisabledText);
+		//TitleTexts
+		def(UIBaseSettingsTitle);
+		def(AreaSettingsTitle);
+		def(TextSettingsTitle);
+		def(ImageSettingsTitle);
+		def(InputSettingsTitle);
+		def(OptionSettingsTitle);
 		//UIBase
 		def(main_settings_SetCenterPosition);
 		def(main_settings_SetLeftUpPosition);
@@ -553,7 +560,7 @@ static void init() {
 	///
 	int UIBaseLine = 0;
 
-	Init::addTitleText(settings::UIBase, "SetUIBase", L"UI基础设置", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::UIBase, "UIBaseSettingsTitle", L"UIBaseSettings", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40));
 	UIBaseLine++;
 
 	Init::addSimpleText(settings::UIBase, "SetLeftUpPosition", L"左上坐标:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
@@ -582,7 +589,7 @@ static void init() {
 	//
 	int AreaLine = UIBaseLine;
 
-	Init::addTitleText(settings::Area, "SetArea", L"Area设置", sf::Vector2f(0, static_cast<float>(40 * AreaLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::Area, "AreaSettingsTitle", L"AreaSettings", sf::Vector2f(0, static_cast<float>(40 * AreaLine)), sf::Vector2f(halfWindowWidth, 40));
 	AreaLine++;
 
 	Init::addSimpleText(settings::Area, "SetOption", L"默认子Option:", sf::Vector2f(0, static_cast<float>(40 * AreaLine)));
@@ -599,7 +606,7 @@ static void init() {
 	//
 	int TextLine = UIBaseLine;
 
-	Init::addTitleText(settings::Text, "SetText", L"Text设置", sf::Vector2f(0, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::Text, "TextSettingsTitle", L"TextSettings", sf::Vector2f(0, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth, 40));
 	TextLine++;
 
 	Init::addTextStyleInputs(settings::Text, "Normal", TextLine, 200, halfWindowWidth);
@@ -608,6 +615,10 @@ static void init() {
 	TextLine++;
 	Init::addTextStyleInputs(settings::Text, "Focus", TextLine, 200, halfWindowWidth);
 	TextLine++; TextLine++;
+
+	Init::addSimpleText(settings::Text, "SetText", L"文字:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
+	Init::addStringInput(settings::Text, "SetText", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
+	TextLine++;
 
 	Init::addSimpleText(settings::Text, "SetFont", L"字体:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
 	Init::addStringInput(settings::Text, "SetFont", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
@@ -632,7 +643,7 @@ static void init() {
 	//
 	int ImageLine = UIBaseLine;
 
-	Init::addTitleText(settings::Image, "SetImage", L"Image设置", sf::Vector2f(0, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::Image, "ImageSettingsTitle", L"ImageSettings", sf::Vector2f(0, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth, 40));
 	ImageLine++;
 
 	Init::addSimpleText(settings::Image, "SetImageId", L"图片ID:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
@@ -656,7 +667,7 @@ static void init() {
 
 	int InputLine = TextLine;
 
-	Init::addTitleText(settings::Input, "SetInput", L"Input设置", sf::Vector2f(0, static_cast<float>(40 * InputLine)), sf::Vector2f(halfWindowWidth, 40));
+	Init::addTitleText(settings::Input, "InputSettingsTitle", L"InputSettings", sf::Vector2f(0, static_cast<float>(40 * InputLine)), sf::Vector2f(halfWindowWidth, 40));
 	InputLine++;
 
 	Init::addSimpleText(settings::Input, "SetTypeLimit", L"输入类型:", sf::Vector2f(0, static_cast<float>(40 * InputLine)));
@@ -672,6 +683,15 @@ namespace designer {
 	VarianTmap<std::string>nameList;
 	template<typename T>
 	sf::String toStr(T val) { return sf::String(std::to_wstring(val)); }
+	sf::String floatToStr(float val) {
+		std::wstring s = std::to_wstring(val);
+		//去掉末尾的0和小数点
+		if (s.find(L'.') != std::wstring::npos) {
+			while (s.back() == L'0') s.pop_back();
+			if (s.back() == L'.') s.pop_back();
+		}
+		return sf::String(s);
+	}
 	std::pair<std::string, std::string> getType(const std::string& str) {
 		return make_pair(str.substr(0, str.find(')') + 1), str.substr(str.find(')') + 1));
 	}
@@ -695,6 +715,25 @@ namespace designer {
 			}
 		}
 		return res;
+	}
+	//预览相关的辅助函数
+	namespace Preview {
+		//将指定的窗口数据复制到预览窗口
+		void copyWindowToPreview(const std::string& windowName, gui::AreaObject& previewData) {
+			//清空现有的预览数据
+			previewData.sub.clear();
+			//从data中找到对应的窗口并复制到预览
+			if (auto* windowPtr = data.sub.find_named<gui::AreaObject>(windowName)) {
+				//同步窗口的UIBase属性到preview窗口
+				previewData.setPosition(windowPtr->getPosition());
+				previewData.setSize(windowPtr->getSize());
+				for (int i = 0; i < 3; i++) {
+					previewData.style(i) = windowPtr->style(i);
+				}
+				//将窗口的子元素合并到预览数据
+				previewData.sub.merge(windowPtr->sub);
+			}
+		}
 	}
 	//传入参数使用的是名称的函数，名称即用'-'分割的字符串，操作的是mainList中的对象
 	namespace Name {
@@ -819,12 +858,12 @@ namespace designer {
 			}
 		}
 		void fillUIBaseSettings(gui::AreaObject& mainSettings, gui::UIBase* obj) {
-			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionX").setText(toStr(obj->getPosition().x));
-			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionY").setText(toStr(obj->getPosition().y));
-			mainSettings.path_get<gui::InputObject>("SetCenterPositionX").setText(toStr(obj->getPosition().x + obj->getSize().x / 2));
-			mainSettings.path_get<gui::InputObject>("SetCenterPositionY").setText(toStr(obj->getPosition().y + obj->getSize().y / 2));
-			mainSettings.path_get<gui::InputObject>("SetSizeX").setText(toStr(obj->getSize().x));
-			mainSettings.path_get<gui::InputObject>("SetSizeY").setText(toStr(obj->getSize().y));
+			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionX").setText(floatToStr(obj->getPosition().x));
+			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionY").setText(floatToStr(obj->getPosition().y));
+			mainSettings.path_get<gui::InputObject>("SetCenterPositionX").setText(floatToStr(obj->getPosition().x + obj->getSize().x / 2));
+			mainSettings.path_get<gui::InputObject>("SetCenterPositionY").setText(floatToStr(obj->getPosition().y + obj->getSize().y / 2));
+			mainSettings.path_get<gui::InputObject>("SetSizeX").setText(floatToStr(obj->getSize().x));
+			mainSettings.path_get<gui::InputObject>("SetSizeY").setText(floatToStr(obj->getSize().y));
 			mainSettings.path_get<gui::InputObject>("SetShow").setText(obj->getShow() ? L"1" : L"0");
 			for (int i = 0; i < 3; i++) {
 				std::string stateName[] = { "Normal", "Over", "Focus" };
@@ -836,7 +875,7 @@ namespace designer {
 				mainSettings.path_get<gui::InputObject>("Set" + stateName[i] + "OutlineColorG").setText(toStr(obj->style(i).outlineColor.g));
 				mainSettings.path_get<gui::InputObject>("Set" + stateName[i] + "OutlineColorB").setText(toStr(obj->style(i).outlineColor.b));
 				mainSettings.path_get<gui::InputObject>("Set" + stateName[i] + "OutlineColorA").setText(toStr(obj->style(i).outlineColor.a));
-				mainSettings.path_get<gui::InputObject>("Set" + stateName[i] + "OutlineThickness").setText(toStr(obj->style(i).outlineThickness));
+				mainSettings.path_get<gui::InputObject>("Set" + stateName[i] + "OutlineThickness").setText(floatToStr(obj->style(i).outlineThickness));
 			}
 		}
 		void fillTextSettings(gui::AreaObject& mainSettings, gui::TextObject* obj) {
@@ -844,8 +883,8 @@ namespace designer {
 			mainSettings.path_get<gui::InputObject>("SetText").setText(obj->getText());
 			mainSettings.path_get<gui::InputObject>("SetFont").setText(sf::String(obj->getFont()));
 			mainSettings.path_get<gui::InputObject>("SetCharacterSize").setText(toStr(obj->getCharacterSize()));
-			mainSettings.path_get<gui::InputObject>("SetLetterSpacing").setText(toStr(obj->getLetterSpacing()));
-			mainSettings.path_get<gui::InputObject>("SetLineSpacing").setText(toStr(obj->getLineSpacing()));
+			mainSettings.path_get<gui::InputObject>("SetLetterSpacing").setText(floatToStr(obj->getLetterSpacing()));
+			mainSettings.path_get<gui::InputObject>("SetLineSpacing").setText(floatToStr(obj->getLineSpacing()));
 			for (int i = 0; i < 3; i++) {
 				std::string stateName[] = { "TextNormal", "TextOver", "TextFocus" };
 				mainSettings.path_get<gui::InputObject>("Set" + stateName[i] + "BackgroundColorR").setText(toStr(obj->textStyle(i).fillColor.r));
@@ -872,8 +911,8 @@ namespace designer {
 		void fillImageSettings(gui::AreaObject& mainSettings, gui::ImageObject* obj) {
 			fillUIBaseSettings(mainSettings, obj);
 			mainSettings.path_get<gui::InputObject>("SetImageId").setText(sf::String(obj->getImageId()));
-			mainSettings.path_get<gui::InputObject>("SetScaleX").setText(toStr(obj->getScale().x));
-			mainSettings.path_get<gui::InputObject>("SetScaleY").setText(toStr(obj->getScale().y));
+			mainSettings.path_get<gui::InputObject>("SetScaleX").setText(floatToStr(obj->getScale().x));
+			mainSettings.path_get<gui::InputObject>("SetScaleY").setText(floatToStr(obj->getScale().y));
 			mainSettings.path_get<gui::InputObject>("SetImageNormalColorR").setText(toStr(obj->getImageColor(0).r));
 			mainSettings.path_get<gui::InputObject>("SetImageNormalColorG").setText(toStr(obj->getImageColor(0).g));
 			mainSettings.path_get<gui::InputObject>("SetImageNormalColorB").setText(toStr(obj->getImageColor(0).b));
@@ -893,6 +932,171 @@ namespace designer {
 		}
 		void fillOptionSettings(gui::AreaObject& mainSettings, gui::OptionObject* obj) {
 			fillTextSettings(mainSettings, obj);
+		}
+		//解析输入框内容为浮点数
+		float parseFloat(const sf::String& text) {
+			try { return std::stof(text.toWideString()); }
+			catch (...) { return 0.f; }
+		}
+		//解析输入框内容为整数
+		int parseInt(const sf::String& text) {
+			try { return std::stoi(text.toWideString()); }
+			catch (...) { return 0; }
+		}
+		//解析输入框内容为sf::Color的RGBA分量
+		sf::Color parseColor(gui::AreaObject& settings, const std::string& prefix) {
+			return sf::Color(
+				parseInt(settings.path_get<gui::InputObject>(prefix + "R").getText()),
+				parseInt(settings.path_get<gui::InputObject>(prefix + "G").getText()),
+				parseInt(settings.path_get<gui::InputObject>(prefix + "B").getText()),
+				parseInt(settings.path_get<gui::InputObject>(prefix + "A").getText())
+			);
+		}
+		//解析选项名称为Justification值
+		gui::UIBase::Justification parseJustification(const std::string& opt) {
+			if (opt == "Left" || opt == "Top") return gui::UIBase::Left;
+			if (opt == "Right" || opt == "Bottom") return gui::UIBase::Right;
+			return gui::UIBase::Mid;
+		}
+		//读取Justification选项
+		std::pair<gui::UIBase::Justification, gui::UIBase::Justification> readJustification(gui::AreaObject& settings, const std::string& prefix) {
+			std::string xName = prefix + "X";
+			std::string yName = prefix + "Y";
+			std::string xOpt = settings.path_get<gui::AreaObject>(xName).getOption();
+			std::string yOpt = settings.path_get<gui::AreaObject>(yName).getOption();
+			std::cout << "  readJustification[" << prefix << "] X=" << xOpt << " Y=" << yOpt << std::endl;
+			return { parseJustification(xOpt), parseJustification(yOpt) };
+		}
+		//同步pos/centerpos：根据触发源自动更新另一个
+		void syncPosition(gui::AreaObject& mainSettings, const std::string& triggerInput) {
+			float lx = parseFloat(mainSettings.path_get<gui::InputObject>("SetLeftUpPositionX").getText());
+			float ly = parseFloat(mainSettings.path_get<gui::InputObject>("SetLeftUpPositionY").getText());
+			float cx = parseFloat(mainSettings.path_get<gui::InputObject>("SetCenterPositionX").getText());
+			float cy = parseFloat(mainSettings.path_get<gui::InputObject>("SetCenterPositionY").getText());
+			float sx = parseFloat(mainSettings.path_get<gui::InputObject>("SetSizeX").getText());
+			float sy = parseFloat(mainSettings.path_get<gui::InputObject>("SetSizeY").getText());
+
+			//判断触发源
+			bool isPosChanged = (triggerInput == "SetLeftUpPositionX" || triggerInput == "SetLeftUpPositionY");
+			bool isCenterChanged = (triggerInput == "SetCenterPositionX" || triggerInput == "SetCenterPositionY");
+			//size改变时更新centerPos，centerPos改变时更新pos，pos改变时更新centerPos
+			if (isPosChanged || triggerInput == "SetSizeX" || triggerInput == "SetSizeY") {
+				//pos或size改变 → 更新centerPos = pos + size/2
+				mainSettings.path_get<gui::InputObject>("SetCenterPositionX").setText(floatToStr(lx + sx / 2));
+				mainSettings.path_get<gui::InputObject>("SetCenterPositionY").setText(floatToStr(ly + sy / 2));
+			}
+			else if (isCenterChanged) {
+				//centerPos改变 → 更新leftUpPos = centerPos - size/2
+				mainSettings.path_get<gui::InputObject>("SetLeftUpPositionX").setText(floatToStr(cx - sx / 2));
+				mainSettings.path_get<gui::InputObject>("SetLeftUpPositionY").setText(floatToStr(cy - sy / 2));
+			}
+		}
+		//应用UIBase设置
+		template<typename T>
+		void applyUIBaseSettings(T* obj, gui::AreaObject& mainSettings) {
+			std::string path;
+			try {
+				path = "SetLeftUpPositionX";
+				float lx = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
+				path = "SetLeftUpPositionY";
+				float ly = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
+				obj->setPosition({ lx, ly });
+				std::cout << "  applyUIBase pos=(" << lx << "," << ly << ")" << std::endl;
+
+				path = "SetSizeX";
+				float sx = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
+				path = "SetSizeY";
+				float sy = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
+				obj->setSize({ sx, sy });
+				std::cout << "  applyUIBase size=(" << sx << "," << sy << ")" << std::endl;
+
+				path = "SetShow";
+				obj->setShow(parseInt(mainSettings.path_get<gui::InputObject>(path).getText()) != 0);
+
+				std::string states[] = { "Normal", "Over", "Focus" };
+				for (int i = 0; i < 3; i++) {
+					std::string p = "Set" + states[i];
+					obj->style(i).backgroundColor = parseColor(mainSettings, p + "BackgroundColor");
+					obj->style(i).outlineColor = parseColor(mainSettings, p + "OutlineColor");
+					obj->style(i).outlineThickness = parseFloat(mainSettings.path_get<gui::InputObject>(p + "OutlineThickness").getText());
+				}
+			}
+			catch (const std::exception& e) {
+				std::cout << "  applyUIBaseSettings error on " << path << ": " << e.what() << std::endl;
+			}
+		}
+		//应用Text设置
+		template<typename T>
+		void applyTextSettings(T* obj, gui::AreaObject& mainSettings) {
+			applyUIBaseSettings(obj, mainSettings);
+			obj->setText(mainSettings.path_get<gui::InputObject>("SetText").getText());
+			obj->setFont(mainSettings.path_get<gui::InputObject>("SetFont").getText().toAnsiString());
+			obj->setCharacterSize(parseInt(mainSettings.path_get<gui::InputObject>("SetCharacterSize").getText()));
+			obj->setSpacing(parseFloat(mainSettings.path_get<gui::InputObject>("SetLetterSpacing").getText()),
+						   parseFloat(mainSettings.path_get<gui::InputObject>("SetLineSpacing").getText()));
+			auto [hJust, vJust] = readJustification(mainSettings, "SetJustification");
+			obj->setJustification(hJust, vJust);
+			std::string states[] = { "TextNormal", "TextOver", "TextFocus" };
+			for (int i = 0; i < 3; i++) {
+				std::string p = "Set" + states[i];
+				obj->textStyle(i).fillColor = parseColor(mainSettings, p + "BackgroundColor");
+				obj->textStyle(i).outlineColor = parseColor(mainSettings, p + "OutlineColor");
+			}
+		}
+		//应用各类型设置
+		void applySettings(const std::string& type, const std::string& dataPath, gui::AreaObject& mainSettings) {
+			std::cout << "  [applySettings] type=" << type << " path=" << dataPath << std::endl;
+			if (type == attr::designer::type::area) {
+				auto* obj = data.path_find<gui::AreaObject>(dataPath);
+				if (!obj) return;
+				applyUIBaseSettings(obj, mainSettings);
+				obj->setOption(mainSettings.path_get<gui::InputObject>("SetOption").getText().toAnsiString());
+				obj->setScrollable(
+					{ parseInt(mainSettings.path_get<gui::InputObject>("SetScrollableDragX").getText()),
+					  parseInt(mainSettings.path_get<gui::InputObject>("SetScrollableDragY").getText()) },
+					{ parseInt(mainSettings.path_get<gui::InputObject>("SetScrollableWheelX").getText()),
+					  parseInt(mainSettings.path_get<gui::InputObject>("SetScrollableWheelY").getText()) });
+			}
+			else if (type == attr::designer::type::button) {
+				auto* obj = data.path_find<gui::ButtonObject>(dataPath);
+				if (!obj) return;
+				applyTextSettings(obj, mainSettings);
+			}
+			else if (type == attr::designer::type::image) {
+				auto* obj = data.path_find<gui::ImageObject>(dataPath);
+				if (!obj) return;
+				applyUIBaseSettings(obj, mainSettings);
+				obj->setImageId(mainSettings.path_get<gui::InputObject>("SetImageId").getText().toAnsiString());
+				obj->setScale({ parseFloat(mainSettings.path_get<gui::InputObject>("SetScaleX").getText()),
+								parseFloat(mainSettings.path_get<gui::InputObject>("SetScaleY").getText()) });
+				auto [hJust, vJust] = readJustification(mainSettings, "SetJustification");
+				obj->setJustification(hJust, vJust);
+				obj->setImageColor(
+					parseColor(mainSettings, "SetImageNormalColor"),
+					parseColor(mainSettings, "SetImageOverColor"),
+					parseColor(mainSettings, "SetImageFocusColor"));
+			}
+			else if (type == attr::designer::type::input) {
+				auto* obj = data.path_find<gui::InputObject>(dataPath);
+				if (!obj) return;
+				applyTextSettings(obj, mainSettings);
+				obj->setSizeLimit(parseInt(mainSettings.path_get<gui::InputObject>("SetSizeLimit").getText()));
+				std::string typeOpt = mainSettings.path_get<gui::AreaObject>("SetTypeLimit").getOption();
+				std::cout << "  [applySettings input] typeOpt=" << typeOpt << std::endl;
+				if (typeOpt == "Int") obj->setTypeLimit(gui::InputObject::Int);
+				else if (typeOpt == "Float") obj->setTypeLimit(gui::InputObject::Float);
+				else obj->setTypeLimit(gui::InputObject::String);
+			}
+			else if (type == attr::designer::type::option) {
+				auto* obj = data.path_find<gui::OptionObject>(dataPath);
+				if (!obj) return;
+				applyTextSettings(obj, mainSettings);
+			}
+			else if (type == attr::designer::type::text) {
+				auto* obj = data.path_find<gui::TextObject>(dataPath);
+				if (!obj) return;
+				applyTextSettings(obj, mainSettings);
+			}
 		}
 		void switchOption(const std::string& type,const std::string& name) {
 			gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
@@ -1081,13 +1285,36 @@ int main() {
 	menuManager.open("main",Main);
 	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close, sf::State::Windowed);
 	menu.setFramerateLimit(60);
+	
+	//初始化预览窗口
+	gui::AreaObject PreviewWindow;
+	PreviewWindow
+		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setPosition({0,0})
+		.setSize({0,0});
+	previewManager.open("preview", PreviewWindow);
+	preview.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"Preview", sf::Style::Close, sf::State::Windowed);
+	preview.setFramerateLimit(60);
+	
 	while (true) {
+		//处理菜单窗口事件
 		while (const std::optional sfEvt = menu.pollEvent()) {
 			if (sfEvt->is<sf::Event::Closed>()) {
 				exit(0);
 			}
 			else {
 				menuManager.update(sfEvt);
+			}
+		}
+		
+		//处理预览窗口事件
+		while (const std::optional sfEvt = preview.pollEvent()) {
+			if (sfEvt->is<sf::Event::Closed>()) {
+				//预览窗口关闭时退出程序
+				exit(0);
+			}
+			else {
+				previewManager.update(sfEvt);
 			}
 		}
 		while (auto evtptr = menuManager.pollEvent()) {
@@ -1232,26 +1459,51 @@ int main() {
 			}
 			if (auto evt = evtptr->getIf<gui::Events::InputDeselected>()) {
 				std::cout << "Input deselected : " << evt->wholePath() << std::endl;
+				//将settings面板中的修改应用到data中对应的对象
+				if (evt->path == attr::garea::main_settings) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					std::string ChosenOptionName = mainList.getOption();
+					//先同步pos/centerpos联动
+					std::string inputName = evt->name;
+					if (inputName == "SetLeftUpPositionX" || inputName == "SetLeftUpPositionY" ||
+						inputName == "SetCenterPositionX" || inputName == "SetCenterPositionY" ||
+						inputName == "SetSizeX" || inputName == "SetSizeY") {
+						designer::Name::syncPosition(menuManager.path_at<gui::AreaObject>(attr::garea::main_settings), inputName);
+					}
+					if (ChosenOptionName != "") {
+						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						designer::Name::applySettings(ChosenType, designer::toDataPath(ChosenPath), menuManager.path_at<gui::AreaObject>(attr::garea::main_settings));
+					}
+				}
 			}
 			if (auto evt = evtptr->getIf<gui::Events::OptionSelected>()) {
-				std::cout << "Option selected : " << evt->wholePath() << std::endl;
-				if (evt->wholePath() == attr::goption::new_window) {
-					designer::New::disableIsSub(false);
+			std::cout << "Option selected : " << evt->wholePath() << std::endl;
+			if (evt->wholePath() == attr::goption::new_window) {
+				designer::New::disableIsSub(false);
+			}
+			if (evt->path == "new" && evt->name != "window") {
+				designer::New::isSubSetStatu(designer::New::isSubType);
+			}
+			if (evt->path == attr::garea::main_list) {
+				auto [type, name] = designer::getType(evt->name);
+				designer::Name::switchOption(type, name);
+				// 输出整个nameList用于调试
+				std::cout << "=== nameList contents ===" << std::endl;
+				for (auto it = designer::nameList.begin(); it != designer::nameList.end(); it++) {
+					std::cout << "  " << *designer::nameList.find<std::string>(it) << std::endl;
 				}
-				if (evt->path == "new" && evt->name != "window") {
-					designer::New::isSubSetStatu(designer::New::isSubType);
-				}
-				if (evt->path == attr::garea::main_list) {
-					auto [type, name] = designer::getType(evt->name);
-					designer::Name::switchOption(type, name);
-					// 输出整个nameList用于调试
-					std::cout << "=== nameList contents ===" << std::endl;
-					for (auto it = designer::nameList.begin(); it != designer::nameList.end(); it++) {
-						std::cout << "  " << *designer::nameList.find<std::string>(it) << std::endl;
-					}
-					std::cout << "=========================" << std::endl;
+				std::cout << "=========================" << std::endl;
+			}
+			//settings面板中的选项被选中时（如justification/typeLimit），应用设置到data
+			if (evt->path == attr::garea::main_settings) {
+				gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+				std::string ChosenOptionName = mainList.getOption();
+				if (ChosenOptionName != "") {
+					auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+					designer::Name::applySettings(ChosenType, designer::toDataPath(ChosenPath), menuManager.path_at<gui::AreaObject>(attr::garea::main_settings));
 				}
 			}
+		}
 			if (auto evt = evtptr->getIf<gui::Events::OptionDeselected>()) {
 				std::cout << "Option deselected : " << evt->wholePath() << std::endl;
 				if (evt->wholePath() == attr::goption::new_window) {
@@ -1259,9 +1511,36 @@ int main() {
 				}
 			}
 		}
+		//同步选中的窗口到预览窗口
+		{
+			gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+			std::string ChosenOptionName = mainList.getOption();
+			if (ChosenOptionName != "") {
+				//从选项名称中提取窗口名称（格式为"(type)windowName-..."）
+				auto [type, fullPath] = designer::getType(ChosenOptionName);
+				std::string windowName = designer::Name::getWindowName(fullPath);
+				//将对应窗口的数据复制到预览
+				designer::Preview::copyWindowToPreview(windowName, previewManager.window("preview"));
+				//根据窗口大小调整preview窗口大小
+				if (auto* windowPtr = designer::data.sub.find_named<gui::AreaObject>(windowName)) {
+					sf::Vector2f pos = windowPtr->getPosition();
+					sf::Vector2f size = windowPtr->getSize();
+					unsigned int newWidth = std::max(static_cast<unsigned int>(windowWidth), static_cast<unsigned int>(pos.x + size.x));
+					unsigned int newHeight = std::max(static_cast<unsigned int>(windowHeight), static_cast<unsigned int>(pos.y + size.y));
+					if (static_cast<unsigned int>(preview.getSize().x) != newWidth || static_cast<unsigned int>(preview.getSize().y) != newHeight) {
+						preview.setSize(sf::Vector2u(newWidth, newHeight));
+					}
+				}
+			}
+		}
+		
 		menu.clear();
 		menuManager.draw(menu);
 		menu.display();
+		
+		preview.clear();
+		previewManager.draw(preview);
+		preview.display();
 	}
 	return 0;
 }

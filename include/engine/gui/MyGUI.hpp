@@ -148,6 +148,8 @@ namespace gui {
 		sf::Vector2i justification = { gui::UIBase::Mid,gui::UIBase::Mid };
 		sf::Vector2f scale = sf::Vector2f(1, 1);
 		sf::Color imageColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
+		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
+	public:
 		ImageObject& setImageColor(const sf::Color& _normalColor, const sf::Color& _overColor, const sf::Color& _focusColor) {
 			imageColors[gui::UIBase::Normal] = _normalColor;
 			imageColors[gui::UIBase::Over] = _overColor;
@@ -157,8 +159,6 @@ namespace gui {
 		sf::Color& imageColor(int id) {
 			return imageColors[id];
 		}
-		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
-	public:
 		ImageObject& setJustification(gui::UIBase::Justification xJus, gui::UIBase::Justification yJus) {
 			justification.x = xJus;
 			justification.y = yJus;
