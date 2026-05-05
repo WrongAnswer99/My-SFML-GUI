@@ -976,8 +976,193 @@ namespace designer {
 					iter++;
 				}
 			}
-			
 		}
+		//移动相关的辅助函数（改变渲染顺序）
+		namespace moveHelper {
+			void printNameList() {
+				std::cout << "=== nameList ===" << std::endl;
+				for (auto it = designer::nameList.begin(); it != designer::nameList.end(); it++) {
+					std::cout << "  " << *designer::nameList.find<std::string>(it) << std::endl;
+				}
+				std::cout << "================" << std::endl;
+			}
+			//判断两个路径是否是同一级（同一个父路径）
+			bool isSameLevel(const std::string& path1, const std::string& path2) {
+				auto father1 = designer::Name::getFatherName(path1);
+				auto father2 = designer::Name::getFatherName(path2);
+				return father1.first == father2.first;
+			}
+			
+			std::vector<std::string> collectItemsToMove(const std::string& optionName) {
+				auto [type, path] = designer::getType(optionName);
+				std::vector<std::string> items;
+				items.push_back(optionName);
+				
+				if (type == attr::designer::type::area) {
+					auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+					while (iter != designer::nameList.end()) {
+						std::string& nextName = *designer::nameList.find<std::string>(iter);
+						auto [_, nextPath] = designer::getType(nextName);
+						if (!designer::Name::isFather(path, nextPath)) break;
+						items.push_back(nextName);
+						iter++;
+					}
+				}
+				return items;
+			}
+			
+			//从mainList.sub中提取指定项到剪贴板
+			void extractToClip(gui::AreaObject& mainList, const std::vector<std::string>& items, VarianTmap<gui::UIBase>& subClip) {
+				for (const auto& itemName : items) {
+					auto img = mainList.sub.extract_named<gui::ImageObject>(itemName);
+					subClip.emplace_named<gui::ImageObject>(subClip.end(), itemName, std::move(img));
+					auto opt = mainList.sub.extract_named<gui::OptionObject>(itemName);
+					subClip.emplace_named<gui::OptionObject>(subClip.end(), itemName, std::move(opt));
+				}
+			}
+			
+			void repositionItems(gui::AreaObject& mainList) {
+				float startY = 0.f;
+				for (auto it = mainList.sub.begin(); it != mainList.sub.end(); it++) {
+					if (auto* img = mainList.sub.find<gui::ImageObject>(it)) {
+						img->setPosition(sf::Vector2f(img->getPosition().x, startY));
+					}
+					if (auto* opt = mainList.sub.find<gui::OptionObject>(it)) {
+						opt->setPosition(sf::Vector2f(opt->getPosition().x, startY));
+						startY += 40.f;
+					}
+				}
+			}
+			
+			void moveUp(const std::string& optionName) {
+				gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+				
+				std::vector<std::string> items = collectItemsToMove(optionName);
+				auto [currentType, currentPath] = designer::getType(optionName);
+				
+				auto imgIter = mainList.sub.find_order_named<gui::ImageObject>(items.front());
+				if (imgIter == mainList.sub.end() || imgIter == mainList.sub.begin()) {
+					return;
+				}
+				
+				// 从当前项往前找最近的同级兄弟（在nameList中查找）
+				std::string prevSiblingKey = "";
+				auto fatherPair = designer::Name::getFatherName(currentPath);
+				std::string parentPath = fatherPair.first;
+				auto nameIter = designer::nameList.find_order_named<std::string>(optionName);
+				while (nameIter != designer::nameList.begin()) {
+					nameIter = std::prev(nameIter);
+					std::string& checkName = *designer::nameList.find<std::string>(nameIter);
+					auto [checkType, checkPath] = designer::getType(checkName);
+					// 跳过子元素
+					if (designer::Name::isFather(currentPath, checkPath)) continue;
+					// 检查是否是同级（同一父路径）
+					auto checkFather = designer::Name::getFatherName(checkPath);
+					if (checkFather.first == parentPath) {
+						prevSiblingKey = checkName;
+						break;
+					}
+					// 如果遇到当前路径的父级，说明已经是同级第一项
+					if (checkPath == parentPath || designer::Name::isFather(checkPath, currentPath)) {
+						return;
+					}
+					// 其他分支的元素，继续往前找
+				}
+				
+				if (prevSiblingKey == "") return;
+				
+				VarianTmap<std::string> nameListClip;
+				VarianTmap<gui::UIBase> subClip;
+				
+				for (const auto& itemName : items) {
+					std::string val = designer::nameList.extract_named<std::string>(itemName);
+					nameListClip.push_back_named(itemName, val);
+				}
+				
+				extractToClip(mainList, items, subClip);
+				
+				// extract后找插入位置（同级兄弟的Image之前）
+				auto targetImgIter = mainList.sub.find_order_named<gui::ImageObject>(prevSiblingKey);
+				mainList.sub.merge(targetImgIter, subClip);
+				
+				auto nameListInsertPos = designer::nameList.find_order_named<std::string>(prevSiblingKey);
+				designer::nameList.merge(nameListInsertPos, nameListClip);
+				
+				repositionItems(mainList);
+			}
+			
+			void moveDown(const std::string& optionName) {
+				gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+				
+				std::vector<std::string> items = collectItemsToMove(optionName);
+				auto [currentType, currentPath] = designer::getType(optionName);
+				
+				auto optIter = mainList.sub.find_order_named<gui::OptionObject>(items.back());
+				if (optIter == mainList.sub.end()) return;
+				
+				// 从当前项往后找最近的同级兄弟（在nameList中查找）
+				std::string nextSiblingKey = "";
+				auto fatherPair = designer::Name::getFatherName(currentPath);
+				std::string parentPath = fatherPair.first;
+				auto nameIter = designer::nameList.find_order_named<std::string>(items.back());
+				nameIter = std::next(nameIter);
+				while (nameIter != designer::nameList.end()) {
+					std::string& checkName = *designer::nameList.find<std::string>(nameIter);
+					auto [checkType, checkPath] = designer::getType(checkName);
+					// 跳过子元素
+					if (designer::Name::isFather(currentPath, checkPath)) {
+						nameIter = std::next(nameIter);
+						continue;
+					}
+					// 检查是否是同级（同一父路径）
+					auto checkFather = designer::Name::getFatherName(checkPath);
+					if (checkFather.first == parentPath) {
+						nextSiblingKey = checkName;
+						break;
+					}
+					// 遇到父级或更高级，说明找不到同级兄弟
+					break;
+				}
+				
+				if (nextSiblingKey == "") return;
+				
+				// 找到下一个同级兄弟及其所有子元素
+				auto [nextSiblingType, nextSiblingPath] = designer::getType(nextSiblingKey);
+				std::string insertAfterKey = nextSiblingKey;
+				if (nextSiblingType == attr::designer::type::area) {
+					auto iter = std::next(designer::nameList.find_order_named<std::string>(nextSiblingKey));
+					while (iter != designer::nameList.end()) {
+						std::string& checkName = *designer::nameList.find<std::string>(iter);
+						auto [_, checkPath] = designer::getType(checkName);
+						if (!designer::Name::isFather(nextSiblingPath, checkPath)) break;
+						insertAfterKey = checkName;
+						iter++;
+					}
+				}
+				
+				VarianTmap<std::string> nameListClip;
+				VarianTmap<gui::UIBase> subClip;
+				
+				for (const auto& itemName : items) {
+					std::string val = designer::nameList.extract_named<std::string>(itemName);
+					nameListClip.push_back_named(itemName, val);
+				}
+				
+				extractToClip(mainList, items, subClip);
+				
+				// extract后找插入位置（同级兄弟最后一个元素的Option之后）
+				auto targetOptIter = mainList.sub.find_order_named<gui::OptionObject>(insertAfterKey);
+				auto insertPos = std::next(targetOptIter);
+				mainList.sub.merge(insertPos, subClip);
+				
+				auto nameListOptIter = designer::nameList.find_order_named<std::string>(insertAfterKey);
+				auto nameListInsertPos = std::next(nameListOptIter);
+				designer::nameList.merge(nameListInsertPos, nameListClip);
+				
+				repositionItems(mainList);
+			}
+		}
+		
 		//删除相关的辅助函数
 		namespace removeHelper {
 			//计算要删除的元素数量（当前元素 + 所有子元素）
@@ -1401,7 +1586,7 @@ namespace designer {
 			return nullptr;
 		}
 		//从data中删除指定路径的对象及其所有子对象
-		void remove(const std::string& path) {
+		void remove(const std::string& type, const std::string& path) {
 			auto [fatherPath, name] = getFatherPath(path);
 			gui::AreaObject* father = nullptr;
 			if (fatherPath == "") {
@@ -1410,24 +1595,36 @@ namespace designer {
 			else {
 				father = &data.path_at<gui::AreaObject>(fatherPath);
 			}
-			//查找并删除对象
-			if (auto* obj = father->sub.find_named<gui::AreaObject>(name)) {
-				father->sub.erase(obj);
+			//按类型查找并删除对象
+			if (type == attr::designer::type::area) {
+				if (auto* obj = father->sub.find_named<gui::AreaObject>(name)) {
+					father->sub.erase(obj);
+				}
 			}
-			else if (auto* obj = father->sub.find_named<gui::ButtonObject>(name)) {
-				father->sub.erase(obj);
+			else if (type == attr::designer::type::button) {
+				if (auto* obj = father->sub.find_named<gui::ButtonObject>(name)) {
+					father->sub.erase(obj);
+				}
 			}
-			else if (auto* obj = father->sub.find_named<gui::ImageObject>(name)) {
-				father->sub.erase(obj);
+			else if (type == attr::designer::type::image) {
+				if (auto* obj = father->sub.find_named<gui::ImageObject>(name)) {
+					father->sub.erase(obj);
+				}
 			}
-			else if (auto* obj = father->sub.find_named<gui::InputObject>(name)) {
-				father->sub.erase(obj);
+			else if (type == attr::designer::type::input) {
+				if (auto* obj = father->sub.find_named<gui::InputObject>(name)) {
+					father->sub.erase(obj);
+				}
 			}
-			else if (auto* obj = father->sub.find_named<gui::OptionObject>(name)) {
-				father->sub.erase(obj);
+			else if (type == attr::designer::type::option) {
+				if (auto* obj = father->sub.find_named<gui::OptionObject>(name)) {
+					father->sub.erase(obj);
+				}
 			}
-			else if (auto* obj = father->sub.find_named<gui::TextObject>(name)) {
-				father->sub.erase(obj);
+			else if (type == attr::designer::type::text) {
+				if (auto* obj = father->sub.find_named<gui::TextObject>(name)) {
+					father->sub.erase(obj);
+				}
 			}
 		}
 	}
@@ -1644,13 +1841,35 @@ int main() {
 						//从nameList中删除所有对应的条目
 						designer::Name::removeHelper::removeFromNameList(toDelete);
 						//从data中删除对应的UI对象及其所有子对象
-						designer::Data::remove(designer::toDataPath(ChosenPath));
+					designer::Data::remove(ChosenType, designer::toDataPath(ChosenPath));
 						//同步删除preview窗口
 						designer::Preview::removeFromPreview(ChosenPath);
 						//清空settings面板
 						mainSettings.sub.clear();
 						//清空选中状态
 						mainList.setOption();
+					}
+				}
+				//处理上移按钮按下事件
+				if (evt->wholePath() == attr::gbutton::main_moveup) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					std::string ChosenOptionName = mainList.getOption();
+					if (ChosenOptionName != "") {
+						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						designer::Name::moveHelper::moveUp(ChosenOptionName);
+						//重新选中原来的项
+						mainList.setOption(ChosenOptionName);
+					}
+				}
+				//处理下移按钮按下事件
+				if (evt->wholePath() == attr::gbutton::main_movedown) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					std::string ChosenOptionName = mainList.getOption();
+					if (ChosenOptionName != "") {
+						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						designer::Name::moveHelper::moveDown(ChosenOptionName);
+						//重新选中原来的项
+						mainList.setOption(ChosenOptionName);
 					}
 				}
 			}
