@@ -670,8 +670,6 @@ static void init() {
 namespace designer {
 	gui::AreaObject data;
 	VarianTmap<std::string>nameList;
-	int isSubType = 0;
-	bool isSubEnabled = false;
 	template<typename T>
 	sf::String toStr(T val) { return sf::String(std::to_wstring(val)); }
 	std::pair<std::string, std::string> getType(const std::string& str) {
@@ -698,6 +696,7 @@ namespace designer {
 		}
 		return res;
 	}
+	//传入参数使用的是名称的函数，名称即用'-'分割的字符串，操作的是mainList中的对象
 	namespace Name {
 		size_t countLevel(const std::string& str) {
 			size_t count = 0;
@@ -728,37 +727,95 @@ namespace designer {
 				return true;
 			else return false;
 		}
-		std::string getNextListOptionName(gui::AreaObject& mainList,std::string type,std::string name,bool isSub) {
-			static int x = 0;
-			if (name == "")return {};
-			std::string optionName = type + name;
-			auto iter = std::next(nameList.find_order_named<std::string>(optionName));
-			if (!isSub) {
-				while (iter!=nameList.end()) {
-					std::string& nextOptionName = *nameList.find<std::string>(iter);
-					auto [_, nextName] = getType(nextOptionName);
-					std::cout << "father = " << name << " child = " << nextName<<" isFather = ";
-					if (!isFather(name, nextName)) {
-						std::cout << 0 << std::endl;
+		namespace createHelper{
+			std::string getNextListOptionName(gui::AreaObject& mainList,std::string type,std::string name,bool isSub) {
+				static int x = 0;
+				if (name == "")return {};
+				std::string optionName = type + name;
+				auto iter = std::next(nameList.find_order_named<std::string>(optionName));
+				if (!isSub) {
+					while (iter!=nameList.end()) {
+						std::string& nextOptionName = *nameList.find<std::string>(iter);
+						auto [_, nextName] = getType(nextOptionName);
+						std::cout << "father = " << name << " child = " << nextName<<" isFather = ";
+						if (!isFather(name, nextName)) {
+							std::cout << 0 << std::endl;
+							return nextOptionName;
+						}
+						std::cout << 1 << std::endl;
+						iter++;
+					}
+					return {};
+				}
+				else {
+					if (iter != nameList.end()) {
+						return **iter;
+					}
+					else return {};
+				}
+			}
+			void moveDown(const std::string& optionName,const gui::AreaObject& mainList) {
+				auto iter = mainList.sub.find_order_named<gui::ImageObject>(optionName);
+				while (iter != mainList.sub.end()) {
+					(*iter)->setPosition((*iter)->getPosition() + sf::Vector2f(0.f, 40.f));
+					iter++;
+				}
+			}
+			
+		}
+		//删除相关的辅助函数
+		namespace removeHelper {
+			//计算要删除的元素数量（当前元素 + 所有子元素）
+			int countElementsToDelete(const std::string& optionName) {
+				auto [type, path] = designer::getType(optionName);
+				int count = 1; // 当前元素
+				auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+				while (iter != designer::nameList.end()) {
+					std::string& nextOptionName = *designer::nameList.find<std::string>(iter);
+					auto [_, nextName] = designer::getType(nextOptionName);
+					if (!designer::Name::isFather(path, nextName)) {
+						break;
+					}
+					count++;
+					iter++;
+				}
+				return count;
+			}
+			//找到下一个不被删除的元素（即不是当前元素，也不是当前元素的子元素）
+			std::string getNextNotDeletedOptionName(const std::string& optionName) {
+				auto [type, path] = designer::getType(optionName);
+				auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+				while (iter != designer::nameList.end()) {
+					std::string& nextOptionName = *designer::nameList.find<std::string>(iter);
+					auto [_, nextName] = designer::getType(nextOptionName);
+					if (!designer::Name::isFather(path, nextName)) {
 						return nextOptionName;
 					}
-					std::cout << 1 << std::endl;
 					iter++;
 				}
 				return {};
 			}
-			else {
-				if (iter != nameList.end()) {
-					return **iter;
+			//上移被删除元素后方的所有元素
+			void moveUp(const std::string& optionName, gui::AreaObject& mainList) {
+				// 计算要删除的元素数量
+				int elementsToDelete = countElementsToDelete(optionName);
+				// 找到下一个不被删除的元素
+				std::string nextNotDeleted = getNextNotDeletedOptionName(optionName);
+				if (nextNotDeleted == "") {
+					return;
 				}
-				else return {};
+				// 从下一个不被删除的元素开始，上移所有元素
+				auto iter = mainList.sub.find_order_named<gui::ImageObject>(nextNotDeleted);
+				while (iter != mainList.sub.end()) {
+					(*iter)->setPosition((*iter)->getPosition() - sf::Vector2f(0.f, 40.f * elementsToDelete));
+					iter++;
+				}
 			}
-		}
-		void moveDown(const std::string& optionName,const gui::AreaObject& mainList) {
-			auto iter = mainList.sub.find_order_named<gui::ImageObject>(optionName);
-			while (iter != mainList.sub.end()) {
-				(*iter)->setPosition((*iter)->getPosition() + sf::Vector2f(0.f, 40.f));
-				iter++;
+			//从nameList中删除指定的元素
+			void removeFromNameList(const std::vector<std::string>& toDelete) {
+				for (const auto& deleteName : toDelete) {
+					designer::nameList.erase_named<std::string>(deleteName);
+				}
 			}
 		}
 		void fillUIBaseSettings(gui::AreaObject& mainSettings, gui::UIBase* obj) {
@@ -886,6 +943,7 @@ namespace designer {
 			}
 		}
 	}
+	//传入参数使用的是路径的函数，路径即用'_'分割的字符串，操作的是data中的对象
 	namespace Data {
 		std::pair<std::string, std::string> getFatherPath(const std::string& path) {
 			size_t lastPos = path.find_last_of('_');
@@ -945,8 +1003,40 @@ namespace designer {
 				return father->sub.emplace_named<gui::TextObject>(nextDataIter, newName);
 			return nullptr;
 		}
+		//从data中删除指定路径的对象及其所有子对象
+		void remove(const std::string& path) {
+			auto [fatherPath, name] = getFatherPath(path);
+			gui::AreaObject* father = nullptr;
+			if (fatherPath == "") {
+				father = &data;
+			}
+			else {
+				father = &data.path_at<gui::AreaObject>(fatherPath);
+			}
+			//查找并删除对象
+			if (auto* obj = father->sub.find_named<gui::AreaObject>(name)) {
+				father->sub.erase(obj);
+			}
+			else if (auto* obj = father->sub.find_named<gui::ButtonObject>(name)) {
+				father->sub.erase(obj);
+			}
+			else if (auto* obj = father->sub.find_named<gui::ImageObject>(name)) {
+				father->sub.erase(obj);
+			}
+			else if (auto* obj = father->sub.find_named<gui::InputObject>(name)) {
+				father->sub.erase(obj);
+			}
+			else if (auto* obj = father->sub.find_named<gui::OptionObject>(name)) {
+				father->sub.erase(obj);
+			}
+			else if (auto* obj = father->sub.find_named<gui::TextObject>(name)) {
+				father->sub.erase(obj);
+			}
+		}
 	}
 	namespace New {
+		int isSubType = 0;
+		bool isSubEnabled = false;
 		void resetIsSub() {
 			menuManager.path_at<gui::TextObject>(attr::gtext::new_isSub).setShow(true);
 		}
@@ -959,11 +1049,11 @@ namespace designer {
 		}
 		void isSubSetStatu(int _isSubType) {
 			if (_isSubType == 0) {
-				designer::isSubEnabled = true;
+				isSubEnabled = true;
 				designer::New::enableIsSub();
 			}
 			else {
-				designer::isSubEnabled = false;
+				isSubEnabled = false;
 				if (_isSubType == 1) {
 					designer::New::disableIsSub(false);
 				}
@@ -1037,14 +1127,14 @@ int main() {
 							if (!mainList.sub.find_named<gui::OptionObject>(OptionName)) {
 								float linePos;
 								std::string nextOptionName;
-								nextOptionName = designer::Name::getNextListOptionName(mainList, ChosenType, ChosenPath, isSub);
+								nextOptionName = designer::Name::createHelper::getNextListOptionName(mainList, ChosenType, ChosenPath, isSub);
 								std::cout << "next = " << nextOptionName << std::endl;
 								gui::OptionObject* nextOptionPtr = mainList.sub.find_named<gui::OptionObject>(nextOptionName);
 								if (nextOptionPtr == nullptr)
 									linePos = designer::nameList.size() * 40.f;
 								else linePos = nextOptionPtr->getPosition().y;
 								size_t level = designer::Name::countLevel(path);
-								designer::Name::moveDown(nextOptionName,mainList);
+								designer::Name::createHelper::moveDown(nextOptionName,mainList);
 								designer::nameList.insert_named(designer::nameList.find_order_named<std::string>(nextOptionName),OptionName, OptionName);
 								auto nextOptionIter = mainList.sub.find_order_named<gui::ImageObject>(nextOptionName);
 								auto ptropt = mainList.sub.insert_named(nextOptionIter, OptionName, gui::OptionObject{});
@@ -1086,9 +1176,55 @@ int main() {
 					else if (designer::Name::countLevel(ChosenPath) == 0)
 						isSubType = 2;//是window对象
 					std::cout << "isSubType = " << isSubType << std::endl;
-					designer::isSubType = isSubType;
+					designer::New::isSubType = isSubType;
 					designer::New::resetIsSub();
 					designer::New::isSubSetStatu(isSubType);
+				}
+				//处理删除按钮按下事件
+				if (evt->wholePath() == attr::gbutton::main_delete) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
+					std::string ChosenOptionName = mainList.getOption();
+					//检查是否有选中项
+					if (ChosenOptionName != "") {
+						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						//上移被删除元素后方的所有元素（在删除之前调用）
+						designer::Name::removeHelper::moveUp(ChosenOptionName, mainList);
+						
+						// 收集所有要删除的元素名称（当前元素 + 所有子元素）
+						std::vector<std::string> toDelete;
+						toDelete.push_back(ChosenOptionName);
+						auto iter = designer::nameList.find_order_named<std::string>(ChosenOptionName);
+						iter++; // 跳过第一个元素
+						while (iter != designer::nameList.end()) {
+							std::string& nextOptionName = *designer::nameList.find<std::string>(iter);
+							auto [_, nextName] = designer::getType(nextOptionName);
+							if (!designer::Name::isFather(ChosenPath, nextName)) {
+								break;
+							}
+							toDelete.push_back(nextOptionName);
+							iter++;
+						}
+						
+						//从mainList中删除所有OptionObject和ImageObject
+						for (const auto& optionName : toDelete) {
+							if (auto* ptr = mainList.sub.find_named<gui::OptionObject>(optionName)) {
+								mainList.sub.erase(ptr);
+							}
+							if (auto* ptr = mainList.sub.find_named<gui::ImageObject>(optionName)) {
+								mainList.sub.erase(ptr);
+							}
+						}
+						
+						//从nameList中删除所有对应的条目
+						designer::Name::removeHelper::removeFromNameList(toDelete);
+						//从data中删除对应的UI对象及其所有子对象
+						designer::Data::remove(designer::toDataPath(ChosenPath));
+						//清空settings面板
+						mainSettings.sub.clear();
+						//清空选中状态
+						mainList.setOption();
+					}
 				}
 			}
 			if (auto evt = evtptr->getIf<gui::Events::InputSelected>()) {
@@ -1103,11 +1239,17 @@ int main() {
 					designer::New::disableIsSub(false);
 				}
 				if (evt->path == "new" && evt->name != "window") {
-					designer::New::isSubSetStatu(designer::isSubType);
+					designer::New::isSubSetStatu(designer::New::isSubType);
 				}
 				if (evt->path == attr::garea::main_list) {
 					auto [type, name] = designer::getType(evt->name);
 					designer::Name::switchOption(type, name);
+					// 输出整个nameList用于调试
+					std::cout << "=== nameList contents ===" << std::endl;
+					for (auto it = designer::nameList.begin(); it != designer::nameList.end(); it++) {
+						std::cout << "  " << *designer::nameList.find<std::string>(it) << std::endl;
+					}
+					std::cout << "=========================" << std::endl;
 				}
 			}
 			if (auto evt = evtptr->getIf<gui::Events::OptionDeselected>()) {
