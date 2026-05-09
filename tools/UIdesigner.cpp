@@ -1,4 +1,6 @@
 ﻿#include "engine/gui/MyGUI.hpp"
+#include <fstream>
+#include <functional>
 
 std::unordered_map<std::string, gui::Style>style;
 std::unordered_map<std::string, gui::TextStyle>textStyle;
@@ -111,6 +113,12 @@ namespace attr {
 		def(new_ok);
 		def(new_cancel);
 
+		def(open_ok);
+		def(open_cancel);
+
+		def(save_ok);
+		def(save_cancel);
+
 		def(main_settings_SetText);
 		def(main_settings_SetFont);
 		def(main_settings_SetCharacterSize);
@@ -132,6 +140,9 @@ namespace attr {
 		def(new_text);
 		def(new_window);
 
+		def(open_binary);
+		def(open_json);
+
 		def(main_settings_SetText);
 		def(main_settings_SetFont);
 		def(main_settings_SetCharacterSize);
@@ -146,6 +157,8 @@ namespace attr {
 	}
 	namespace ginput {
 		def(new_name);
+		def(open_filepath);
+		def(save_filepath);
 		//UIBase
 		def(main_settings_SetLeftUpPositionX);
 		def(main_settings_SetLeftUpPositionY);
@@ -217,15 +230,15 @@ namespace attr {
 int windowWidth = 1600, windowHeight = 900;
 gui::WindowManager menuManager,previewManager;
 sf::RenderWindow menu, preview;
-gui::AreaObject Main, New;
+gui::AreaObject Main, New, Open, Save;
 namespace settings {
 	gui::AreaObject UIBase, Area, Input, Image, Text;
 }
 namespace Init {
-	gui::InputObject& addSimpleInput(gui::AreaObject& area, const std::string& name, gui::InputObject::InputType type, sf::Vector2f pos, sf::Vector2f size) {
+	gui::InputObject& addSimpleInput(gui::AreaObject& area, const std::string& name, gui::InputObject::InputType type, sf::Vector2f pos, sf::Vector2f size, const sf::String& text = L"<null>") {
 		area.path_get<gui::InputObject>(name)
 			.setTypeLimit(type)
-			.setText(L"<null>")
+			.setText(text)
 			.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 			.setFont("ht")
 			.setCharacterSize(40)
@@ -449,23 +462,9 @@ static void init() {
 		.setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
 
 	Init::loadAndAddButton(Main, "open", "resources/iconsource/open.png", L"    打开", sf::Vector2f(40, 0));
-	Init::loadAndAddButton(Main, "merge", "resources/iconsource/merge.png", L"    合并", sf::Vector2f(40 + 124 * 1, 0));
-	Init::loadAndAddButton(Main, "save", "resources/iconsource/save.png", L"    保存", sf::Vector2f(40 + 124 * 2, 0));
-	Init::loadAndAddButton(Main, "saveas", "resources/iconsource/saveas.png", L"    另存", sf::Vector2f(40 + 124 * 3, 0));
+	Init::loadAndAddButton(Main, "save", "resources/iconsource/save.png", L"    保存", sf::Vector2f(40 + 124 * 1, 0));
 
-	imageManager.loadImage("export", "resources/iconsource/export.png");
-	Init::addSimpleImage(Main, "exportJSON", "export", sf::Vector2f(40 + 124 * 4 + 40, 0));
-	Init::addAutoButton(Main, "exportJSON", L"    导出JSON", sf::Vector2f(40 + 124 * 4 + 40, 0));
-	{
-		auto* btn = Main.sub.find_named<gui::ButtonObject>("exportJSON");
-		sf::Vector2f nextPos(btn->getPosition().x + btn->getSize().x, 0);
-		Init::addSimpleImage(Main, "exportBinary", "export", nextPos);
-		Init::addAutoButton(Main, "exportBinary", L"    导出二进制文件", nextPos);
-		btn = Main.sub.find_named<gui::ButtonObject>("exportBinary");
-		nextPos = sf::Vector2f(btn->getPosition().x + btn->getSize().x, 0);
-		Init::addSimpleImage(Main, "exportReflection", "export", nextPos);
-		Init::addAutoButton(Main, "exportReflection", L"    导出反射", nextPos);
-	}
+	Init::loadAndAddButton(Main, "exportReflection", "resources/iconsource/export.png", L"    导出反射", sf::Vector2f(40 + 124 * 2, 0));
 
 	Init::loadAndAddButton(Main, "about", "resources/iconsource/about.png", L"    关于", sf::Vector2f(static_cast<float>(windowWidth - 40 - 124), static_cast<float>(windowHeight - 40)));
 
@@ -518,7 +517,6 @@ static void init() {
 	Init::addSimpleImage(New, "text", "text", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "text", L"    新建文本", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
-
 	New.path_get<gui::ButtonObject>("isSubText")
 		.setText(L"□在当前区域子类中创建")
 		.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
@@ -545,6 +543,7 @@ static void init() {
 		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
+	Init::addTitleText(New, "name", L"名称：", sf::Vector2f(0, static_cast<float>(40 * NewLine)),sf::Vector2f(120,40));
 
 	New.path_get<gui::InputObject>("name")
 		.setStringTypeLimit(true, {}, { {L'A',L'Z'},{L'a',L'z'},{L'0',L'9'}})
@@ -552,8 +551,8 @@ static void init() {
 		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		.setFont("ht")
 		.setCharacterSize(40)
-		.setPosition(sf::Vector2f(0, static_cast<float>(40 * NewLine)))
-		.setSize(sf::Vector2f(600, 40));
+		.setPosition(sf::Vector2f(120, static_cast<float>(40 * NewLine)))
+		.setSize(sf::Vector2f(480, 40));
 	NewLine++;
 
 	Init::addSimpleButton(New, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * NewLine) + 20), sf::Vector2f(300, 40)).setCenter();
@@ -564,6 +563,67 @@ static void init() {
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * NewLine)))
+		.setCenter();
+
+
+	//Open窗口初始化
+	int OpenLine = 0;
+
+	Init::addTitleText(Open, "title", L"打开文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	OpenLine++;
+
+	Init::addSimpleOption(Open, "binary", L"Binary", sf::Vector2f(0, static_cast<float>(40 * OpenLine)), sf::Vector2f(300, 40));
+	Init::addSimpleOption(Open, "json", L"JSON", sf::Vector2f(300, static_cast<float>(40 * OpenLine)), sf::Vector2f(300, 40));
+	OpenLine++;
+
+	Init::addSimpleText(Open, "filepath", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * OpenLine)));
+
+	Init::addSimpleInput(Open, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * OpenLine)), sf::Vector2f(600 - 160, 40), L"");
+	OpenLine++;
+
+	Init::addSimpleButton(Open, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(Open, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	OpenLine++;
+	Open
+		.setOption()
+		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * OpenLine)))
+		.setCenter();
+
+
+	//Save窗口初始化
+	int SaveLine = 0;
+
+	Init::addTitleText(Save, "title", L"保存文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	SaveLine++;
+
+	Init::addSimpleOption(Save, "binary", L"Binary", sf::Vector2f(0, static_cast<float>(40 * SaveLine)), sf::Vector2f(300, 40));
+	Init::addSimpleOption(Save, "json", L"JSON", sf::Vector2f(300, static_cast<float>(40 * SaveLine)), sf::Vector2f(300, 40));
+	SaveLine++;
+
+	Init::addSimpleText(Save, "filepath", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * SaveLine)));
+
+	Init::addSimpleInput(Save, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * SaveLine)), sf::Vector2f(600 - 160, 40), L"");
+	SaveLine++;
+
+	Init::addSimpleText(Save, "windowToSave", L"要保存的窗口：", sf::Vector2f(0, static_cast<float>(40 * SaveLine)));
+	SaveLine++;
+
+	Save.path_get<gui::AreaObject>("windowToSave")
+		.setScrollable(sf::Vector2i(0, 1), sf::Vector2i(0, 1))
+		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setPosition(sf::Vector2f(0, static_cast<float>(40 * SaveLine)))
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * 5)));
+	SaveLine += 5;
+	Init::addSimpleButton(Save, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(Save, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	SaveLine++;
+	Save
+		.setOption()
+		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * SaveLine)))
 		.setCenter();
 
 
@@ -1218,6 +1278,77 @@ namespace designer {
 				}
 			}
 		}
+		//重建相关的辅助函数（打开文件后重建）
+		namespace rebuildHelper {
+			void rebuildNameListFromArea(const std::string& prefix, gui::AreaObject* area) {
+				for (auto& elem : area->sub) {
+					std::string key = area->sub.find_key(elem);
+					if (auto* obj = area->sub.find<gui::AreaObject>(elem)) {
+						std::string name = prefix + key;
+						std::string optionName = attr::designer::type::area + name;
+						designer::nameList.push_back_named(optionName, optionName);
+						rebuildNameListFromArea(name + "-", obj);
+					}
+					else if (auto* obj = area->sub.find<gui::ButtonObject>(elem)) {
+						std::string name = prefix + key;
+						std::string optionName = attr::designer::type::button + name;
+						designer::nameList.push_back_named(optionName, optionName);
+					}
+					else if (auto* obj = area->sub.find<gui::ImageObject>(elem)) {
+						std::string name = prefix + key;
+						std::string optionName = attr::designer::type::image + name;
+						designer::nameList.push_back_named(optionName, optionName);
+					}
+					else if (auto* obj = area->sub.find<gui::InputObject>(elem)) {
+						std::string name = prefix + key;
+						std::string optionName = attr::designer::type::input + name;
+						designer::nameList.push_back_named(optionName, optionName);
+					}
+					else if (auto* obj = area->sub.find<gui::OptionObject>(elem)) {
+						std::string name = prefix + key;
+						std::string optionName = attr::designer::type::option + name;
+						designer::nameList.push_back_named(optionName, optionName);
+					}
+					else if (auto* obj = area->sub.find<gui::TextObject>(elem)) {
+						std::string name = prefix + key;
+						std::string optionName = attr::designer::type::text + name;
+						designer::nameList.push_back_named(optionName, optionName);
+					}
+				}
+			}
+			
+			void rebuildMainList(gui::AreaObject& mainList) {
+				mainList.sub.clear();
+				
+				for (auto it = designer::nameList.begin(); it != designer::nameList.end(); it++) {
+					std::string& optionName = *designer::nameList.find<std::string>(it);
+					auto [type, path] = designer::getType(optionName);
+					std::string pureType = type.substr(1, type.size() - 2);
+					std::string name = designer::Name::getFatherName(path).second;
+					size_t level = designer::Name::countLevel(path);
+					float linePos = (it == designer::nameList.begin()) ? 0.f : 
+						mainList.sub.find_named<gui::OptionObject>(
+							*designer::nameList.find<std::string>(std::prev(it))
+						)->getPosition().y + 40.f;
+					
+					auto ptropt = mainList.sub.insert_named(mainList.sub.end(), optionName, gui::OptionObject{});
+					(*ptropt)
+						.setText("    " + name).setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+						.setFont("ht")
+						.setCharacterSize(40)
+						.setSizeAuto()
+						.setPosition(sf::Vector2f(level * 40.f, linePos));
+					
+					auto ptrimg = mainList.sub.insert_named(ptropt, optionName, gui::ImageObject{});
+					(*ptrimg)
+						.setImageId(pureType)
+						.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+						.setSizeAuto()
+						.setPosition(sf::Vector2f(level * 40.f, linePos));
+				}
+			}
+		}
+		
 		void fillUIBaseSettings(gui::AreaObject& mainSettings, gui::UIBase* obj) {
 			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionX").setText(floatToStr(obj->getPosition().x));
 			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionY").setText(floatToStr(obj->getPosition().y));
@@ -1367,8 +1498,7 @@ namespace designer {
 			}
 		}
 		//应用UIBase设置
-		template<typename T>
-		void applyUIBaseSettings(T* obj, gui::AreaObject& mainSettings) {
+		void applyUIBaseSettings(gui::UIBase* obj, gui::AreaObject& mainSettings) {
 			std::string path;
 			try {
 				path = "SetLeftUpPositionX";
@@ -1401,8 +1531,7 @@ namespace designer {
 			}
 		}
 		//应用Text设置
-		template<typename T>
-		void applyTextSettings(T* obj, gui::AreaObject& mainSettings) {
+		void applyTextSettings(gui::TextObject* obj, gui::AreaObject& mainSettings) {
 			applyUIBaseSettings(obj, mainSettings);
 			obj->setText(mainSettings.path_get<gui::InputObject>("SetText").getText());
 			obj->setFont(mainSettings.path_get<gui::InputObject>("SetFont").getText().toAnsiString());
@@ -1628,6 +1757,43 @@ namespace designer {
 			}
 		}
 	}
+	namespace Save {
+		void populateCheckboxes() {
+			gui::AreaObject& windowToSave = menuManager.path_at<gui::AreaObject>("save_windowToSave");
+			windowToSave.sub.clear();
+			int windowToSaveLine = 0;
+			for (auto it = designer::data.sub.begin(); it != designer::data.sub.end(); it++) {
+				std::string key = designer::data.sub.find_key(it);
+				windowToSave.path_get<gui::TextObject>(key)
+					.setText(L"√")
+					.setFont("ht")
+					.setCharacterSize(20)
+					.setSizeAuto()
+					.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToSaveLine) + 20))
+					.setShow(true)
+					.setCenter();
+				windowToSave.path_get<gui::ButtonObject>(key)
+					.setText(L"□"+sf::String(key))
+					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
+					.setFont("ht")
+					.setCharacterSize(40)
+					.setSizeAuto()
+					.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+					.setStyle(style["null"], style["null"], style["null"])
+					.setPosition(sf::Vector2f(0, static_cast<float>(40 * windowToSaveLine)));
+				windowToSaveLine++;
+			}
+			windowToSave.setSize(sf::Vector2f(600, static_cast<float>(5 * 40)));
+		}
+		void toggleCheckbox(const std::string& key) {
+			gui::TextObject& check = menuManager.path_at<gui::TextObject>("save_windowToSave_" + key);
+			check.toggleShow();
+		}
+		bool isChecked(const std::string& key) {
+			return menuManager.path_at<gui::TextObject>("save_windowToSave_" + key).getShow();
+		}
+	}
 	namespace New {
 		int isSubType = 0;
 		bool isSubEnabled = false;
@@ -1672,9 +1838,6 @@ int main() {
 	/*BoolFStream bf("D:/1.bin");
 	windowManager.readPreset(bf);
 	bf.close();*/
-	menuManager.open("main",Main);
-	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close, sf::State::Windowed);
-	menu.setFramerateLimit(60);
 	
 	//初始化预览窗口
 	gui::AreaObject PreviewWindow;
@@ -1685,6 +1848,10 @@ int main() {
 	previewManager.open("preview", PreviewWindow);
 	preview.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"Preview", sf::Style::Close, sf::State::Windowed);
 	preview.setFramerateLimit(60);
+	
+	menuManager.open("main",Main);
+	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close, sf::State::Windowed);
+	menu.setFramerateLimit(60);
 	
 	while (true) {
 		//处理菜单窗口事件
@@ -1709,10 +1876,10 @@ int main() {
 		}
 		while (auto evtptr = menuManager.pollEvent()) {
 			if (auto evt = evtptr->getIf<gui::Events::ButtonPressed>()) {
-				std::cout << "Button pressed : " << evt->name << std::endl;
+				std::cout << "Button pressed : " << evt->wholePath() << std::endl;
 				if (evt->wholePath() == attr::gbutton::new_ok) {
 					std::string option = menuManager.path_at<gui::AreaObject>("new").getOption();
-					if (option != ""&& designer::isAvailableName(menuManager.path_at<gui::InputObject>(attr::ginput::new_name).getText())) {
+					if (!option.empty() && designer::isAvailableName(menuManager.path_at<gui::InputObject>(attr::ginput::new_name).getText())) {
 						std::string name = menuManager.path_at<gui::InputObject>(attr::ginput::new_name).getText();
 						bool isSub = menuManager.path_at<gui::TextObject>(attr::gtext::new_isSub).getShow();
 						std::cout << "isSub = " << isSub << std::endl;
@@ -1723,7 +1890,7 @@ int main() {
 						int addType = 0;
 						if (option == "window")
 							addType = 1;
-						else if (ChosenOptionName != "")
+						else if (!ChosenOptionName.empty())
 							addType = 2;
 						if (addType) {
 							std::string type,path;
@@ -1776,13 +1943,13 @@ int main() {
 								designer::Preview::currentWindowName = ""; //重置以强制重新拷贝
 								designer::Preview::copyWindowToPreview(designer::Name::getWindowName(path), previewManager.window("preview"));
 								designer::Preview::syncWindowSize();
-								menuManager.close("main");
+								menuManager.close("new");
 							}
 						}
 					}
 				}
 				if (evt->wholePath() == attr::gbutton::new_cancel) {
-					menuManager.close("main");
+					menuManager.close("new");
 				}
 				if (evt->wholePath() == attr::gbutton::new_isSubText) {
 					menuManager.path_at<gui::TextObject>(attr::gtext::new_isSub).toggleShow();
@@ -1802,13 +1969,109 @@ int main() {
 					designer::New::resetIsSub();
 					designer::New::isSubSetStatu(isSubType);
 				}
+				//处理打开按钮按下事件
+				if (evt->wholePath() == attr::gbutton::main_open) {
+					menuManager.open("open", Open);
+				}
+				if (evt->wholePath() == attr::gbutton::open_ok) {
+					std::filesystem::path filepath = menuManager.path_at<gui::InputObject>(attr::ginput::open_filepath).getText().toWideString();
+					std::string format = menuManager.path_at<gui::AreaObject>("open").getOption();
+					if (!filepath.empty() && !format.empty()) {
+						if (format == "binary") {
+							BinaryFileStream bf(filepath);
+							bf.read(designer::data);
+							bf.close();
+						}
+						else if (format == "json") {
+							std::ifstream ifs(filepath);
+							nlohmann::json j;
+							ifs >> j;
+							ifs.close();
+							j.get_to(designer::data);
+						}
+						//刷新nameList
+						designer::nameList.clear();
+						designer::Name::rebuildHelper::rebuildNameListFromArea("", &designer::data);
+						//刷新main_list
+						gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+						designer::Name::rebuildHelper::rebuildMainList(mainList);
+						//清空settings面板
+						menuManager.path_at<gui::AreaObject>(attr::garea::main_settings).sub.clear();
+						//刷新preview窗口
+						designer::Preview::currentWindowName = "";
+						if (auto* firstWindow = designer::data.sub.find<gui::AreaObject>(designer::data.sub.begin())) {
+							std::string firstWindowName = designer::data.sub.find_key(designer::data.sub.begin());
+							designer::Preview::copyWindowToPreview(firstWindowName, previewManager.window("preview"));
+							designer::Preview::syncWindowSize();
+						}
+						//关闭打开窗口
+						menuManager.close("open");
+					}
+				}
+				if (evt->wholePath() == attr::gbutton::open_cancel) {
+					menuManager.close("open");
+				}
+				//处理保存按钮按下事件
+				if (evt->wholePath() == attr::gbutton::main_save || evt->wholePath() == attr::gbutton::main_saveas) {
+					menuManager.open("save", Save);
+					designer::Save::populateCheckboxes();
+				}
+				if (evt->wholePath() == attr::gbutton::save_ok) {
+					std::filesystem::path filepath = menuManager.path_at<gui::InputObject>(attr::ginput::save_filepath).getText().toWideString();
+					std::string format = menuManager.path_at<gui::AreaObject>("save").getOption();
+					if (!filepath.empty() && !format.empty()) {
+						gui::AreaObject dataToSave;
+						for (auto it = designer::data.sub.begin(); it != designer::data.sub.end(); it++) {
+							std::string key = designer::data.sub.find_key(it);
+							if (designer::Save::isChecked(key)) {
+								if (auto* ptr = designer::data.sub.find<gui::AreaObject>(it)) {
+									dataToSave.sub.emplace_named<gui::AreaObject>(dataToSave.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = designer::data.sub.find<gui::ButtonObject>(it)) {
+									dataToSave.sub.emplace_named<gui::ButtonObject>(dataToSave.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = designer::data.sub.find<gui::InputObject>(it)) {
+									dataToSave.sub.emplace_named<gui::InputObject>(dataToSave.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = designer::data.sub.find<gui::OptionObject>(it)) {
+									dataToSave.sub.emplace_named<gui::OptionObject>(dataToSave.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = designer::data.sub.find<gui::TextObject>(it)) {
+									dataToSave.sub.emplace_named<gui::TextObject>(dataToSave.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = designer::data.sub.find<gui::ImageObject>(it)) {
+									dataToSave.sub.emplace_named<gui::ImageObject>(dataToSave.sub.end(), key, *ptr);
+								}
+							}
+						}
+						if (format == "binary") {
+							BinaryFileStream bf(filepath);
+							bf.clear();
+							bf.write(dataToSave);
+							bf.close();
+						}
+						else if (format == "json") {
+							nlohmann::json j = dataToSave;
+							std::ofstream ofs(filepath);
+							ofs << j.dump(1,'\t');
+							ofs.close();
+						}
+						menuManager.close("save");
+					}
+				}
+				if (evt->path=="save_windowToSave") {
+					designer::Save::toggleCheckbox(evt->name);
+				}
+				if (evt->wholePath() == attr::gbutton::save_cancel) {
+					menuManager.close("save");
+				}
 				//处理删除按钮按下事件
 				if (evt->wholePath() == attr::gbutton::main_delete) {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
 					std::string ChosenOptionName = mainList.getOption();
 					//检查是否有选中项
-					if (ChosenOptionName != "") {
+					if (!ChosenOptionName.empty()) {
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
 						//上移被删除元素后方的所有元素（在删除之前调用）
 						designer::Name::removeHelper::moveUp(ChosenOptionName, mainList);
@@ -1854,7 +2117,7 @@ int main() {
 				if (evt->wholePath() == attr::gbutton::main_moveup) {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();
-					if (ChosenOptionName != "") {
+					if (!ChosenOptionName.empty()) {
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
 						designer::Name::moveHelper::moveUp(ChosenOptionName);
 						//重新选中原来的项
@@ -1865,7 +2128,7 @@ int main() {
 				if (evt->wholePath() == attr::gbutton::main_movedown) {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();
-					if (ChosenOptionName != "") {
+					if (!ChosenOptionName.empty()) {
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
 						designer::Name::moveHelper::moveDown(ChosenOptionName);
 						//重新选中原来的项
@@ -1889,40 +2152,40 @@ int main() {
 						inputName == "SetSizeX" || inputName == "SetSizeY") {
 						designer::Name::syncPosition(menuManager.path_at<gui::AreaObject>(attr::garea::main_settings), inputName);
 					}
-					if (ChosenOptionName != "") {
+					if (!ChosenOptionName.empty()) {
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
 						designer::Name::applySettings(ChosenType, designer::toDataPath(ChosenPath), menuManager.path_at<gui::AreaObject>(attr::garea::main_settings));
 					}
 				}
 			}
 			if (auto evt = evtptr->getIf<gui::Events::OptionSelected>()) {
-			std::cout << "Option selected : " << evt->wholePath() << std::endl;
-			if (evt->wholePath() == attr::goption::new_window) {
-				designer::New::disableIsSub(false);
-			}
-			if (evt->path == "new" && evt->name != "window") {
-				designer::New::isSubSetStatu(designer::New::isSubType);
-			}
-			if (evt->path == attr::garea::main_list) {
-				auto [type, name] = designer::getType(evt->name);
-				designer::Name::switchOption(type, name);
-				// 输出整个nameList用于调试
-				std::cout << "=== nameList contents ===" << std::endl;
-				for (auto it = designer::nameList.begin(); it != designer::nameList.end(); it++) {
-					std::cout << "  " << *designer::nameList.find<std::string>(it) << std::endl;
+				std::cout << "Option selected : " << evt->wholePath() << std::endl;
+				if (evt->wholePath() == attr::goption::new_window) {
+					designer::New::disableIsSub(false);
 				}
-				std::cout << "=========================" << std::endl;
-			}
-			//settings面板中的选项被选中时（如justification/typeLimit），应用设置到data
-			if (evt->path.find(attr::garea::main_settings) == 0) {
-				gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
-				std::string ChosenOptionName = mainList.getOption();
-				if (ChosenOptionName != "") {
-					auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
-					designer::Name::applySettings(ChosenType, designer::toDataPath(ChosenPath), menuManager.path_at<gui::AreaObject>(attr::garea::main_settings));
+				if (evt->path == "new" && evt->name != "window") {
+					designer::New::isSubSetStatu(designer::New::isSubType);
+				}
+				if (evt->path == attr::garea::main_list) {
+					auto [type, name] = designer::getType(evt->name);
+					designer::Name::switchOption(type, name);
+					// 输出整个nameList用于调试
+					std::cout << "=== nameList contents ===" << std::endl;
+					for (auto it = designer::nameList.begin(); it != designer::nameList.end(); it++) {
+						std::cout << "  " << *designer::nameList.find<std::string>(it) << std::endl;
+					}
+					std::cout << "=========================" << std::endl;
+				}
+				//settings面板中的选项被选中时（如justification/typeLimit），应用设置到data
+				if (evt->path.find(attr::garea::main_settings) == 0) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					std::string ChosenOptionName = mainList.getOption();
+					if (!ChosenOptionName.empty()) {
+						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						designer::Name::applySettings(ChosenType, designer::toDataPath(ChosenPath), menuManager.path_at<gui::AreaObject>(attr::garea::main_settings));
+					}
 				}
 			}
-		}
 			if (auto evt = evtptr->getIf<gui::Events::OptionDeselected>()) {
 				std::cout << "Option deselected : " << evt->wholePath() << std::endl;
 				if (evt->wholePath() == attr::goption::new_window) {
@@ -1931,10 +2194,9 @@ int main() {
 			}
 		}
 		//切换窗口时更新预览
-		{
-			gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+		gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 			std::string ChosenOptionName = mainList.getOption();
-			if (ChosenOptionName != "") {
+			if (!ChosenOptionName.empty()) {
 				auto [type, fullPath] = designer::getType(ChosenOptionName);
 				std::string windowName = designer::Name::getWindowName(fullPath);
 				//只在切换窗口时才拷贝
@@ -1942,7 +2204,6 @@ int main() {
 				//根据窗口大小调整preview窗口大小
 				designer::Preview::syncWindowSize();
 			}
-		}
 		
 		menu.clear();
 		menuManager.draw(menu);

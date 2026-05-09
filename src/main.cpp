@@ -238,7 +238,7 @@ int main() {
 
 	// 序列化测试：先保存到文件
 	{
-		BinaryFileStream fs("D:/1.bin");
+		BinaryFileStream fs(L"D:/1.bin");
 		fs.clear();
 		fs.write(VarianTmapSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub});
 		std::cout << "Saved to D:/1.bin" << std::endl;
@@ -250,7 +250,7 @@ int main() {
 
 	// 从文件读取
 	{
-		BinaryFileStream fs("D:/1.bin");
+		BinaryFileStream fs(L"D:/1.bin");
 		fs.read(VarianTmapSerializerWrapper<gui::UIBase, gui::AreaObject, gui::ImageObject, gui::TextObject, gui::InputObject, gui::ButtonObject, gui::OptionObject>{Main.sub});
 		std::cout << "Loaded from D:/1.bin, size: " << Main.sub.size() << std::endl;
 	}

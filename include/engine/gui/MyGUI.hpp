@@ -797,9 +797,20 @@ namespace gui {
 			auto ptr = layer.push_back_named(id, Window);
 			ptr->updateOption();
 		}
-		size_t close(const std::string& until) {
+		size_t close(const std::string& id) {
+			if (!layer.empty() && layer.find_key(std::prev(layer.end())) == id) {
+				layer.erase(std::prev(layer.end()));
+				return 1;
+			}
+			return 0;
+		}
+		size_t closeUntil(const std::string& id, bool include = false) {
 			size_t count = 0;
-			while (layer.find_key(std::prev(layer.end())) != until) {
+			while (!layer.empty() && layer.find_key(std::prev(layer.end())) != id) {
+				layer.erase(std::prev(layer.end()));
+				count++;
+			}
+			if (include && !layer.empty() && layer.find_key(std::prev(layer.end())) == id) {
 				layer.erase(std::prev(layer.end()));
 				count++;
 			}

@@ -8,6 +8,7 @@
 #include <vector>
 #include <utility>
 #include <iostream>
+#include <filesystem>
 
 class BinaryFileStream;
 
@@ -35,7 +36,7 @@ class BinaryFileStream {
 private:
 	std::ifstream fileIn;
 	std::ofstream fileOut;
-	std::string filename;
+	std::filesystem::path filename;
 	char mode;
 	enum modeEnum{
 		None,
@@ -125,8 +126,11 @@ private:
 	}
 
 public:
-	BinaryFileStream(const std::string& filename) :filename(filename) {}
-
+	BinaryFileStream(const std::filesystem::path& filename) :filename(filename) {}
+	void setFile(const std::filesystem::path& filename){
+		close();
+		this->filename = filename;
+	}
 	//外部定义函数读取
 	//使用 if constexpr 延迟检测，避免特化顺序问题
 	//左值走 reference 路径，右值（wrapper临时对象）走 wrapper 路径
