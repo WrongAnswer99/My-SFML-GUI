@@ -751,6 +751,57 @@ static void init() {
 namespace designer {
 	gui::AreaObject data;
 	VarianTmap<std::string>nameList;
+	
+	void printDataRecursive(const gui::AreaObject& area, const std::string& prefix, int depth) {
+		std::string indent(depth * 2, ' ');
+		std::cout << indent << prefix << "[AreaObject] sub.size=" << area.sub.size() << std::endl;
+		
+		// 输出 Order 列表
+		std::cout << indent << "  Order (" << area.sub.size() << " items):" << std::endl;
+		for (auto it = area.sub.begin(); it != area.sub.end(); ++it) {
+			std::string key = area.sub.find_key(it);
+			bool isNull = (*it == nullptr);
+			std::string typeStr = "unknown";
+			if (!isNull) {
+				if (area.sub.find<gui::AreaObject>(it)) typeStr = "AreaObject";
+				else if (area.sub.find<gui::ButtonObject>(it)) typeStr = "ButtonObject";
+				else if (area.sub.find<gui::ImageObject>(it)) typeStr = "ImageObject";
+				else if (area.sub.find<gui::InputObject>(it)) typeStr = "InputObject";
+				else if (area.sub.find<gui::OptionObject>(it)) typeStr = "OptionObject";
+				else if (area.sub.find<gui::TextObject>(it)) typeStr = "TextObject";
+			}
+			std::cout << indent << "    key=\"" << key << "\" type=" << typeStr << " ptr=" << (isNull ? "nullptr" : "valid");
+			if (!isNull) {
+				sf::FloatRect rect = (*it)->getPosRect();
+				std::cout << " posRect=(" << rect.position.x << "," << rect.position.y << ") size=(" << rect.size.x << "," << rect.size.y << ")";
+			}
+			std::cout << std::endl;
+		}
+		
+		// 递归输出子 AreaObject
+		for (auto it = area.sub.begin(); it != area.sub.end(); ++it) {
+			if (auto* childArea = area.sub.find<gui::AreaObject>(it)) {
+				std::string childKey = area.sub.find_key(it);
+				printDataRecursive(*childArea, childKey, depth + 1);
+			}
+		}
+	}
+	
+	void printDataDebug() {
+		std::cout << "\n========== DATA DEBUG ==========" << std::endl;
+		std::cout << "data.sub.size() = " << data.sub.size() << std::endl;
+		printDataRecursive(data, "root", 0);
+		std::cout << "================================\n" << std::endl;
+	}
+	
+	void printNameListDebug() {
+		std::cout << "--- nameList ---" << std::endl;
+		for (auto it = nameList.begin(); it != nameList.end(); it++) {
+			std::cout << "  " << *nameList.find<std::string>(it) << std::endl;
+		}
+		std::cout << "================\n" << std::endl;
+	}
+	
 	template<typename T>
 	sf::String toStr(T val) { return sf::String(std::to_wstring(val)); }
 	sf::String floatToStr(float val) {
@@ -1097,6 +1148,59 @@ namespace designer {
 			void moveUp(const std::string& optionName) {
 				gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 				
+				auto [dataType, dataPath] = designer::getType(optionName);
+				auto nameFatherPair = designer::Name::getFatherName(dataPath);
+				std::string nameParentPath = nameFatherPair.first;
+				std::string itemName = nameFatherPair.second;
+				
+				if (nameParentPath != "") {
+					std::string dataParentPath = designer::toDataPath(nameParentPath);
+					gui::AreaObject& parent = data.path_at<gui::AreaObject>(dataParentPath);
+					
+					if (dataType == attr::designer::type::button) {
+						auto iter = parent.sub.find_order_named<gui::ButtonObject>(itemName);
+						if (iter == parent.sub.begin()) return;
+						auto iterPrev = std::prev(iter);
+						auto dataClip = parent.sub.extract<gui::ButtonObject>(iter);
+						parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::image) {
+						auto iter = parent.sub.find_order_named<gui::ImageObject>(itemName);
+						if (iter == parent.sub.begin()) return;
+						auto iterPrev = std::prev(iter);
+						auto dataClip = parent.sub.extract<gui::ImageObject>(iter);
+						parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::input) {
+						auto iter = parent.sub.find_order_named<gui::InputObject>(itemName);
+						if (iter == parent.sub.begin()) return;
+						auto iterPrev = std::prev(iter);
+						auto dataClip = parent.sub.extract<gui::InputObject>(iter);
+						parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::option) {
+						auto iter = parent.sub.find_order_named<gui::OptionObject>(itemName);
+						if (iter == parent.sub.begin()) return;
+						auto iterPrev = std::prev(iter);
+						auto dataClip = parent.sub.extract<gui::OptionObject>(iter);
+						parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::text) {
+						auto iter = parent.sub.find_order_named<gui::TextObject>(itemName);
+						if (iter == parent.sub.begin()) return;
+						auto iterPrev = std::prev(iter);
+						auto dataClip = parent.sub.extract<gui::TextObject>(iter);
+						parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::area) {
+						auto iter = parent.sub.find_order_named<gui::AreaObject>(itemName);
+						if (iter == parent.sub.begin()) return;
+						auto iterPrev = std::prev(iter);
+						auto dataClip = parent.sub.extract<gui::AreaObject>(iter);
+						parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
+					}
+				}
+				
 				std::vector<std::string> items = collectItemsToMove(optionName);
 				auto [currentType, currentPath] = designer::getType(optionName);
 				
@@ -1105,28 +1209,23 @@ namespace designer {
 					return;
 				}
 				
-				// 从当前项往前找最近的同级兄弟（在nameList中查找）
 				std::string prevSiblingKey = "";
-				auto fatherPair = designer::Name::getFatherName(currentPath);
-				std::string parentPath = fatherPair.first;
+				auto nameFatherPair2 = designer::Name::getFatherName(currentPath);
+				std::string nameParentPath2 = nameFatherPair2.first;
 				auto nameIter = designer::nameList.find_order_named<std::string>(optionName);
 				while (nameIter != designer::nameList.begin()) {
 					nameIter = std::prev(nameIter);
 					std::string& checkName = *designer::nameList.find<std::string>(nameIter);
 					auto [checkType, checkPath] = designer::getType(checkName);
-					// 跳过子元素
 					if (designer::Name::isFather(currentPath, checkPath)) continue;
-					// 检查是否是同级（同一父路径）
 					auto checkFather = designer::Name::getFatherName(checkPath);
-					if (checkFather.first == parentPath) {
+					if (checkFather.first == nameParentPath2) {
 						prevSiblingKey = checkName;
 						break;
 					}
-					// 如果遇到当前路径的父级，说明已经是同级第一项
-					if (checkPath == parentPath || designer::Name::isFather(checkPath, currentPath)) {
+					if (checkPath == nameParentPath2 || designer::Name::isFather(checkPath, currentPath)) {
 						return;
 					}
-					// 其他分支的元素，继续往前找
 				}
 				
 				if (prevSiblingKey == "") return;
@@ -1141,7 +1240,6 @@ namespace designer {
 				
 				extractToClip(mainList, items, subClip);
 				
-				// extract后找插入位置（同级兄弟的Image之前）
 				auto targetImgIter = mainList.sub.find_order_named<gui::ImageObject>(prevSiblingKey);
 				mainList.sub.merge(targetImgIter, subClip);
 				
@@ -1154,39 +1252,93 @@ namespace designer {
 			void moveDown(const std::string& optionName) {
 				gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 				
+				auto [dataType, dataPath] = designer::getType(optionName);
+				auto nameFatherPair = designer::Name::getFatherName(dataPath);
+				std::string nameParentPath = nameFatherPair.first;
+				std::string itemName = nameFatherPair.second;
+				
+				if (nameParentPath != "") {
+					std::string dataParentPath = designer::toDataPath(nameParentPath);
+					gui::AreaObject& parent = data.path_at<gui::AreaObject>(dataParentPath);
+					
+					if (dataType == attr::designer::type::button) {
+						auto iter = parent.sub.find_order_named<gui::ButtonObject>(itemName);
+						auto endIter = parent.sub.end();
+						if (iter == endIter || std::next(iter) == endIter) return;
+						auto iterNext = std::next(iter, 2);
+						auto dataClip = parent.sub.extract<gui::ButtonObject>(iter);
+						parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::image) {
+						auto iter = parent.sub.find_order_named<gui::ImageObject>(itemName);
+						auto endIter = parent.sub.end();
+						if (iter == endIter || std::next(iter) == endIter) return;
+						auto iterNext = std::next(iter, 2);
+						auto dataClip = parent.sub.extract<gui::ImageObject>(iter);
+						parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::input) {
+						auto iter = parent.sub.find_order_named<gui::InputObject>(itemName);
+						auto endIter = parent.sub.end();
+						if (iter == endIter || std::next(iter) == endIter) return;
+						auto iterNext = std::next(iter, 2);
+						auto dataClip = parent.sub.extract<gui::InputObject>(iter);
+						parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::option) {
+						auto iter = parent.sub.find_order_named<gui::OptionObject>(itemName);
+						auto endIter = parent.sub.end();
+						if (iter == endIter || std::next(iter) == endIter) return;
+						auto iterNext = std::next(iter, 2);
+						auto dataClip = parent.sub.extract<gui::OptionObject>(iter);
+						parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::text) {
+						auto iter = parent.sub.find_order_named<gui::TextObject>(itemName);
+						auto endIter = parent.sub.end();
+						if (iter == endIter || std::next(iter) == endIter) return;
+						auto iterNext = std::next(iter, 2);
+						auto dataClip = parent.sub.extract<gui::TextObject>(iter);
+						parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
+					}
+					else if (dataType == attr::designer::type::area) {
+						auto iter = parent.sub.find_order_named<gui::AreaObject>(itemName);
+						auto endIter = parent.sub.end();
+						if (iter == endIter || std::next(iter) == endIter) return;
+						auto iterNext = std::next(iter, 2);
+						auto dataClip = parent.sub.extract<gui::AreaObject>(iter);
+						parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
+					}
+				}
+				
 				std::vector<std::string> items = collectItemsToMove(optionName);
 				auto [currentType, currentPath] = designer::getType(optionName);
 				
 				auto optIter = mainList.sub.find_order_named<gui::OptionObject>(items.back());
 				if (optIter == mainList.sub.end()) return;
 				
-				// 从当前项往后找最近的同级兄弟（在nameList中查找）
 				std::string nextSiblingKey = "";
-				auto fatherPair = designer::Name::getFatherName(currentPath);
-				std::string parentPath = fatherPair.first;
+				auto nameFatherPair2 = designer::Name::getFatherName(currentPath);
+				std::string nameParentPath2 = nameFatherPair2.first;
 				auto nameIter = designer::nameList.find_order_named<std::string>(items.back());
 				nameIter = std::next(nameIter);
 				while (nameIter != designer::nameList.end()) {
 					std::string& checkName = *designer::nameList.find<std::string>(nameIter);
 					auto [checkType, checkPath] = designer::getType(checkName);
-					// 跳过子元素
 					if (designer::Name::isFather(currentPath, checkPath)) {
 						nameIter = std::next(nameIter);
 						continue;
 					}
-					// 检查是否是同级（同一父路径）
 					auto checkFather = designer::Name::getFatherName(checkPath);
-					if (checkFather.first == parentPath) {
+					if (checkFather.first == nameParentPath2) {
 						nextSiblingKey = checkName;
 						break;
 					}
-					// 遇到父级或更高级，说明找不到同级兄弟
 					break;
 				}
 				
 				if (nextSiblingKey == "") return;
 				
-				// 找到下一个同级兄弟及其所有子元素
 				auto [nextSiblingType, nextSiblingPath] = designer::getType(nextSiblingKey);
 				std::string insertAfterKey = nextSiblingKey;
 				if (nextSiblingType == attr::designer::type::area) {
@@ -1210,7 +1362,6 @@ namespace designer {
 				
 				extractToClip(mainList, items, subClip);
 				
-				// extract后找插入位置（同级兄弟最后一个元素的Option之后）
 				auto targetOptIter = mainList.sub.find_order_named<gui::OptionObject>(insertAfterKey);
 				auto insertPos = std::next(targetOptIter);
 				mainList.sub.merge(insertPos, subClip);
@@ -1882,11 +2033,9 @@ int main() {
 					if (!option.empty() && designer::isAvailableName(menuManager.path_at<gui::InputObject>(attr::ginput::new_name).getText())) {
 						std::string name = menuManager.path_at<gui::InputObject>(attr::ginput::new_name).getText();
 						bool isSub = menuManager.path_at<gui::TextObject>(attr::gtext::new_isSub).getShow();
-						std::cout << "isSub = " << isSub << std::endl;
 						gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 						std::string ChosenOptionName = mainList.getOption();
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
-						std::cout << "current chosen : " << ChosenOptionName << std::endl << "input name : " << name << std::endl << "option : " << option << std::endl;
 						int addType = 0;
 						if (option == "window")
 							addType = 1;
@@ -1912,7 +2061,6 @@ int main() {
 								float linePos;
 								std::string nextOptionName;
 								nextOptionName = designer::Name::createHelper::getNextListOptionName(mainList, ChosenType, ChosenPath, isSub);
-								std::cout << "next = " << nextOptionName << std::endl;
 								gui::OptionObject* nextOptionPtr = mainList.sub.find_named<gui::OptionObject>(nextOptionName);
 								if (nextOptionPtr == nullptr)
 									linePos = designer::nameList.size() * 40.f;
@@ -1964,7 +2112,6 @@ int main() {
 						isSubType = 1;//是非area对象
 					else if (designer::Name::countLevel(ChosenPath) == 0)
 						isSubType = 2;//是window对象
-					std::cout << "isSubType = " << isSubType << std::endl;
 					designer::New::isSubType = isSubType;
 					designer::New::resetIsSub();
 					designer::New::isSubSetStatu(isSubType);
@@ -2169,12 +2316,8 @@ int main() {
 				if (evt->path == attr::garea::main_list) {
 					auto [type, name] = designer::getType(evt->name);
 					designer::Name::switchOption(type, name);
-					// 输出整个nameList用于调试
-					std::cout << "=== nameList contents ===" << std::endl;
-					for (auto it = designer::nameList.begin(); it != designer::nameList.end(); it++) {
-						std::cout << "  " << *designer::nameList.find<std::string>(it) << std::endl;
-					}
-					std::cout << "=========================" << std::endl;
+					designer::printDataDebug();
+					designer::printNameListDebug();
 				}
 				//settings面板中的选项被选中时（如justification/typeLimit），应用设置到data
 				if (evt->path.find(attr::garea::main_settings) == 0) {

@@ -28,13 +28,13 @@ using namespace std::string_literals;
 template<typename Base = void>
 class VarianTmap {
 public:
-	VarianTmap() {}
+	VarianTmap() : pool(std::make_unique<std::pmr::unsynchronized_pool_resource>()) {}
 
 	void copyHelper(const VarianTmap<Base>& other) {
 		this->Type.reserve(other.Type.size());
 		std::unordered_map<Base*, Base*> PointerMap{};
 		for (const auto& TypeElem : other.Type) {
-			publicTypeOperation.Operation[TypeElem.first].CopyMergeHelper(this->pool, this->Type[TypeElem.first].Data, TypeElem.second.Data, this->DataFinder, other.DataFinder, PointerMap, true);
+			publicTypeOperation.Operation[TypeElem.first].CopyMergeHelper(*this->pool, this->Type[TypeElem.first].Data, TypeElem.second.Data, this->DataFinder, other.DataFinder, PointerMap, true);
 			for (const auto& KeyElem : TypeElem.second.Key) {
 				this->Type[TypeElem.first].Key.emplace(KeyElem.first, PointerMap.at(KeyElem.second));
 			}
@@ -46,7 +46,7 @@ public:
 		}
 	}
 
-	VarianTmap(const VarianTmap<Base>& other) {
+	VarianTmap(const VarianTmap<Base>& other) : pool(std::make_unique<std::pmr::unsynchronized_pool_resource>()) {
 		copyHelper(other);
 	}
 
@@ -59,6 +59,7 @@ public:
 	}
 
 	void moveHelper(VarianTmap<Base>&& other) {
+		this->pool = std::move(other.pool);
 		this->Order = std::move(other.Order);
 		this->DataFinder = std::move(other.DataFinder);
 		this->Type = std::move(other.Type);
@@ -90,7 +91,7 @@ private:
 	template<typename T>
 	static constexpr bool isDerivedType = std::is_base_of_v<Base, T> || std::is_same_v<Base, void>;
 
-	std::pmr::unsynchronized_pool_resource pool;
+	std::unique_ptr<std::pmr::unsynchronized_pool_resource> pool;
 
 	class auto_cast_pointer {
 		friend class VarianTmap;
@@ -216,7 +217,7 @@ private:
 		if (iter == Type.end()) {
 			publicTypeOperation.template registerType<T>();
 			Type[TypeIndex].Data = std::make_shared<std::pmr::list<T>>(
-				std::pmr::polymorphic_allocator<T>(static_cast<std::pmr::memory_resource*>(&pool))
+				std::pmr::polymorphic_allocator<T>(static_cast<std::pmr::memory_resource*>(pool.get()))
 			);
 		}
 	}
@@ -280,7 +281,7 @@ private:
 		for (const auto& TypeElem : other.Type) {
 			const std::type_index& TypeIndex = TypeElem.first;
 			bool NeedCreate = !isTypeRegistered(TypeIndex);
-			publicTypeOperation.Operation[TypeIndex].CopyMergeHelper(this->pool, this->Type[TypeIndex].Data, TypeElem.second.Data, this->DataFinder, other.DataFinder, PointerMap, NeedCreate);
+			publicTypeOperation.Operation[TypeIndex].CopyMergeHelper(*this->pool, this->Type[TypeIndex].Data, TypeElem.second.Data, this->DataFinder, other.DataFinder, PointerMap, NeedCreate);
 			for (auto& KeyElem : TypeElem.second.Key) {
 				if (this->Type[TypeIndex].Key.count(KeyElem.first)) {
 					std::cerr << "[VarianTmap::merge] Key already exists." << std::endl << "  Key: " << KeyElem.first << std::endl;
