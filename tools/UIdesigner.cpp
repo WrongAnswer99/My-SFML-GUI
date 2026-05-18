@@ -168,6 +168,7 @@ namespace attr {
 		def(new_name);
 		def(open_filepath);
 		def(save_filepath);
+		def(paste_name);
 		//UIBase
 		def(main_settings_SetLeftUpPositionX);
 		def(main_settings_SetLeftUpPositionY);
@@ -670,6 +671,18 @@ static void init() {
 		.setSizeAuto()
 		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * PasteLine)));
+	PasteLine++;
+
+	//新增：名称输入框
+	Init::addSimpleText(Paste, "nameLabel", L"新名称：", sf::Vector2f(0, static_cast<float>(40 * PasteLine)));
+	Paste.path_get<gui::InputObject>("name")
+		.setTypeLimit(gui::InputObject::String)
+		.setText(L"")
+		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setFont("ht")
+		.setCharacterSize(40)
+		.setPosition(sf::Vector2f(120, static_cast<float>(40 * PasteLine)))
+		.setSize(sf::Vector2f(480, 40));
 	PasteLine++;
 
 	Init::addSimpleButton(Paste, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40)).setCenter();
@@ -2361,105 +2374,341 @@ namespace designer {
 				}
 			}
 		}
-		void pasteExecute(gui::AreaObject& mainList, const std::string& ChosenType, const std::string& ChosenPath, bool isSub) {
-			std::string fatherPath = isSub ? ChosenPath : designer::Name::getFatherName(ChosenPath).first;//该变量为父名称，用'-'连接
-			
-			std::string firstNewName;//该变量为名称，用'-'连接
-			
-			std::vector<std::pair<std::string, std::string>> clipItems;
-			for (auto it = designer::clipboard.nameListClip.begin(); it != designer::clipboard.nameListClip.end(); it++) {
-				std::string nameListKey = designer::clipboard.nameListClip.find_key(it);//该变量为名称，用'-'连接
-				auto [clipType, clipPath] = designer::getType(nameListKey);//clipType为类型标识，clipPath为名称，用'-'连接
-				
-				std::string newName = fatherPath.empty() ? (clipType + clipPath) : (clipType + fatherPath + '-' + clipPath);//该变量为名称，用'-'连接
-				if (clipItems.empty()) firstNewName = newName;
-				
-				clipItems.push_back({nameListKey, newName});
+
+		//============ 名称处理模块 ============
+		namespace NameProcessor {
+			//从剪贴板提取根对象的原始名称（不含类型前缀）
+			std::string extractRootName() {
+				auto [rootType, rootPath] = designer::getType(designer::clipboard.copiedItemName);
+				return designer::Name::getFatherName(rootPath).second;
 			}
-			
-			std::string nextOptionName = designer::Name::createHelper::getNextListOptionName(mainList, ChosenType, ChosenPath, isSub);//该变量为名称，用'-'连接
-			
-			float linePos;
-			gui::OptionObject* nextOptionPtr = mainList.sub.find_named<gui::OptionObject>(nextOptionName);
-			if (nextOptionPtr == nullptr)
-				linePos = designer::nameList.size() * 40.f;
-			else linePos = nextOptionPtr->getPosition().y;
-			
-			size_t itemCount = clipItems.size();
-			for (size_t i = 0; i < itemCount; i++) {
-				designer::Name::createHelper::moveDown(nextOptionName, mainList);
+
+			//验证新名称是否合法
+			bool validateNewName(const sf::String& newName) {
+				//不能为空
+				if (newName.isEmpty()) return false;
+
+				//首字符不能是数字
+				if (newName[0] >= L'0' && newName[0] <= L'9') return false;
+
+				//禁止使用分隔符（破坏路径结构）
+				for (size_t i = 0; i < newName.getSize(); ++i) {
+					if (newName[i] == L'-' || newName[i] == L'_') return false;
+				}
+
+				return true;
 			}
-			
-			for (const auto& [oldName, newName] : clipItems) {
-				auto [itemType, itemPath] = designer::getType(newName);//itemType为类型标识，itemPath为名称，用'-'连接
-				std::string itemName = designer::Name::getFatherName(itemPath).second;//该变量为名称，用'-'连接
+
+			//构建重命名映射：旧名称路径 -> 新名称路径
+			std::unordered_map<std::string, std::string> buildRenameMap(
+				const std::string& oldRootName,
+				const std::string& newRootName
+			) {
+				std::unordered_map<std::string, std::string> renameMap;
+
+				for (auto it = designer::clipboard.nameListClip.begin();
+					 it != designer::clipboard.nameListClip.end(); ++it) {
+					std::string relPath = designer::clipboard.nameListClip.find_key(it);
+					auto [clipType, clipPath] = designer::getType(relPath);
+
+					//构建新的相对路径
+					std::string newPath;
+					if (clipPath == oldRootName) {
+						//根节点直接替换
+						newPath = newRootName;
+					} else if (clipPath.substr(0, oldRootName.length() + 1) == oldRootName + "-") {
+						//子节点：替换前缀
+						newPath = newRootName + clipPath.substr(oldRootName.length());
+					} else {
+						//不应该发生，保持不变
+						newPath = clipPath;
+					}
+
+					renameMap[clipPath] = newPath;
+				}
+
+				return renameMap;
+			}
+		}
+
+		//============ 路径计算模块 ============
+		namespace PathCalculator {
+			//计算父路径（基于 isSub 标志）
+			std::string calculateFatherPath(const std::string& chosenPath, bool isSub) {
+				return isSub ? chosenPath : designer::Name::getFatherName(chosenPath).first;
+			}
+
+			//构建新项的完整名称列表
+			std::vector<std::pair<std::string, std::string>> buildNewItemNames(
+				const std::string& fatherPath,
+				const std::unordered_map<std::string, std::string>& renameMap
+			) {
+				std::vector<std::pair<std::string, std::string>> result;
+
+				for (auto it = designer::clipboard.nameListClip.begin();
+					 it != designer::clipboard.nameListClip.end(); ++it) {
+					std::string clipKey = designer::clipboard.nameListClip.find_key(it);
+					auto [clipType, clipRelPath] = designer::getType(clipKey);
+
+					//获取重命名后的相对路径
+					std::string newRelPath = renameMap.at(clipRelPath);
+
+					//构建完整路径：类型标识 + 父路径 + 新相对路径
+					std::string newFullName;
+					if (fatherPath.empty()) {
+						newFullName = clipType + newRelPath;
+					} else {
+						newFullName = clipType + fatherPath + '-' + newRelPath;
+					}
+
+					result.push_back({clipKey, newFullName});
+				}
+
+				return result;
+			}
+		}
+
+		//============ 插入位置模块 ============
+		namespace Insertion {
+			//插入位置信息
+			struct InsertionPoint {
+				std::string nextOptionName;  //下一个项的名称
+				float linePos;                //Y坐标位置
+			};
+
+			//获取插入位置信息
+			InsertionPoint getInsertionPoint(
+				gui::AreaObject& mainList,
+				const std::string& chosenType,
+				const std::string& chosenPath,
+				bool isSub
+			) {
+				InsertionPoint point;
+				point.nextOptionName = designer::Name::createHelper::getNextListOptionName(
+					mainList, chosenType, chosenPath, isSub
+				);
+
+				gui::OptionObject* nextOptionPtr = mainList.sub.find_named<gui::OptionObject>(
+					point.nextOptionName
+				);
+
+				if (nextOptionPtr == nullptr) {
+					point.linePos = designer::nameList.size() * 40.f;
+				} else {
+					point.linePos = nextOptionPtr->getPosition().y;
+				}
+
+				return point;
+			}
+
+			//为即将插入的项腾出空间
+			void makeSpace(
+				gui::AreaObject& mainList,
+				const std::string& nextOptionName,
+				size_t itemCount
+			) {
+				for (size_t i = 0; i < itemCount; i++) {
+					designer::Name::createHelper::moveDown(nextOptionName, mainList);
+				}
+			}
+		}
+
+		//============ MainList 更新模块 ============
+		namespace MainListUpdater {
+			//插入单个项到 mainList
+			void insertItem(
+				gui::AreaObject& mainList,
+				const std::string& itemFullName,
+				const std::string& nextOptionName,
+				float linePos
+			) {
+				auto [itemType, itemPath] = designer::getType(itemFullName);
+				std::string itemName = designer::Name::getFatherName(itemPath).second;
 				size_t level = designer::Name::countLevel(itemPath);
-				
-				designer::nameList.insert_named(designer::nameList.find_order_named<std::string>(nextOptionName), newName, newName);
-				
-				std::string imageId = itemType.substr(1, itemType.size() - 2);//该变量为类型标识，去掉括号
-				
+
+				//插入到 nameList
+				designer::nameList.insert_named(
+					designer::nameList.find_order_named<std::string>(nextOptionName),
+					itemFullName,
+					itemFullName
+				);
+
+				//提取图标类型
+				std::string imageId = itemType.substr(1, itemType.size() - 2);
+
+				//插入 OptionObject 和 ImageObject
 				auto nextOptionIter = mainList.sub.find_order_named<gui::ImageObject>(nextOptionName);
-				auto ptropt = mainList.sub.insert_named(nextOptionIter, newName, gui::OptionObject{});
-				auto ptrimg = mainList.sub.insert_named(ptropt, newName, gui::ImageObject{});
+				auto ptropt = mainList.sub.insert_named(nextOptionIter, itemFullName, gui::OptionObject{});
+				auto ptrimg = mainList.sub.insert_named(ptropt, itemFullName, gui::ImageObject{});
+
 				(*ptrimg)
 					.setImageId(imageId)
 					.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 					.setSizeAuto()
 					.setPosition(sf::Vector2f(level * 40.f, linePos));
+
 				(*ptropt)
-					.setText("    " + itemName).setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+					.setText("    " + itemName)
+					.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 					.setFont("ht")
 					.setCharacterSize(40)
 					.setSizeAuto()
 					.setPosition(sf::Vector2f(level * 40.f, linePos));
-				
-				linePos += 40.f;
 			}
-			
-			auto rootName = designer::Name::getFatherName(designer::clipboard.copiedItemName).second;//该变量为名称，用'-'连接
-			auto [rootType, _] = designer::getType(designer::clipboard.copiedItemName);//rootType为类型标识
-			
-			std::string newDataChosenPath = designer::toDataPath(ChosenPath);//该变量为路径，用'_'连接
-			auto [father, nextDataIter] = designer::Data::getNextIter(ChosenType, newDataChosenPath, isSub);
-			
-			if (rootType == attr::designer::type::area) {
-				if (auto* obj = designer::clipboard.dataClip.find_named<gui::AreaObject>(rootName)) {
-					father->sub.emplace_named<gui::AreaObject>(nextDataIter, rootName, *obj);
+
+			//批量插入所有项
+			void insertAllItems(
+				gui::AreaObject& mainList,
+				const std::vector<std::pair<std::string, std::string>>& items,
+				const std::string& nextOptionName,
+				float startLinePos
+			) {
+				float linePos = startLinePos;
+				for (const auto& [oldName, newName] : items) {
+					insertItem(mainList, newName, nextOptionName, linePos);
+					linePos += 40.f;
 				}
 			}
-			else if (rootType == attr::designer::type::button) {
-				if (auto* obj = designer::clipboard.dataClip.find_named<gui::ButtonObject>(rootName)) {
-					father->sub.emplace_named<gui::ButtonObject>(nextDataIter, rootName, *obj);
+		}
+
+		//============ Data树更新模块 ============
+		namespace DataTreeUpdater {
+			//复制单个对象到data树（模板函数）
+			template<typename T>
+			void copyObject(
+				gui::AreaObject* father,
+				decltype(std::declval<gui::AreaObject>().sub.begin()) insertIter,
+				const std::string& oldName,
+				const std::string& newName
+			) {
+				if (auto* obj = designer::clipboard.dataClip.find_named<T>(oldName)) {
+					father->sub.emplace_named<T>(insertIter, newName, *obj);
 				}
 			}
-			else if (rootType == attr::designer::type::image) {
-				if (auto* obj = designer::clipboard.dataClip.find_named<gui::ImageObject>(rootName)) {
-					father->sub.emplace_named<gui::ImageObject>(nextDataIter, rootName, *obj);
+
+			//根据类型分发复制操作
+			void insertRootObject(
+				gui::AreaObject* father,
+				decltype(std::declval<gui::AreaObject>().sub.begin()) insertIter,
+				const std::string& rootType,
+				const std::string& oldRootName,
+				const std::string& newRootName
+			) {
+				if (rootType == attr::designer::type::area) {
+					copyObject<gui::AreaObject>(father, insertIter, oldRootName, newRootName);
+				}
+				else if (rootType == attr::designer::type::button) {
+					copyObject<gui::ButtonObject>(father, insertIter, oldRootName, newRootName);
+				}
+				else if (rootType == attr::designer::type::image) {
+					copyObject<gui::ImageObject>(father, insertIter, oldRootName, newRootName);
+				}
+				else if (rootType == attr::designer::type::input) {
+					copyObject<gui::InputObject>(father, insertIter, oldRootName, newRootName);
+				}
+				else if (rootType == attr::designer::type::option) {
+					copyObject<gui::OptionObject>(father, insertIter, oldRootName, newRootName);
+				}
+				else if (rootType == attr::designer::type::text) {
+					copyObject<gui::TextObject>(father, insertIter, oldRootName, newRootName);
 				}
 			}
-			else if (rootType == attr::designer::type::input) {
-				if (auto* obj = designer::clipboard.dataClip.find_named<gui::InputObject>(rootName)) {
-					father->sub.emplace_named<gui::InputObject>(nextDataIter, rootName, *obj);
+		}
+
+		//============ 窗口管理模块 ============
+		namespace DialogManager {
+			//打开粘贴窗口并初始化
+			void openDialog(int isSubType) {
+				std::cout << "[PASTE DIALOG DEBUG] openDialog called, isSubType=" << isSubType << std::endl;
+				std::cout << "[PASTE DIALOG DEBUG] opening paste window" << std::endl;
+				menuManager.open("paste", ::Paste);
+				std::cout << "[PASTE DIALOG DEBUG] paste window opened" << std::endl;
+				resetIsSub();
+
+				//设置 isSub 状态
+				if (isSubType == 0) {
+					std::cout << "[PASTE DIALOG DEBUG] enabling isSub" << std::endl;
+					enableIsSub();
+				} else {
+					std::cout << "[PASTE DIALOG DEBUG] setting isSub status to " << isSubType << std::endl;
+					isSubSetStatu(isSubType);
 				}
+
+				//设置默认名称（从剪贴板提取）
+				std::string defaultName = NameProcessor::extractRootName();
+				std::cout << "[PASTE DIALOG DEBUG] setting default name: " << defaultName << std::endl;
+				menuManager.path_at<gui::InputObject>(attr::ginput::paste_name)
+					.setText(defaultName);
+				std::cout << "[PASTE DIALOG DEBUG] openDialog done" << std::endl;
 			}
-			else if (rootType == attr::designer::type::option) {
-				if (auto* obj = designer::clipboard.dataClip.find_named<gui::OptionObject>(rootName)) {
-					father->sub.emplace_named<gui::OptionObject>(nextDataIter, rootName, *obj);
-				}
+
+			//关闭窗口并更新UI
+			void closeAndRefresh(
+				gui::AreaObject& mainList,
+				const std::string& firstNewName
+			) {
+				menuManager.close("paste");
+				mainList.setOption(firstNewName);
+
+				designer::Preview::currentWindowName = "";
+				designer::Preview::copyWindowToPreview(
+					designer::Name::getWindowName(firstNewName),
+					previewManager.window("preview")
+				);
+				designer::Preview::syncWindowSize();
 			}
-			else if (rootType == attr::designer::type::text) {
-				if (auto* obj = designer::clipboard.dataClip.find_named<gui::TextObject>(rootName)) {
-					father->sub.emplace_named<gui::TextObject>(nextDataIter, rootName, *obj);
-				}
-			}
-			
-			menuManager.close("paste");
-			mainList.setOption(firstNewName);
-			
-			designer::Preview::currentWindowName = "";
-			designer::Preview::copyWindowToPreview(designer::Name::getWindowName(firstNewName), previewManager.window("preview"));
-			designer::Preview::syncWindowSize();
+		}
+
+		//============ 主执行函数 ============
+		void pasteExecute(
+			gui::AreaObject& mainList,
+			const std::string& chosenType,
+			const std::string& chosenPath,
+			bool isSub,
+			const std::string& newRootName  //新增参数：用户指定的根名称
+		) {
+			//步骤1：计算父路径
+			std::string fatherPath = PathCalculator::calculateFatherPath(chosenPath, isSub);
+
+			//步骤2：构建重命名映射
+			std::string oldRootName = NameProcessor::extractRootName();
+			auto renameMap = NameProcessor::buildRenameMap(oldRootName, newRootName);
+
+			//步骤3：构建新名称列表
+			auto newItems = PathCalculator::buildNewItemNames(fatherPath, renameMap);
+			if (newItems.empty()) return;
+
+			std::string firstNewName = newItems[0].second;
+
+			//步骤4：获取插入位置
+			auto insertPoint = Insertion::getInsertionPoint(mainList, chosenType, chosenPath, isSub);
+
+			//步骤5：腾出空间
+			Insertion::makeSpace(mainList, insertPoint.nextOptionName, newItems.size());
+
+			//步骤6：插入到mainList
+			MainListUpdater::insertAllItems(
+				mainList,
+				newItems,
+				insertPoint.nextOptionName,
+				insertPoint.linePos
+			);
+
+			//步骤7：插入到data树
+			std::string newDataChosenPath = designer::toDataPath(chosenPath);
+			auto [father, nextDataIter] = designer::Data::getNextIter(chosenType, newDataChosenPath, isSub);
+
+			auto [rootType, _] = designer::getType(designer::clipboard.copiedItemName);
+			DataTreeUpdater::insertRootObject(
+				father,
+				nextDataIter,
+				rootType,
+				oldRootName,
+				newRootName
+			);
+
+			//步骤8：关闭窗口并刷新
+			DialogManager::closeAndRefresh(mainList, firstNewName);
 		}
 	}
 }
@@ -2705,9 +2954,21 @@ int main() {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
 					if (!ChosenOptionName.empty() && designer::clipboard.hasData) {
+						//读取用户输入的新名称
+						sf::String newNameInput = menuManager.path_at<gui::InputObject>(attr::ginput::paste_name).getText();
+
+						//验证名称
+						if (!designer::Paste::NameProcessor::validateNewName(newNameInput)) {
+							//名称无效，直接返回不关闭窗口
+							continue;
+						}
+
+						std::string newRootName = newNameInput.toAnsiString();
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
 						bool isSub = menuManager.path_at<gui::TextObject>(attr::gtext::paste_isSub).getShow();
-						designer::Paste::pasteExecute(mainList, ChosenType, ChosenPath, isSub);
+
+						//执行粘贴（传递新名称）
+						designer::Paste::pasteExecute(mainList, ChosenType, ChosenPath, isSub, newRootName);
 					}
 				}
 			if (evt->wholePath() == attr::gbutton::paste_cancel) {
@@ -2812,40 +3073,32 @@ int main() {
 				}
 				//处理粘贴按钮按下事件
 				if (evt->wholePath() == attr::gbutton::main_paste) {
+					std::cout << "[PASTE DEBUG] main_paste pressed" << std::endl;
 					if (designer::clipboard.hasData) {
+						std::cout << "[PASTE DEBUG] clipboard hasData" << std::endl;
 						gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 						std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
+						std::cout << "[PASTE DEBUG] ChosenOptionName: " << ChosenOptionName << std::endl;
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
-						
-						auto [clipRootType, _] = designer::getType(designer::clipboard.copiedItemName);//clipRootType为类型标识
-						bool clipIsArea = (clipRootType == attr::designer::type::area);
-						
+
+						//计算isSubType（保持不变）
 						int isSubType = 0;
 						if (ChosenType != attr::designer::type::area)
 							isSubType = 1;
 						else if (designer::Name::countLevel(ChosenPath) == 0)
 							isSubType = 2;
-						
+
+						std::cout << "[PASTE DEBUG] ChosenType: " << ChosenType << ", ChosenPath: " << ChosenPath << ", isSubType: " << isSubType << std::endl;
+
 						designer::Paste::isSubType = isSubType;
-						
-						if (isSubType == 2) {
-							if (clipIsArea) {
-								menuManager.open("paste", Paste);
-								designer::Paste::resetIsSub();
-								designer::Paste::enableIsSub();
-							}
-							else {
-								designer::Paste::pasteExecute(mainList, ChosenType, ChosenPath, true);
-							}
-						}
-						else if (isSubType != 0) {
-							designer::Paste::pasteExecute(mainList, ChosenType, ChosenPath, false);
-						}
-						else {
-							menuManager.open("paste", Paste);
-							designer::Paste::resetIsSub();
-							designer::Paste::isSubSetStatu(isSubType);
-						}
+
+						//统一打开窗口（删除原来的三分支逻辑）
+						std::cout << "[PASTE DEBUG] calling DialogManager::openDialog(" << isSubType << ")" << std::endl;
+						designer::Paste::DialogManager::openDialog(isSubType);
+						std::cout << "[PASTE DEBUG] DialogManager::openDialog returned" << std::endl;
+					}
+					else {
+						std::cout << "[PASTE DEBUG] clipboard hasData is false" << std::endl;
 					}
 				}
 			}
