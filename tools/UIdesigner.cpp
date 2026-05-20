@@ -498,6 +498,21 @@ static void init() {
 	Init::loadAndAddButton(Main, "copy", "resources/UIdesigner/copy.png", L"    复制", sf::Vector2f(40 + 124 * 5 + 164 * 1, static_cast<float>(windowHeight - 40)));
 	Init::loadAndAddButton(Main, "paste", "resources/UIdesigner/paste.png", L"    粘贴", sf::Vector2f(40 + 124 * 6 + 164 * 1, static_cast<float>(windowHeight - 40)));
 
+	Main.path_get<gui::TextObject>("mouseCoordX")
+		.setText(L"x:0")
+		.setFont("ht")
+		.setCharacterSize(40)
+		.setSizeAuto()
+		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) - 400, 0));
+	Main.path_get<gui::TextObject>("mouseCoordY")
+		.setText(L"y:0")
+		.setFont("ht")
+		.setCharacterSize(40)
+		.setSizeAuto()
+		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) - 200, 0));
+
 
 
 	int NewLine = 0;
@@ -3410,6 +3425,11 @@ int main() {
 				//根据窗口大小调整preview窗口大小
 				designer::Preview::syncWindowSize();
 			}
+		
+		//更新鼠标坐标显示
+		sf::Vector2i mousePos = sf::Mouse::getPosition(preview);
+		menuManager.path_at<gui::TextObject>("main.mouseCoordX").setText("x:" + std::to_string(mousePos.x)).setSizeAuto();
+		menuManager.path_at<gui::TextObject>("main.mouseCoordY").setText("y:" + std::to_string(mousePos.y)).setSizeAuto();
 		
 		menu.clear();
 		menuManager.draw(menu);
