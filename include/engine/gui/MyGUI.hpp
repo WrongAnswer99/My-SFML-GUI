@@ -252,6 +252,7 @@ namespace gui {
 			textRender.setLineSpacing(lineSpacing);
 			textRender.setLetterSpacing(letterSpacing);
 			textRender.setString(text);
+			textRender.setPosition({ 0, 0 });
 			posRect.size.x = 0;
 			for (int i = 0; i <= text.getSize(); i++) {
 				if (textRender.findCharacterPos(i).x > posRect.size.x)

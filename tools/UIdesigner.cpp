@@ -28,6 +28,7 @@ namespace attr {
 		def(new_isSubDisabledText);
 		def(paste_isSub);
 		def(paste_isSubDisabledText);
+		def(open_importToCurrent);
 		//TitleTexts
 		def(UIBaseSettingsTitle);
 		def(AreaSettingsTitle);
@@ -124,6 +125,7 @@ namespace attr {
 
 		def(open_ok);
 		def(open_cancel);
+		def(open_importToCurrentText);
 
 		def(save_ok);
 		def(save_cancel);
@@ -476,25 +478,25 @@ static void init() {
 		.setPosition(sf::Vector2f(0, 0))
 		.setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
 
-	Init::loadAndAddButton(Main, "open", "resources/iconsource/open.png", L"    打开", sf::Vector2f(40, 0));
-	Init::loadAndAddButton(Main, "save", "resources/iconsource/save.png", L"    保存", sf::Vector2f(40 + 124 * 1, 0));
+	Init::loadAndAddButton(Main, "open", "resources/UIdesigner/open.png", L"    打开", sf::Vector2f(40, 0));
+	Init::loadAndAddButton(Main, "save", "resources/UIdesigner/save.png", L"    保存", sf::Vector2f(40 + 124 * 1, 0));
 
-	Init::loadAndAddButton(Main, "exportReflection", "resources/iconsource/export.png", L"    导出反射", sf::Vector2f(40 + 124 * 2, 0));
+	Init::loadAndAddButton(Main, "exportReflection", "resources/UIdesigner/export.png", L"    导出反射", sf::Vector2f(40 + 124 * 2, 0));
 
-	Init::loadAndAddButton(Main, "about", "resources/iconsource/about.png", L"    关于", sf::Vector2f(static_cast<float>(windowWidth - 40 - 124), static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "about", "resources/UIdesigner/about.png", L"    关于", sf::Vector2f(static_cast<float>(windowWidth - 40 - 124), static_cast<float>(windowHeight - 40)));
 
 	float halfWindowWidth = static_cast<float>((windowWidth - 40 * 2 - 10) / 2);
 	Init::addSimpleArea(Main, "list", sf::Vector2f(40, 42), sf::Vector2f(halfWindowWidth, static_cast<float>(windowHeight - 42 * 2)), sf::Vector2i(0, 0), sf::Vector2i(1, 1));
 	Init::addSimpleArea(Main, "settings", sf::Vector2f(static_cast<float>(halfWindowWidth + 40 + 10), 42), sf::Vector2f(halfWindowWidth, static_cast<float>(windowHeight - 42 * 2)), sf::Vector2i(0, 0), sf::Vector2i(1, 1));
 
-	Init::loadAndAddButton(Main, "new", "resources/iconsource/new.png", L"    添加", sf::Vector2f(40, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "delete", "resources/iconsource/delete.png", L"    删除", sf::Vector2f(40 + 124 * 1, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "moveup", "resources/iconsource/moveup.png", L"    上移", sf::Vector2f(40 + 124 * 2, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "movedown", "resources/iconsource/movedown.png", L"    下移", sf::Vector2f(40 + 124 * 3, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "rename", "resources/iconsource/rename.png", L"    重命名", sf::Vector2f(40 + 124 * 4, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "cut", "resources/iconsource/cut.png", L"    剪切", sf::Vector2f(40 + 124 * 5, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "copy", "resources/iconsource/copy.png", L"    复制", sf::Vector2f(40 + 124 * 6, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "paste", "resources/iconsource/paste.png", L"    粘贴", sf::Vector2f(40 + 124 * 7, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "new", "resources/UIdesigner/new.png", L"    添加", sf::Vector2f(40, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "delete", "resources/UIdesigner/delete.png", L"    删除", sf::Vector2f(40 + 124 * 1, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "moveup", "resources/UIdesigner/moveup.png", L"    上移", sf::Vector2f(40 + 124 * 2, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "movedown", "resources/UIdesigner/movedown.png", L"    下移", sf::Vector2f(40 + 124 * 3, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "rename", "resources/UIdesigner/rename.png", L"    重命名", sf::Vector2f(40 + 124 * 4, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "cut", "resources/UIdesigner/cut.png", L"    剪切", sf::Vector2f(40 + 124 * 4 + 164 * 1, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "copy", "resources/UIdesigner/copy.png", L"    复制", sf::Vector2f(40 + 124 * 5 + 164 * 1, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "paste", "resources/UIdesigner/paste.png", L"    粘贴", sf::Vector2f(40 + 124 * 6 + 164 * 1, static_cast<float>(windowHeight - 40)));
 
 
 
@@ -503,7 +505,7 @@ static void init() {
 	Init::addTitleText(New, "title", L"添加", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
 	NewLine++;
 
-	imageManager.loadImage("area", "resources/iconsource/area.png");
+	imageManager.loadImage("area", "resources/UIdesigner/area.png");
 	Init::addSimpleImage(New, "window", "area", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "window", L"    新建窗口", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
@@ -512,27 +514,27 @@ static void init() {
 	Init::addAutoOption(New, "area", L"    新建区域", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("input", "resources/iconsource/input.png");
+	imageManager.loadImage("input", "resources/UIdesigner/input.png");
 	Init::addSimpleImage(New, "input", "input", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "input", L"    新建输入框", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("button", "resources/iconsource/button.png");
+	imageManager.loadImage("button", "resources/UIdesigner/button.png");
 	Init::addSimpleImage(New, "button", "button", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "button", L"    新建按钮", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("option", "resources/iconsource/option.png");
+	imageManager.loadImage("option", "resources/UIdesigner/option.png");
 	Init::addSimpleImage(New, "option", "option", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "option", L"    新建选项", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("image", "resources/iconsource/image.png");
+	imageManager.loadImage("image", "resources/UIdesigner/image.png");
 	Init::addSimpleImage(New, "image", "image", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "image", L"    新建图片", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("text", "resources/iconsource/text.png");
+	imageManager.loadImage("text", "resources/UIdesigner/text.png");
 	Init::addSimpleImage(New, "text", "text", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "text", L"    新建文本", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
@@ -598,6 +600,27 @@ static void init() {
 	Init::addSimpleText(Open, "filepath", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * OpenLine)));
 
 	Init::addSimpleInput(Open, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * OpenLine)), sf::Vector2f(600 - 160, 40), L"");
+	OpenLine++;
+
+	Open.path_get<gui::ButtonObject>("importToCurrentText")
+		.setText(L"□导入到当前")
+		.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
+		.setFont("ht")
+		.setCharacterSize(40)
+		.setSizeAuto()
+		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setStyle(style["null"], style["null"], style["null"])
+		.setPosition(sf::Vector2f(0, static_cast<float>(40 * OpenLine)));
+	Open.path_get<gui::TextObject>("importToCurrent")
+		.setText(L"√")
+		.setFont("ht")
+		.setCharacterSize(20)
+		.setSizeAuto()
+		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setStyle(style["null"], style["null"], style["null"])
+		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * OpenLine) + 20))
+		.setCenter();
+	Open.path_get<gui::TextObject>("importToCurrent").setShow(false);
 	OpenLine++;
 
 	Init::addSimpleButton(Open, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40)).setCenter();
@@ -687,8 +710,8 @@ static void init() {
 		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		.setFont("ht")
 		.setCharacterSize(40)
-		.setPosition(sf::Vector2f(120, static_cast<float>(40 * PasteLine)))
-		.setSize(sf::Vector2f(480, 40));
+		.setPosition(sf::Vector2f(160, static_cast<float>(40 * PasteLine)))
+		.setSize(sf::Vector2f(600 - 160, 40));
 	PasteLine++;
 
 	Init::addSimpleButton(Paste, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40)).setCenter();
@@ -715,8 +738,8 @@ static void init() {
 		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
 		.setFont("ht")
 		.setCharacterSize(40)
-		.setPosition(sf::Vector2f(120, static_cast<float>(40 * RenameLine)))
-		.setSize(sf::Vector2f(480, 40));
+		.setPosition(sf::Vector2f(160, static_cast<float>(40 * RenameLine)))
+		.setSize(sf::Vector2f(600 - 160, 40));
 	RenameLine++;
 
 	Init::addSimpleButton(Rename, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40)).setCenter();
@@ -1052,6 +1075,8 @@ namespace designer {
 	//预览相关的辅助函数
 	namespace Preview {
 		std::string currentWindowName; //当前正在预览的窗口名称
+		std::string lastOpenedFilePath; //最近打开的文件路径
+		std::string lastOpenedFileFormat; //最近打开的文件格式（binary/json）
 		//将指定的窗口数据复制到预览窗口（仅在切换窗口时调用）
 		//该参数为名称，用'-'连接
 		void copyWindowToPreview(const std::string& windowName, gui::AreaObject& previewData) {
@@ -2793,12 +2818,16 @@ namespace designer {
 			for (const auto& [oldName, newName] : renameList) {
 				auto [_, childPath] = designer::getType(newName);
 				std::string displayName = designer::Name::getFatherName(childPath).second;
+				std::cout << "[renameExecute] oldName=" << oldName << " newName=" << newName << " displayName=" << displayName << std::endl;
 				if (auto* img = mainList.sub.find_named<gui::ImageObject>(oldName)) {
 					mainList.sub.rename_named<gui::ImageObject>(oldName, newName);
 				}
 				if (auto* opt = mainList.sub.find_named<gui::OptionObject>(oldName)) {
 					mainList.sub.rename_named<gui::OptionObject>(oldName, newName);
-					mainList.sub.find_named<gui::OptionObject>(newName)->setText("    " + displayName);
+					auto* optPtr = mainList.sub.find_named<gui::OptionObject>(newName);
+					std::cout << "  before setSizeAuto: text=" << optPtr->getText().toAnsiString() << " size=" << optPtr->getSize().x << "x" << optPtr->getSize().y << std::endl;
+					optPtr->setText("    " + displayName).setSizeAuto();
+					std::cout << "  after setSizeAuto: text=" << optPtr->getText().toAnsiString() << " size=" << optPtr->getSize().x << "x" << optPtr->getSize().y << std::endl;
 				}
 			}
 
@@ -2837,6 +2866,12 @@ namespace designer {
 			//4. 关闭重命名窗口并重新选中新项
 			menuManager.close("rename");
 			mainList.setOption(newOptionName);
+			//同步preview窗口
+			if (designer::Preview::currentWindowName != "") {
+				std::string windowName = designer::Name::getWindowName(path);
+				designer::Preview::currentWindowName = "";
+				designer::Preview::copyWindowToPreview(windowName, previewManager.window("preview"));
+			}
 		}
 	}
 }
@@ -2989,10 +3024,12 @@ int main() {
 				if (evt->wholePath() == attr::gbutton::open_ok) {
 					std::filesystem::path filepath = menuManager.path_at<gui::InputObject>(attr::ginput::open_filepath).getText().toWideString();
 					std::string format = menuManager.path_at<gui::AreaObject>("open").getOption();
+					bool importToCurrent = menuManager.path_at<gui::TextObject>(attr::gtext::open_importToCurrent).getShow();
 					if (!filepath.empty() && !format.empty()) {
+						gui::AreaObject loadedData;
 						if (format == "binary") {
 							BinaryFileStream bf(filepath);
-							bf.read(designer::data);
+							bf.read(loadedData);
 							bf.close();
 						}
 						else if (format == "json") {
@@ -3000,7 +3037,35 @@ int main() {
 							nlohmann::json j;
 							ifs >> j;
 							ifs.close();
-							j.get_to(designer::data);
+							j.get_to(loadedData);
+						}
+						if (importToCurrent) {
+							//导入到当前：追加到data末尾
+							for (auto it = loadedData.sub.begin(); it != loadedData.sub.end(); it++) {
+								std::string key = loadedData.sub.find_key(it);
+								if (auto* ptr = loadedData.sub.find<gui::AreaObject>(it)) {
+									designer::data.sub.emplace_named<gui::AreaObject>(designer::data.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = loadedData.sub.find<gui::ButtonObject>(it)) {
+									designer::data.sub.emplace_named<gui::ButtonObject>(designer::data.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = loadedData.sub.find<gui::InputObject>(it)) {
+									designer::data.sub.emplace_named<gui::InputObject>(designer::data.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = loadedData.sub.find<gui::OptionObject>(it)) {
+									designer::data.sub.emplace_named<gui::OptionObject>(designer::data.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = loadedData.sub.find<gui::TextObject>(it)) {
+									designer::data.sub.emplace_named<gui::TextObject>(designer::data.sub.end(), key, *ptr);
+								}
+								else if (auto* ptr = loadedData.sub.find<gui::ImageObject>(it)) {
+									designer::data.sub.emplace_named<gui::ImageObject>(designer::data.sub.end(), key, *ptr);
+								}
+							}
+						}
+						else {
+							//直接打开：替换data
+							designer::data = std::move(loadedData);
 						}
 						//刷新nameList
 						designer::nameList.clear();
@@ -3017,6 +3082,9 @@ int main() {
 							designer::Preview::copyWindowToPreview(firstWindowName, previewManager.window("preview"));
 							designer::Preview::syncWindowSize();
 						}
+						//记录打开的文件路径和格式
+						designer::Preview::lastOpenedFilePath = filepath.string();
+						designer::Preview::lastOpenedFileFormat = format;
 						//关闭打开窗口
 						menuManager.close("open");
 					}
@@ -3024,10 +3092,17 @@ int main() {
 				if (evt->wholePath() == attr::gbutton::open_cancel) {
 					menuManager.close("open");
 				}
+				if (evt->wholePath() == attr::gbutton::open_importToCurrentText) {
+					menuManager.path_at<gui::TextObject>(attr::gtext::open_importToCurrent).toggleShow();
+				}
 				//处理保存按钮按下事件
 				if (evt->wholePath() == attr::gbutton::main_save || evt->wholePath() == attr::gbutton::main_saveas) {
 					menuManager.open("save", Save);
 					designer::Save::populateCheckboxes();
+					if (!designer::Preview::lastOpenedFilePath.empty()) {
+						menuManager.path_at<gui::InputObject>(attr::ginput::save_filepath).setText(designer::Preview::lastOpenedFilePath);
+						menuManager.path_at<gui::AreaObject>("save").setOption(designer::Preview::lastOpenedFileFormat);
+					}
 				}
 				if (evt->wholePath() == attr::gbutton::save_ok) {
 					std::filesystem::path filepath = menuManager.path_at<gui::InputObject>(attr::ginput::save_filepath).getText().toWideString();
@@ -3178,6 +3253,12 @@ int main() {
 						designer::Name::moveHelper::moveUp(ChosenOptionName);
 						//重新选中原来的项
 						mainList.setOption(ChosenOptionName);
+						//同步preview窗口
+						if (designer::Preview::currentWindowName != "") {
+							std::string windowName = designer::Name::getWindowName(ChosenPath);
+							designer::Preview::currentWindowName = "";
+							designer::Preview::copyWindowToPreview(windowName, previewManager.window("preview"));
+						}
 					}
 				}
 				//处理下移按钮按下事件
@@ -3189,6 +3270,12 @@ int main() {
 						designer::Name::moveHelper::moveDown(ChosenOptionName);
 						//重新选中原来的项
 						mainList.setOption(ChosenOptionName);
+						//同步preview窗口
+						if (designer::Preview::currentWindowName != "") {
+							std::string windowName = designer::Name::getWindowName(ChosenPath);
+							designer::Preview::currentWindowName = "";
+							designer::Preview::copyWindowToPreview(windowName, previewManager.window("preview"));
+						}
 					}
 				}
 				//处理剪切按钮按下事件
