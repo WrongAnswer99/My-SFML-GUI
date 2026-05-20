@@ -110,9 +110,13 @@ namespace attr {
 		def(main_delete);
 		def(main_moveup);
 		def(main_movedown);
+		def(main_rename);
 		def(main_cut);
 		def(main_copy);
 		def(main_paste);
+
+		def(rename_ok);
+		def(rename_cancel);
 
 		def(new_isSubText);
 		def(new_ok);
@@ -169,6 +173,7 @@ namespace attr {
 		def(open_filepath);
 		def(save_filepath);
 		def(paste_name);
+		def(rename_name);
 		//UIBase
 		def(main_settings_SetLeftUpPositionX);
 		def(main_settings_SetLeftUpPositionY);
@@ -240,7 +245,7 @@ namespace attr {
 int windowWidth = 1600, windowHeight = 900;
 gui::WindowManager menuManager,previewManager;
 sf::RenderWindow menu, preview;
-gui::AreaObject Main, New, Open, Save, Paste;
+gui::AreaObject Main, New, Open, Save, Paste, Rename;
 namespace settings {
 	gui::AreaObject UIBase, Area, Input, Image, Text;
 }
@@ -486,9 +491,10 @@ static void init() {
 	Init::loadAndAddButton(Main, "delete", "resources/iconsource/delete.png", L"    删除", sf::Vector2f(40 + 124 * 1, static_cast<float>(windowHeight - 40)));
 	Init::loadAndAddButton(Main, "moveup", "resources/iconsource/moveup.png", L"    上移", sf::Vector2f(40 + 124 * 2, static_cast<float>(windowHeight - 40)));
 	Init::loadAndAddButton(Main, "movedown", "resources/iconsource/movedown.png", L"    下移", sf::Vector2f(40 + 124 * 3, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "cut", "resources/iconsource/cut.png", L"    剪切", sf::Vector2f(40 + 124 * 4, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "copy", "resources/iconsource/copy.png", L"    复制", sf::Vector2f(40 + 124 * 5, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "paste", "resources/iconsource/paste.png", L"    粘贴", sf::Vector2f(40 + 124 * 6, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "rename", "resources/iconsource/rename.png", L"    重命名", sf::Vector2f(40 + 124 * 4, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "cut", "resources/iconsource/cut.png", L"    剪切", sf::Vector2f(40 + 124 * 5, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "copy", "resources/iconsource/copy.png", L"    复制", sf::Vector2f(40 + 124 * 6, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "paste", "resources/iconsource/paste.png", L"    粘贴", sf::Vector2f(40 + 124 * 7, static_cast<float>(windowHeight - 40)));
 
 
 
@@ -693,6 +699,34 @@ static void init() {
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * PasteLine)))
+		.setCenter();
+
+
+	//Rename窗口初始化
+	int RenameLine = 0;
+
+	Init::addTitleText(Rename, "title", L"重命名", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	RenameLine++;
+
+	Init::addSimpleText(Rename, "nameLabel", L"新名称：", sf::Vector2f(0, static_cast<float>(40 * RenameLine)));
+	Rename.path_get<gui::InputObject>("name")
+		.setStringTypeLimit(true, {}, { {L'A',L'Z'},{L'a',L'z'},{L'0',L'9'} })
+		.setText(L"")
+		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setFont("ht")
+		.setCharacterSize(40)
+		.setPosition(sf::Vector2f(120, static_cast<float>(40 * RenameLine)))
+		.setSize(sf::Vector2f(480, 40));
+	RenameLine++;
+
+	Init::addSimpleButton(Rename, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(Rename, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	RenameLine++;
+	Rename
+		.setOption()
+		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * RenameLine)))
 		.setCenter();
 
 
@@ -2712,6 +2746,100 @@ namespace designer {
 		}
 	}
 }
+namespace designer {
+	namespace Rename {
+		//验证新名称是否合法
+		bool validateNewName(const sf::String& name) {
+			return designer::isAvailableName(name);
+		}
+
+		//执行重命名：修改 nameList、mainList、data 中的所有相关键
+		//该参数 optionName 为名称，用'-'连接；newLeafName 为新的叶子名（不含父路径）
+		void renameExecute(gui::AreaObject& mainList, const std::string& optionName, const std::string& newLeafName) {
+			auto [type, path] = designer::getType(optionName);//type为类型标识，path为名称，用'-'连接
+			auto [fatherPath, oldLeafName] = designer::Name::getFatherName(path);//fatherPath父名称，oldLeafName旧叶子名，均用'-'连接
+			if (oldLeafName == newLeafName) return;//名称未变，直接返回
+
+			std::string newPath = fatherPath.empty() ? newLeafName : fatherPath + '-' + newLeafName;//新路径，用'-'连接
+			std::string newOptionName = type + newPath;//新的完整 optionName
+
+			//检查新名称是否已存在于 nameList
+			if (designer::nameList.find_named<std::string>(newOptionName) != nullptr) return;
+
+			//收集所有需要重命名的条目（当前项 + 所有子项）
+			std::vector<std::pair<std::string, std::string>> renameList;//(old, new) 均为完整 optionName
+			renameList.push_back({ optionName, newOptionName });
+			if (type == attr::designer::type::area) {
+				auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+				while (iter != designer::nameList.end()) {
+					std::string& nextOptionName = *designer::nameList.find<std::string>(iter);
+					auto [childType, childPath] = designer::getType(nextOptionName);
+					if (!designer::Name::isFather(path, childPath)) break;
+					//替换 childPath 中的 path 前缀为 newPath
+					std::string childSuffix = childPath.substr(path.size());//'-' + remaining
+					std::string newChildPath = newPath + childSuffix;
+					renameList.push_back({ nextOptionName, childType + newChildPath });
+					iter++;
+				}
+			}
+
+			//1. 重命名 nameList 中的条目（从后往前，避免迭代器失效）
+			for (auto it = renameList.rbegin(); it != renameList.rend(); ++it) {
+				designer::nameList.rename_named<std::string>(it->first, it->second);
+				*designer::nameList.find_named<std::string>(it->second) = it->second;
+			}
+
+			//2. 重命名 mainList 中的 ImageObject 和 OptionObject
+			for (const auto& [oldName, newName] : renameList) {
+				auto [_, childPath] = designer::getType(newName);
+				std::string displayName = designer::Name::getFatherName(childPath).second;
+				if (auto* img = mainList.sub.find_named<gui::ImageObject>(oldName)) {
+					mainList.sub.rename_named<gui::ImageObject>(oldName, newName);
+				}
+				if (auto* opt = mainList.sub.find_named<gui::OptionObject>(oldName)) {
+					mainList.sub.rename_named<gui::OptionObject>(oldName, newName);
+					mainList.sub.find_named<gui::OptionObject>(newName)->setText("    " + displayName);
+				}
+			}
+
+			//3. 重命名 data 中的对象
+			{
+				std::string dataFatherPath = designer::toDataPath(fatherPath);//父路径，用'_'连接
+				gui::AreaObject* father = fatherPath.empty() ? &designer::data : designer::data.path_find<gui::AreaObject>(dataFatherPath);
+				if (father) {
+					if (type == attr::designer::type::area) {
+						if (father->sub.find_named<gui::AreaObject>(oldLeafName))
+							father->sub.rename_named<gui::AreaObject>(oldLeafName, newLeafName);
+					}
+					else if (type == attr::designer::type::button) {
+						if (father->sub.find_named<gui::ButtonObject>(oldLeafName))
+							father->sub.rename_named<gui::ButtonObject>(oldLeafName, newLeafName);
+					}
+					else if (type == attr::designer::type::image) {
+						if (father->sub.find_named<gui::ImageObject>(oldLeafName))
+							father->sub.rename_named<gui::ImageObject>(oldLeafName, newLeafName);
+					}
+					else if (type == attr::designer::type::input) {
+						if (father->sub.find_named<gui::InputObject>(oldLeafName))
+							father->sub.rename_named<gui::InputObject>(oldLeafName, newLeafName);
+					}
+					else if (type == attr::designer::type::option) {
+						if (father->sub.find_named<gui::OptionObject>(oldLeafName))
+							father->sub.rename_named<gui::OptionObject>(oldLeafName, newLeafName);
+					}
+					else if (type == attr::designer::type::text) {
+						if (father->sub.find_named<gui::TextObject>(oldLeafName))
+							father->sub.rename_named<gui::TextObject>(oldLeafName, newLeafName);
+					}
+				}
+			}
+
+			//4. 关闭重命名窗口并重新选中新项
+			menuManager.close("rename");
+			mainList.setOption(newOptionName);
+		}
+	}
+}
 int main() {
 	fontManager.loadFont("ht", "resources/FZHTJW.TTF");
 
@@ -2974,6 +3102,22 @@ int main() {
 			if (evt->wholePath() == attr::gbutton::paste_cancel) {
 					menuManager.close("paste");
 				}
+				//处理重命名确定按钮
+				if (evt->wholePath() == attr::gbutton::rename_ok) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
+					if (!ChosenOptionName.empty()) {
+						sf::String newNameInput = menuManager.path_at<gui::InputObject>(attr::ginput::rename_name).getText();
+						if (designer::Rename::validateNewName(newNameInput)) {
+							std::string newLeafName = newNameInput.toAnsiString();
+							designer::Rename::renameExecute(mainList, ChosenOptionName, newLeafName);
+						}
+					}
+				}
+				//处理重命名取消按钮
+				if (evt->wholePath() == attr::gbutton::rename_cancel) {
+					menuManager.close("rename");
+				}
 				if (evt->wholePath() == attr::gbutton::paste_isSubText) {
 					menuManager.path_at<gui::TextObject>(attr::gtext::paste_isSub).toggleShow();
 				}
@@ -3069,6 +3213,17 @@ int main() {
 					if (!ChosenOptionName.empty()) {
 						designer::Name::moveHelper::copyToClipboard(ChosenOptionName);
 						mainList.setOption(ChosenOptionName);
+					}
+				}
+				//处理重命名按钮按下事件
+				if (evt->wholePath() == attr::gbutton::main_rename) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
+					if (!ChosenOptionName.empty()) {
+						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
+						menuManager.open("rename", ::Rename);
+						std::string leafName = designer::Name::getFatherName(ChosenPath).second;
+						menuManager.path_at<gui::InputObject>(attr::ginput::rename_name).setText(leafName);
 					}
 				}
 				//处理粘贴按钮按下事件
