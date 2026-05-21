@@ -130,6 +130,11 @@ namespace attr {
 		def(save_ok);
 		def(save_cancel);
 
+		def(about_ok);
+
+		def(exportReflection_ok);
+		def(exportReflection_cancel);
+
 		def(paste_isSubText);
 		def(paste_ok);
 		def(paste_cancel);
@@ -247,7 +252,7 @@ namespace attr {
 int windowWidth = 1600, windowHeight = 900;
 gui::WindowManager menuManager,previewManager;
 sf::RenderWindow menu, preview;
-gui::AreaObject Main, New, Open, Save, Paste, Rename;
+gui::AreaObject Main, New, Open, Save, Paste, Rename, About, ExportReflection;
 namespace settings {
 	gui::AreaObject UIBase, Area, Input, Image, Text;
 }
@@ -683,6 +688,36 @@ static void init() {
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * SaveLine)))
 		.setCenter();
 
+	//ExportReflection窗口初始化
+	int ExportReflectionLine = 0;
+
+	Init::addTitleText(ExportReflection, "title", L"导出反射", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	ExportReflectionLine++;
+
+	Init::addSimpleText(ExportReflection, "filepath", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
+
+	Init::addSimpleInput(ExportReflection, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * ExportReflectionLine)), sf::Vector2f(600 - 160, 40), L"");
+	ExportReflectionLine++;
+
+	Init::addSimpleText(ExportReflection, "windowToExport", L"要导出的窗口：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
+	ExportReflectionLine++;
+
+	ExportReflection.path_get<gui::AreaObject>("windowToExport")
+		.setScrollable(sf::Vector2i(0, 1), sf::Vector2i(0, 1))
+		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setPosition(sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)))
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * 5)));
+	ExportReflectionLine += 5;
+	Init::addSimpleButton(ExportReflection, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(ExportReflection, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	ExportReflectionLine++;
+	ExportReflection
+		.setOption()
+		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * ExportReflectionLine)))
+		.setCenter();
+
 
 	//Paste窗口初始化
 	int PasteLine = 0;
@@ -765,6 +800,35 @@ static void init() {
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * RenameLine)))
+		.setCenter();
+
+	//About窗口初始化
+	int AboutLine = 0;
+
+	Init::addTitleText(About, "title", L"关于", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	AboutLine++;
+
+	About.path_get<gui::AreaObject>("content")
+		.setScrollable(sf::Vector2i(1, 1), sf::Vector2i(1, 1))
+		.setStyle(style["stda2"], style["stda2"], style["stda2"])
+		.setPosition(sf::Vector2f(0, static_cast<float>(40 * AboutLine)))
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * 3)));
+	About.path_get<gui::TextObject>("content.text1")
+		.setText(L"My-SFML-GUI设计器\n项目地址:https://github.com/WrongAnswer99/My-SFML-GUI")
+		.setFont("ht")
+		.setCharacterSize(40)
+		.setSizeAuto()
+		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setPosition(sf::Vector2f(0, 0));
+	AboutLine += 3;
+
+	Init::addSimpleButton(About, "ok", L"确定", sf::Vector2f(0, static_cast<float>(40 * AboutLine)), sf::Vector2f(600, 40));
+	AboutLine++;
+	About
+		.setOption()
+		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * AboutLine)))
 		.setCenter();
 
 
@@ -2246,6 +2310,32 @@ namespace designer {
 				fillTextSettings(mainSettings, obj);
 			}
 		}
+		//收集Area中的所有名称，按类别分组
+		void collectNamesFromArea(const gui::AreaObject* area, const std::string& windowName, std::map<std::string, std::vector<std::string>>& categoryMap) {
+			for (auto it = area->sub.begin(); it != area->sub.end(); it++) {
+				std::string key = area->sub.find_key(it);
+				std::string fullName = windowName + '_' + key;
+				if (area->sub.find<gui::TextObject>(it)) {
+					categoryMap["gtext"].push_back(fullName);
+				}
+				else if (area->sub.find<gui::ButtonObject>(it)) {
+					categoryMap["gbutton"].push_back(fullName);
+				}
+				else if (area->sub.find<gui::ImageObject>(it)) {
+					categoryMap["gimage"].push_back(fullName);
+				}
+				else if (area->sub.find<gui::InputObject>(it)) {
+					categoryMap["ginput"].push_back(fullName);
+				}
+				else if (area->sub.find<gui::OptionObject>(it)) {
+					categoryMap["goption"].push_back(fullName);
+				}
+				else if (auto* subArea = area->sub.find<gui::AreaObject>(it)) {
+					categoryMap["garea"].push_back(fullName);
+					collectNamesFromArea(subArea, fullName, categoryMap);
+				}
+			}
+		}
 	}
 	//传入参数使用的是路径的函数，路径即用'_'分割的字符串，操作的是data中的对象
 	namespace Data {
@@ -2389,6 +2479,43 @@ namespace designer {
 		}
 		bool isChecked(const std::string& key) {
 			return menuManager.path_at<gui::TextObject>("save_windowToSave_" + key).getShow();
+		}
+	}
+	namespace ExportReflection {
+		void populateCheckboxes() {
+			gui::AreaObject& windowToExport = menuManager.path_at<gui::AreaObject>("exportReflection_windowToExport");
+			windowToExport.sub.clear();
+			int windowToExportLine = 0;
+			for (auto it = designer::data.sub.begin(); it != designer::data.sub.end(); it++) {
+				std::string key = designer::data.sub.find_key(it);
+				windowToExport.path_get<gui::TextObject>(key)
+					.setText(L"√")
+					.setFont("ht")
+					.setCharacterSize(20)
+					.setSizeAuto()
+					.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToExportLine) + 20))
+					.setShow(true)
+					.setCenter();
+				windowToExport.path_get<gui::ButtonObject>(key)
+					.setText(L"□"+sf::String(key))
+					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
+					.setFont("ht")
+					.setCharacterSize(40)
+					.setSizeAuto()
+					.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+					.setStyle(style["null"], style["null"], style["null"])
+					.setPosition(sf::Vector2f(0, static_cast<float>(40 * windowToExportLine)));
+				windowToExportLine++;
+			}
+			windowToExport.setSize(sf::Vector2f(600, static_cast<float>(5 * 40)));
+		}
+		void toggleCheckbox(const std::string& key) {
+			gui::TextObject& check = menuManager.path_at<gui::TextObject>("exportReflection_windowToExport_" + key);
+			check.toggleShow();
+		}
+		bool isChecked(const std::string& key) {
+			return menuManager.path_at<gui::TextObject>("exportReflection_windowToExport_" + key).getShow();
 		}
 	}
 	namespace New {
@@ -3097,9 +3224,11 @@ int main() {
 							designer::Preview::copyWindowToPreview(firstWindowName, previewManager.window("preview"));
 							designer::Preview::syncWindowSize();
 						}
-						//记录打开的文件路径和格式
-						designer::Preview::lastOpenedFilePath = filepath.string();
-						designer::Preview::lastOpenedFileFormat = format;
+						//记录打开的文件路径和格式（仅直接打开时记录，导入到当前不记录）
+						if (!importToCurrent) {
+							designer::Preview::lastOpenedFilePath = filepath.string();
+							designer::Preview::lastOpenedFileFormat = format;
+						}
 						//关闭打开窗口
 						menuManager.close("open");
 					}
@@ -3110,7 +3239,59 @@ int main() {
 				if (evt->wholePath() == attr::gbutton::open_importToCurrentText) {
 					menuManager.path_at<gui::TextObject>(attr::gtext::open_importToCurrent).toggleShow();
 				}
-				//处理保存按钮按下事件
+				if (evt->wholePath() == attr::gbutton::main_exportReflection) {
+				menuManager.open("exportReflection", ExportReflection);
+				designer::ExportReflection::populateCheckboxes();
+			}
+			if (evt->wholePath() == attr::gbutton::exportReflection_ok) {
+				std::filesystem::path filepath = menuManager.path_at<gui::InputObject>("exportReflection_filepath").getText().toWideString();
+				if (!filepath.empty()) {
+					std::ofstream ofs(filepath);
+					if (ofs.is_open()) {
+						//收集所有需要导出的窗口名称
+						std::vector<std::string> exportWindows;
+						for (auto it = designer::data.sub.begin(); it != designer::data.sub.end(); it++) {
+							std::string key = designer::data.sub.find_key(it);
+							if (designer::ExportReflection::isChecked(key)) {
+								exportWindows.push_back(key);
+							}
+						}
+						//按类别收集所有名称
+						std::map<std::string, std::vector<std::string>> categoryMap;
+						for (const auto& windowName : exportWindows) {
+							auto* windowPtr = designer::data.sub.find_named<gui::AreaObject>(windowName);
+							if (windowPtr) {
+								//保存根目录（窗口本身）
+								categoryMap["garea"].push_back(windowName);
+								designer::Name::collectNamesFromArea(windowPtr, windowName, categoryMap);
+							}
+						}
+						//输出到文件
+						ofs << "namespace attr {" << std::endl;
+						ofs << "#define def(x) constexpr const char* x=#x;" << std::endl;
+						for (const auto& [category, names] : categoryMap) {
+							ofs << "\tnamespace " << category << " {" << std::endl;
+							for (const auto& name : names) {
+								ofs << "\t\tdef(" << name << ");" << std::endl;
+							}
+							ofs << "\t}" << std::endl;
+						}
+						ofs << "}" << std::endl;
+						ofs.close();
+					}
+				}
+				menuManager.close("exportReflection");
+			}
+			if (evt->wholePath() == attr::gbutton::exportReflection_cancel) {
+				menuManager.close("exportReflection");
+			}
+			if (evt->wholePath() == attr::gbutton::main_about) {
+				menuManager.open("about", About);
+			}
+			if (evt->wholePath() == attr::gbutton::about_ok) {
+				menuManager.close("about");
+			}
+			//处理保存按钮按下事件
 				if (evt->wholePath() == attr::gbutton::main_save || evt->wholePath() == attr::gbutton::main_saveas) {
 					menuManager.open("save", Save);
 					designer::Save::populateCheckboxes();
@@ -3164,6 +3345,9 @@ int main() {
 				}
 				if (evt->path=="save_windowToSave") {
 					designer::Save::toggleCheckbox(evt->name);
+				}
+				if (evt->path=="exportReflection_windowToExport") {
+					designer::ExportReflection::toggleCheckbox(evt->name);
 				}
 				if (evt->wholePath() == attr::gbutton::save_cancel) {
 					menuManager.close("save");
