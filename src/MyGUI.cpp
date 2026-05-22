@@ -20,7 +20,7 @@ namespace gui {
 		UIBase::draw(r, displayArea, windowManager);
 		if (posRect.findIntersection(displayArea)) {
 			sf::Sprite imageRender(imageManager[imageId]);
-			imageRender.setPosition(posRect.position + ((posRect.size - static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
+			imageRender.setPosition(posRect.position + ((posRect.size - static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayArea.position);
 			imageRender.setScale(scale);
 			imageRender.setColor(imageColors[currentStatu]);
 			r.draw(imageRender);
@@ -50,8 +50,8 @@ namespace gui {
 				textRect.size.x = textRender.findCharacterPos(i).x;
 		}
 		textRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
-		textRender.setPosition(posRect.position - offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayArea.position);
-		textRect.position = posRect.position + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification));
+		textRender.setPosition(posRect.position - offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayArea.position);
+		textRect.position = posRect.position + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));
 
 		if (textRect.findIntersection(displayArea)) {
 			//debug
@@ -94,8 +94,8 @@ namespace gui {
 					textRect.size.x = textRender.findCharacterPos(i).x;
 			}
 			textRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
-			textRender.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) - displayAreaCur.position);
-			textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification));
+			textRender.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayAreaCur.position);
+			textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));
 			sf::Vector2f cursorPos = textRender.findCharacterPos(cursor);
 			cursorPos += offsetFix;
 			if (textRect.size.x > posRect.size.x) {
@@ -157,6 +157,10 @@ namespace gui {
 		if (!posRect.findIntersection(displayArea))
 			return;
 		UIBase::draw(r, displayArea, windowManager);
+		//更新所有子对象的位置
+		for (auto& elem : sub.iterate()) {
+			elem->updatePosRect(posRect.size);
+		}
 		sf::FloatRect displayAreaCur(-scroll, posRect.size);
 		sf::RenderTexture rCur(static_cast<sf::Vector2u>(posRect.size));
 		rCur.clear(sf::Color::Transparent);

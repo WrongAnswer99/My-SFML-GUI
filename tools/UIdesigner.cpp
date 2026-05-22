@@ -69,18 +69,18 @@ namespace attr {
 		def(main_settings_SetCharacterSize);
 		def(main_settings_SetLetterSpacing);
 		def(main_settings_SetLineSpacing);
-		def(main_settings_SetJustification);
+		def(main_settings_SetAlign);
 	}
 	namespace gimage {
 		def(main_settings_SetImageId);
 		def(main_settings_SetScaleX);
 		def(main_settings_SetScaleY);
-		def(main_settings_SetJustificationX_Left);
-		def(main_settings_SetJustificationX_Mid);
-		def(main_settings_SetJustificationX_Right);
-		def(main_settings_SetJustificationY_Top);
-		def(main_settings_SetJustificationY_Mid);
-		def(main_settings_SetJustificationY_Bottom);
+		def(main_settings_SetAlignX_Left);
+		def(main_settings_SetAlignX_Mid);
+		def(main_settings_SetAlignX_Right);
+		def(main_settings_SetAlignY_Top);
+		def(main_settings_SetAlignY_Mid);
+		def(main_settings_SetAlignY_Bottom);
 
 		def(main_settings_SetImageNormalColorR);
 		def(main_settings_SetImageNormalColorG);
@@ -144,12 +144,12 @@ namespace attr {
 		def(main_settings_SetCharacterSize);
 		def(main_settings_SetLetterSpacing);
 		def(main_settings_SetLineSpacing);
-		def(main_settings_SetJustificationX_Left);
-		def(main_settings_SetJustificationX_Mid);
-		def(main_settings_SetJustificationX_Right);
-		def(main_settings_SetJustificationY_Top);
-		def(main_settings_SetJustificationY_Mid);
-		def(main_settings_SetJustificationY_Bottom);
+		def(main_settings_SetAlignX_Left);
+		def(main_settings_SetAlignX_Mid);
+		def(main_settings_SetAlignX_Right);
+		def(main_settings_SetAlignY_Top);
+		def(main_settings_SetAlignY_Mid);
+		def(main_settings_SetAlignY_Bottom);
 	}
 	namespace goption {
 		def(new_area);
@@ -168,12 +168,12 @@ namespace attr {
 		def(main_settings_SetCharacterSize);
 		def(main_settings_SetLetterSpacing);
 		def(main_settings_SetLineSpacing);
-		def(main_settings_SetJustificationX_Left);
-		def(main_settings_SetJustificationX_Mid);
-		def(main_settings_SetJustificationX_Right);
-		def(main_settings_SetJustificationY_Top);
-		def(main_settings_SetJustificationY_Mid);
-		def(main_settings_SetJustificationY_Bottom);
+		def(main_settings_SetAlignX_Left);
+		def(main_settings_SetAlignX_Mid);
+		def(main_settings_SetAlignX_Right);
+		def(main_settings_SetAlignY_Top);
+		def(main_settings_SetAlignY_Mid);
+		def(main_settings_SetAlignY_Bottom);
 	}
 	namespace ginput {
 		def(new_name);
@@ -184,8 +184,16 @@ namespace attr {
 		//UIBase
 		def(main_settings_SetLeftUpPositionX);
 		def(main_settings_SetLeftUpPositionY);
-		def(main_settings_SetCenterPositionX);
-		def(main_settings_SetCenterPositionY);
+		def(main_settings_SetRelativeX_Left);
+		def(main_settings_SetRelativeX_Right);
+		def(main_settings_SetRelativeY_Top);
+		def(main_settings_SetRelativeY_Bottom);
+		def(main_settings_SetAnchorX_Left);
+		def(main_settings_SetAnchorX_Mid);
+		def(main_settings_SetAnchorX_Right);
+		def(main_settings_SetAnchorY_Top);
+		def(main_settings_SetAnchorY_Mid);
+		def(main_settings_SetAnchorY_Bottom);
 		def(main_settings_SetSizeX);
 		def(main_settings_SetSizeY);
 		def(main_settings_SetShow);
@@ -231,12 +239,12 @@ namespace attr {
 		def(main_settings_SetCharacterSize);
 		def(main_settings_SetLetterSpacing);
 		def(main_settings_SetLineSpacing);
-		def(main_settings_SetJustificationX_Left);
-		def(main_settings_SetJustificationX_Mid);
-		def(main_settings_SetJustificationX_Right);
-		def(main_settings_SetJustificationY_Top);
-		def(main_settings_SetJustificationY_Mid);
-		def(main_settings_SetJustificationY_Bottom);
+		def(main_settings_SetAlignX_Left);
+		def(main_settings_SetAlignX_Mid);
+		def(main_settings_SetAlignX_Right);
+		def(main_settings_SetAlignY_Top);
+		def(main_settings_SetAlignY_Mid);
+		def(main_settings_SetAlignY_Bottom);
 		//Input
 		def(main_settings_SetTypeLimit_String);
 		def(main_settings_SetTypeLimit_Int);
@@ -261,7 +269,7 @@ namespace Init {
 		area.path_get<gui::InputObject>(name)
 			.setTypeLimit(type)
 			.setText(text)
-			.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 			.setFont("ht")
 			.setCharacterSize(40)
 			.setPosition(pos)
@@ -282,13 +290,13 @@ namespace Init {
 			.setStringTypeLimit(true, {}, { {L'A',L'Z'},{L'a',L'z'},{L'0',L'9'} });
 		return area.path_get<gui::InputObject>(name);
 	}
-	gui::TextObject& addSimpleText(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, gui::UIBase::Justification hJust = gui::UIBase::Left, gui::UIBase::Justification vJust = gui::UIBase::Mid) {
+	gui::TextObject& addSimpleText(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, gui::UIBase::Align hJust = gui::UIBase::Align::Left, gui::UIBase::Align vJust = gui::UIBase::Align::Mid) {
 		area.path_get<gui::TextObject>(name)
 			.setText(text)
 			.setFont("ht")
 			.setCharacterSize(40)
 			.setSizeAuto()
-			.setJustification(hJust, vJust)
+			.setAlign(hJust, vJust)
 			.setPosition(pos);
 		return area.path_get<gui::TextObject>(name);
 	}
@@ -297,7 +305,7 @@ namespace Init {
 			.setText(text)
 			.setFont("ht")
 			.setCharacterSize(40)
-			.setJustification(gui::UIBase::Mid, gui::UIBase::Top)
+			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Top)
 			.setPosition(pos)
 			.setSize(size);
 		return area.path_get<gui::TextObject>(name);
@@ -305,7 +313,7 @@ namespace Init {
 	gui::ButtonObject& addSimpleButton(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, sf::Vector2f size) {
 		area.path_get<gui::ButtonObject>(name)
 			.setText(text)
-			.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 			.setFont("ht")
 			.setCharacterSize(40)
 			.setPosition(pos)
@@ -315,7 +323,7 @@ namespace Init {
 	gui::ButtonObject& addAutoButton(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos) {
 		area.path_get<gui::ButtonObject>(name)
 			.setText(text)
-			.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 			.setFont("ht")
 			.setCharacterSize(40)
 			.setSizeAuto()
@@ -325,7 +333,7 @@ namespace Init {
 	gui::ImageObject& addSimpleImage(gui::AreaObject& area, const std::string& name, const std::string& imageId, sf::Vector2f pos) {
 		area.path_get<gui::ImageObject>(name)
 			.setImageId(imageId)
-			.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 			.setSizeAuto()
 			.setPosition(pos);
 		return area.path_get<gui::ImageObject>(name);
@@ -335,7 +343,7 @@ namespace Init {
 			.setText(text)
 			.setFont("ht")
 			.setCharacterSize(40)
-			.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 			.setPosition(pos)
 			.setSize(size);
 		return area.path_get<gui::OptionObject>(name);
@@ -346,7 +354,7 @@ namespace Init {
 			.setFont("ht")
 			.setCharacterSize(40)
 			.setSizeAuto()
-			.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 			.setPosition(pos);
 		return area.path_get<gui::OptionObject>(name);
 	}
@@ -374,7 +382,49 @@ namespace Init {
 			.setSize(size);
 		return area.path_get<gui::AreaObject>(name);
 	}
-	gui::AreaObject& addJustificationBar(gui::AreaObject& area, const std::string& name, sf::Vector2f pos, sf::Vector2f size, const std::string& defaultX, const std::string& defaultY) {
+	gui::AreaObject& addAlignBar(gui::AreaObject& area, const std::string& name, sf::Vector2f pos, sf::Vector2f size, const std::string& defaultX, const std::string& defaultY) {
+		float eachWidth = size.x / 6;
+		addSimpleOption(area, name + "X.Left", L"左", sf::Vector2f(eachWidth * 0, 0), sf::Vector2f(eachWidth, size.y));
+		addSimpleOption(area, name + "X.Mid", L"中", sf::Vector2f(eachWidth * 1, 0), sf::Vector2f(eachWidth, size.y));
+		addSimpleOption(area, name + "X.Right", L"右", sf::Vector2f(eachWidth * 2, 0), sf::Vector2f(eachWidth, size.y));
+		area.path_get<gui::AreaObject>(name + "X")
+			.setOption(defaultX)
+			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
+			.setStyle(style["null"], style["null"], style["null"])
+			.setPosition(pos)
+			.setSize(sf::Vector2f(size.x / 2, size.y));
+		addSimpleOption(area, name + "Y.Top", L"上", sf::Vector2f(eachWidth * 0, 0), sf::Vector2f(eachWidth, size.y));
+		addSimpleOption(area, name + "Y.Mid", L"中", sf::Vector2f(eachWidth * 1, 0), sf::Vector2f(eachWidth, size.y));
+		addSimpleOption(area, name + "Y.Bottom", L"下", sf::Vector2f(eachWidth * 2, 0), sf::Vector2f(eachWidth, size.y));
+		area.path_get<gui::AreaObject>(name + "Y")
+			.setOption(defaultY)
+			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
+			.setStyle(style["null"], style["null"], style["null"])
+			.setPosition(sf::Vector2f(pos.x + size.x / 2, pos.y))
+			.setSize(sf::Vector2f(size.x / 2, size.y));
+		return area.path_get<gui::AreaObject>(name + "X");
+	}
+	gui::AreaObject& addRelativeBar(gui::AreaObject& area, const std::string& name, sf::Vector2f pos, sf::Vector2f size, const std::string& defaultX, const std::string& defaultY) {
+		float eachWidth = size.x / 4;
+		addSimpleOption(area, name + "X.Left", L"左", sf::Vector2f(eachWidth * 0, 0), sf::Vector2f(eachWidth, size.y));
+		addSimpleOption(area, name + "X.Right", L"右", sf::Vector2f(eachWidth * 1, 0), sf::Vector2f(eachWidth, size.y));
+		area.path_get<gui::AreaObject>(name + "X")
+			.setOption(defaultX)
+			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
+			.setStyle(style["null"], style["null"], style["null"])
+			.setPosition(pos)
+			.setSize(sf::Vector2f(size.x / 2, size.y));
+		addSimpleOption(area, name + "Y.Top", L"上", sf::Vector2f(eachWidth * 0, 0), sf::Vector2f(eachWidth, size.y));
+		addSimpleOption(area, name + "Y.Bottom", L"下", sf::Vector2f(eachWidth * 1, 0), sf::Vector2f(eachWidth, size.y));
+		area.path_get<gui::AreaObject>(name + "Y")
+			.setOption(defaultY)
+			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
+			.setStyle(style["null"], style["null"], style["null"])
+			.setPosition(sf::Vector2f(pos.x + size.x / 2, pos.y))
+			.setSize(sf::Vector2f(size.x / 2, size.y));
+		return area.path_get<gui::AreaObject>(name + "X");
+	}
+	gui::AreaObject& addAnchorBar(gui::AreaObject& area, const std::string& name, sf::Vector2f pos, sf::Vector2f size, const std::string& defaultX, const std::string& defaultY) {
 		float eachWidth = size.x / 6;
 		addSimpleOption(area, name + "X.Left", L"左", sf::Vector2f(eachWidth * 0, 0), sf::Vector2f(eachWidth, size.y));
 		addSimpleOption(area, name + "X.Mid", L"中", sf::Vector2f(eachWidth * 1, 0), sf::Vector2f(eachWidth, size.y));
@@ -508,21 +558,21 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) - 400, 0));
 	Main.path_get<gui::TextObject>("mouseCoordY")
 		.setText(L"y:0")
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) - 200, 0));
 
 
 
 	int NewLine = 0;
 
-	Init::addTitleText(New, "title", L"添加", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	Init::addTitleText(New, "title", L"添加", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	NewLine++;
 
 	imageManager.loadImage("area", "resources/UIdesigner/area.png");
@@ -564,7 +614,7 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setStyle(style["null"], style["null"], style["null"])
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	New.path_get<gui::TextObject>("isSub")
@@ -572,16 +622,16 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(20)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * NewLine) + 20))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	New.path_get<gui::TextObject>("isSubDisabledText")
 		.setText(L"□在当前区域子类中创建")
 		.setTextStyle(textStyle["stdto"], textStyle["stdto"], textStyle["stdto"])
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 	Init::addTitleText(New, "name", L"名称：", sf::Vector2f(0, static_cast<float>(40 * NewLine)),sf::Vector2f(120,40));
@@ -589,28 +639,28 @@ static void init() {
 	New.path_get<gui::InputObject>("name")
 		.setStringTypeLimit(true, {}, { {L'A',L'Z'},{L'a',L'z'},{L'0',L'9'}})
 		.setText(L"")
-		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setPosition(sf::Vector2f(120, static_cast<float>(40 * NewLine)))
 		.setSize(sf::Vector2f(480, 40));
 	NewLine++;
 
-	Init::addSimpleButton(New, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * NewLine) + 20), sf::Vector2f(300, 40)).setCenter();
-	Init::addSimpleButton(New, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * NewLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(New, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * NewLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(New, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * NewLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	NewLine++;
 	New
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * NewLine)))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 
 
 	//Open窗口初始化
 	int OpenLine = 0;
 
-	Init::addTitleText(Open, "title", L"打开文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	Init::addTitleText(Open, "title", L"打开文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	OpenLine++;
 
 	Init::addSimpleOption(Open, "binary", L"Binary", sf::Vector2f(0, static_cast<float>(40 * OpenLine)), sf::Vector2f(300, 40));
@@ -628,7 +678,7 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setStyle(style["null"], style["null"], style["null"])
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * OpenLine)));
 	Open.path_get<gui::TextObject>("importToCurrent")
@@ -636,28 +686,28 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(20)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setStyle(style["null"], style["null"], style["null"])
 		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * OpenLine) + 20))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	Open.path_get<gui::TextObject>("importToCurrent").setShow(false);
 	OpenLine++;
 
-	Init::addSimpleButton(Open, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40)).setCenter();
-	Init::addSimpleButton(Open, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(Open, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(Open, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	OpenLine++;
 	Open
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * OpenLine)))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 
 
 	//Save窗口初始化
 	int SaveLine = 0;
 
-	Init::addTitleText(Save, "title", L"保存文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	Init::addTitleText(Save, "title", L"保存文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	SaveLine++;
 
 	Init::addSimpleOption(Save, "binary", L"Binary", sf::Vector2f(0, static_cast<float>(40 * SaveLine)), sf::Vector2f(300, 40));
@@ -678,20 +728,20 @@ static void init() {
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * SaveLine)))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * 5)));
 	SaveLine += 5;
-	Init::addSimpleButton(Save, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40)).setCenter();
-	Init::addSimpleButton(Save, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(Save, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(Save, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	SaveLine++;
 	Save
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * SaveLine)))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 
 	//ExportReflection窗口初始化
 	int ExportReflectionLine = 0;
 
-	Init::addTitleText(ExportReflection, "title", L"导出反射", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	Init::addTitleText(ExportReflection, "title", L"导出反射", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	ExportReflectionLine++;
 
 	Init::addSimpleText(ExportReflection, "filepath", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
@@ -708,21 +758,21 @@ static void init() {
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * 5)));
 	ExportReflectionLine += 5;
-	Init::addSimpleButton(ExportReflection, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40)).setCenter();
-	Init::addSimpleButton(ExportReflection, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(ExportReflection, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(ExportReflection, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	ExportReflectionLine++;
 	ExportReflection
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * ExportReflectionLine)))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 
 
 	//Paste窗口初始化
 	int PasteLine = 0;
 
-	Init::addTitleText(Paste, "title", L"粘贴", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	Init::addTitleText(Paste, "title", L"粘贴", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	PasteLine++;
 
 	Paste.path_get<gui::ButtonObject>("isSubText")
@@ -731,7 +781,7 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setStyle(style["null"], style["null"], style["null"])
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * PasteLine)));
 	Paste.path_get<gui::TextObject>("isSub")
@@ -739,16 +789,16 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(20)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * PasteLine) + 20))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	Paste.path_get<gui::TextObject>("isSubDisabledText")
 		.setText(L"□粘贴到当前区域子类中")
 		.setTextStyle(textStyle["stdto"], textStyle["stdto"], textStyle["stdto"])
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * PasteLine)));
 	PasteLine++;
 
@@ -757,55 +807,55 @@ static void init() {
 	Paste.path_get<gui::InputObject>("name")
 		.setTypeLimit(gui::InputObject::String)
 		.setText(L"")
-		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setPosition(sf::Vector2f(160, static_cast<float>(40 * PasteLine)))
 		.setSize(sf::Vector2f(600 - 160, 40));
 	PasteLine++;
 
-	Init::addSimpleButton(Paste, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40)).setCenter();
-	Init::addSimpleButton(Paste, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(Paste, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(Paste, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	PasteLine++;
 	Paste
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * PasteLine)))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 
 
 	//Rename窗口初始化
 	int RenameLine = 0;
 
-	Init::addTitleText(Rename, "title", L"重命名", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	Init::addTitleText(Rename, "title", L"重命名", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	RenameLine++;
 
 	Init::addSimpleText(Rename, "nameLabel", L"新名称：", sf::Vector2f(0, static_cast<float>(40 * RenameLine)));
 	Rename.path_get<gui::InputObject>("name")
 		.setStringTypeLimit(true, {}, { {L'A',L'Z'},{L'a',L'z'},{L'0',L'9'} })
 		.setText(L"")
-		.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setPosition(sf::Vector2f(160, static_cast<float>(40 * RenameLine)))
 		.setSize(sf::Vector2f(600 - 160, 40));
 	RenameLine++;
 
-	Init::addSimpleButton(Rename, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40)).setCenter();
-	Init::addSimpleButton(Rename, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40)).setCenter();
+	Init::addSimpleButton(Rename, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(Rename, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	RenameLine++;
 	Rename
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * RenameLine)))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 
 	//About窗口初始化
 	int AboutLine = 0;
 
-	Init::addTitleText(About, "title", L"关于", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setCenter();
+	Init::addTitleText(About, "title", L"关于", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 	AboutLine++;
 
 	About.path_get<gui::AreaObject>("content")
@@ -818,7 +868,7 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(40)
 		.setSizeAuto()
-		.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setPosition(sf::Vector2f(0, 0));
 	AboutLine += 3;
 
@@ -829,7 +879,7 @@ static void init() {
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * AboutLine)))
-		.setCenter();
+		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 
 
 	///
@@ -838,12 +888,16 @@ static void init() {
 	Init::addTitleText(settings::UIBase, "UIBaseSettings", L"基础设置", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40));
 	UIBaseLine++;
 
-	Init::addSimpleText(settings::UIBase, "SetLeftUpPosition", L"左上坐标:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
+	Init::addSimpleText(settings::UIBase, "SetLeftUpPosition", L"锚点坐标:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
 	Init::addPairInput(settings::UIBase, "SetLeftUpPositionX", "SetLeftUpPositionY", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40), gui::InputObject::Float);
 	UIBaseLine++;
 
-	Init::addSimpleText(settings::UIBase, "SetCenterPosition", L"中心坐标:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
-	Init::addPairInput(settings::UIBase, "SetCenterPositionX", "SetCenterPositionY", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40), gui::InputObject::Float);
+	Init::addSimpleText(settings::UIBase, "SetRelative", L"相对边线:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
+	Init::addRelativeBar(settings::UIBase, "SetRelative", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Left", "Top");
+	UIBaseLine++;
+
+	Init::addSimpleText(settings::UIBase, "SetAnchor", L"锚点位置:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
+	Init::addAnchorBar(settings::UIBase, "SetAnchor", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Left", "Top");
 	UIBaseLine++;
 
 	Init::addSimpleText(settings::UIBase, "SetSize", L"大小(宽高):", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
@@ -911,8 +965,8 @@ static void init() {
 	Init::addSimpleInput(settings::Text, "SetLineSpacing", gui::InputObject::Float, sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	TextLine++;
 
-	Init::addSimpleText(settings::Text, "SetJustification", L"对齐方式:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
-	Init::addJustificationBar(settings::Text, "SetJustification", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Mid", "Mid");
+	Init::addSimpleText(settings::Text, "SetAlign", L"对齐方式:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
+	Init::addAlignBar(settings::Text, "SetAlign", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Mid", "Mid");
 	TextLine++;	TextLine++;
 
 	//
@@ -929,8 +983,8 @@ static void init() {
 	Init::addPairInput(settings::Image, "SetScaleX", "SetScaleY", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40), gui::InputObject::Float);
 	ImageLine++;
 
-	Init::addSimpleText(settings::Image, "SetJustification", L"对齐方式:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
-	Init::addJustificationBar(settings::Image, "SetJustification", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Mid", "Mid");
+	Init::addSimpleText(settings::Image, "SetAlign", L"对齐方式:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
+	Init::addAlignBar(settings::Image, "SetAlign", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Mid", "Mid");
 	ImageLine++;	ImageLine++;
 
 	Init::addImageStyleInputs(settings::Image, "Normal", ImageLine, 200, halfWindowWidth);
@@ -1159,7 +1213,6 @@ namespace designer {
 		//将指定的窗口数据复制到预览窗口（仅在切换窗口时调用）
 		//该参数为名称，用'-'连接
 		void copyWindowToPreview(const std::string& windowName, gui::AreaObject& previewData) {
-			if (currentWindowName == windowName) return;
 			//清空现有的预览数据
 			previewData.sub.clear();
 			//从data中找到对应的窗口并复制到预览
@@ -1167,6 +1220,10 @@ namespace designer {
 				//同步窗口的UIBase属性到preview窗口
 				previewData.setPosition(windowPtr->getPosition());
 				previewData.setSize(windowPtr->getSize());
+				previewData.setRelative(static_cast<gui::UIBase::Relative>(windowPtr->getRelative().x),
+				                        static_cast<gui::UIBase::Relative>(windowPtr->getRelative().y));
+				previewData.setAnchor(static_cast<gui::UIBase::Anchor>(windowPtr->getAnchor().x),
+				                      static_cast<gui::UIBase::Anchor>(windowPtr->getAnchor().y));
 				for (int i = 0; i < 3; i++) {
 					previewData.style(i) = windowPtr->style(i);
 				}
@@ -1180,6 +1237,10 @@ namespace designer {
 		void syncUIBase(T* src, T* dst) {
 			dst->setPosition(src->getPosition());
 			dst->setSize(src->getSize());
+			dst->setRelative(static_cast<gui::UIBase::Relative>(src->getRelative().x),
+			                 static_cast<gui::UIBase::Relative>(src->getRelative().y));
+			dst->setAnchor(static_cast<gui::UIBase::Anchor>(src->getAnchor().x),
+			               static_cast<gui::UIBase::Anchor>(src->getAnchor().y));
 			dst->setShow(src->getShow());
 			for (int i = 0; i < 3; i++) {
 				dst->style(i) = src->style(i);
@@ -1192,9 +1253,9 @@ namespace designer {
 			dst->setFont(src->getFont());
 			dst->setCharacterSize(src->getCharacterSize());
 			dst->setSpacing(src->getLetterSpacing(), src->getLineSpacing());
-			auto just = src->getJustification();
-			dst->setJustification(static_cast<gui::UIBase::Justification>(just.x),
-								   static_cast<gui::UIBase::Justification>(just.y));
+			auto just = src->getAlign();
+			dst->setAlign(static_cast<gui::UIBase::Align>(just.x),
+								   static_cast<gui::UIBase::Align>(just.y));
 			for (int i = 0; i < 3; i++) {
 				dst->textStyle(i) = src->textStyle(i);
 			}
@@ -1246,9 +1307,9 @@ namespace designer {
 				dst->setImageId(src->getImageId());
 				dst->setScale(src->getScale());
 				dst->setImageColor(src->getImageColor(0), src->getImageColor(1), src->getImageColor(2));
-				auto just = src->getJustification();
-				dst->setJustification(static_cast<gui::UIBase::Justification>(just.x),
-									   static_cast<gui::UIBase::Justification>(just.y));
+				auto just = src->getAlign();
+				dst->setAlign(static_cast<gui::UIBase::Align>(just.x),
+									   static_cast<gui::UIBase::Align>(just.y));
 			}
 			else if (type == attr::designer::type::input) {
 				auto* src = data.path_find<gui::InputObject>(dataPath);
@@ -1988,7 +2049,7 @@ namespace designer {
 					
 					auto ptropt = mainList.sub.insert_named(mainList.sub.end(), optionName, gui::OptionObject{});
 					(*ptropt)
-						.setText("    " + name).setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+						.setText("    " + name).setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 						.setFont("ht")
 						.setCharacterSize(40)
 						.setSizeAuto()
@@ -1997,7 +2058,7 @@ namespace designer {
 					auto ptrimg = mainList.sub.insert_named(ptropt, optionName, gui::ImageObject{});
 					(*ptrimg)
 						.setImageId(pureType)
-						.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+						.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 						.setSizeAuto()
 						.setPosition(sf::Vector2f(level * 40.f, linePos));
 				}
@@ -2007,8 +2068,26 @@ namespace designer {
 		void fillUIBaseSettings(gui::AreaObject& mainSettings, gui::UIBase* obj) {
 			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionX").setText(floatToStr(obj->getPosition().x));
 			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionY").setText(floatToStr(obj->getPosition().y));
-			mainSettings.path_get<gui::InputObject>("SetCenterPositionX").setText(floatToStr(obj->getPosition().x + obj->getSize().x / 2));
-			mainSettings.path_get<gui::InputObject>("SetCenterPositionY").setText(floatToStr(obj->getPosition().y + obj->getSize().y / 2));
+			{
+				std::string rOptsX[] = { "Left", "Right" };
+				std::string rOptsY[] = { "Top", "Bottom" };
+				int rx = static_cast<int>(obj->getRelative().x);
+				int ry = static_cast<int>(obj->getRelative().y);
+				auto* relXArea = mainSettings.sub.find_named<gui::AreaObject>("SetRelativeX");
+				auto* relYArea = mainSettings.sub.find_named<gui::AreaObject>("SetRelativeY");
+				if (relXArea) relXArea->setOption(rOptsX[rx]);
+				if (relYArea) relYArea->setOption(rOptsY[ry]);
+			}
+			{
+				std::string aOptsX[] = { "Left", "Mid", "Right" };
+				std::string aOptsY[] = { "Top", "Mid", "Bottom" };
+				int ax = static_cast<int>(obj->getAnchor().x);
+				int ay = static_cast<int>(obj->getAnchor().y);
+				auto* ancXArea = mainSettings.sub.find_named<gui::AreaObject>("SetAnchorX");
+				auto* ancYArea = mainSettings.sub.find_named<gui::AreaObject>("SetAnchorY");
+				if (ancXArea) ancXArea->setOption(aOptsX[ax]);
+				if (ancYArea) ancYArea->setOption(aOptsY[ay]);
+			}
 			mainSettings.path_get<gui::InputObject>("SetSizeX").setText(floatToStr(obj->getSize().x));
 			mainSettings.path_get<gui::InputObject>("SetSizeY").setText(floatToStr(obj->getSize().y));
 			mainSettings.path_get<gui::InputObject>("SetShow").setText(obj->getShow() ? L"1" : L"0");
@@ -2036,10 +2115,10 @@ namespace designer {
 			{
 				std::string hOpts[] = { "Left", "Mid", "Right" };
 				std::string vOpts[] = { "Top", "Mid", "Bottom" };
-				int jx = static_cast<int>(obj->getJustification().x);
-				int jy = static_cast<int>(obj->getJustification().y);
-				auto* justXArea = mainSettings.sub.find_named<gui::AreaObject>("SetJustificationX");
-				auto* justYArea = mainSettings.sub.find_named<gui::AreaObject>("SetJustificationY");
+				int jx = static_cast<int>(obj->getAlign().x);
+				int jy = static_cast<int>(obj->getAlign().y);
+				auto* justXArea = mainSettings.sub.find_named<gui::AreaObject>("SetAlignX");
+				auto* justYArea = mainSettings.sub.find_named<gui::AreaObject>("SetAlignY");
 				std::cout << "  fillTextSettings justification: jx=" << hOpts[jx] << " jy=" << vOpts[jy]
 						  << " justXArea=" << (justXArea ? "found" : "NOT_FOUND")
 						  << " justYArea=" << (justYArea ? "found" : "NOT_FOUND") << std::endl;
@@ -2113,44 +2192,39 @@ namespace designer {
 				parseInt(settings.path_get<gui::InputObject>(prefix + "A").getText())
 			);
 		}
-		//解析选项名称为Justification值
-		gui::UIBase::Justification parseJustification(const std::string& opt) {
-			if (opt == "Left" || opt == "Top") return gui::UIBase::Left;
-			if (opt == "Right" || opt == "Bottom") return gui::UIBase::Right;
-			return gui::UIBase::Mid;
+		//解析选项名称为Align值
+		gui::UIBase::Align parseAlign(const std::string& opt) {
+			if (opt == "Left" || opt == "Top") return gui::UIBase::Align::Left;
+			if (opt == "Right" || opt == "Bottom") return gui::UIBase::Align::Right;
+			return gui::UIBase::Align::Mid;
 		}
-		//读取Justification选项
-		std::pair<gui::UIBase::Justification, gui::UIBase::Justification> readJustification(gui::AreaObject& settings, const std::string& prefix) {
+		//读取Align选项
+		std::pair<gui::UIBase::Align, gui::UIBase::Align> readAlign(gui::AreaObject& settings, const std::string& prefix) {
 			std::string xName = prefix + "X";
 			std::string yName = prefix + "Y";
 			std::string xOpt = settings.path_get<gui::AreaObject>(xName).getOption();
 			std::string yOpt = settings.path_get<gui::AreaObject>(yName).getOption();
-			std::cout << "  readJustification[" << prefix << "] X=" << xOpt << " Y=" << yOpt << std::endl;
-			return { parseJustification(xOpt), parseJustification(yOpt) };
+			std::cout << "  readAlign[" << prefix << "] X=" << xOpt << " Y=" << yOpt << std::endl;
+			return { parseAlign(xOpt), parseAlign(yOpt) };
 		}
-		//同步pos/centerpos：根据触发源自动更新另一个
-		void syncPosition(gui::AreaObject& mainSettings, const std::string& triggerInput) {
-			float lx = parseFloat(mainSettings.path_get<gui::InputObject>("SetLeftUpPositionX").getText());
-			float ly = parseFloat(mainSettings.path_get<gui::InputObject>("SetLeftUpPositionY").getText());
-			float cx = parseFloat(mainSettings.path_get<gui::InputObject>("SetCenterPositionX").getText());
-			float cy = parseFloat(mainSettings.path_get<gui::InputObject>("SetCenterPositionY").getText());
-			float sx = parseFloat(mainSettings.path_get<gui::InputObject>("SetSizeX").getText());
-			float sy = parseFloat(mainSettings.path_get<gui::InputObject>("SetSizeY").getText());
-
-			//判断触发源
-			bool isPosChanged = (triggerInput == "SetLeftUpPositionX" || triggerInput == "SetLeftUpPositionY");
-			bool isCenterChanged = (triggerInput == "SetCenterPositionX" || triggerInput == "SetCenterPositionY");
-			//size改变时更新centerPos，centerPos改变时更新pos，pos改变时更新centerPos
-			if (isPosChanged || triggerInput == "SetSizeX" || triggerInput == "SetSizeY") {
-				//pos或size改变 → 更新centerPos = pos + size/2
-				mainSettings.path_get<gui::InputObject>("SetCenterPositionX").setText(floatToStr(lx + sx / 2));
-				mainSettings.path_get<gui::InputObject>("SetCenterPositionY").setText(floatToStr(ly + sy / 2));
-			}
-			else if (isCenterChanged) {
-				//centerPos改变 → 更新leftUpPos = centerPos - size/2
-				mainSettings.path_get<gui::InputObject>("SetLeftUpPositionX").setText(floatToStr(cx - sx / 2));
-				mainSettings.path_get<gui::InputObject>("SetLeftUpPositionY").setText(floatToStr(cy - sy / 2));
-			}
+		gui::UIBase::Relative parseRelative(const std::string& opt) {
+			if (opt == "Right" || opt == "Bottom") return gui::UIBase::Relative::Right;
+			return gui::UIBase::Relative::Left;
+		}
+		std::pair<gui::UIBase::Relative, gui::UIBase::Relative> readRelative(gui::AreaObject& settings, const std::string& prefix) {
+			std::string xOpt = settings.path_get<gui::AreaObject>(prefix + "X").getOption();
+			std::string yOpt = settings.path_get<gui::AreaObject>(prefix + "Y").getOption();
+			return { parseRelative(xOpt), parseRelative(yOpt) };
+		}
+		gui::UIBase::Anchor parseAnchor(const std::string& opt) {
+			if (opt == "Left" || opt == "Top") return gui::UIBase::Anchor::Left;
+			if (opt == "Right" || opt == "Bottom") return gui::UIBase::Anchor::Right;
+			return gui::UIBase::Anchor::Mid;
+		}
+		std::pair<gui::UIBase::Anchor, gui::UIBase::Anchor> readAnchor(gui::AreaObject& settings, const std::string& prefix) {
+			std::string xOpt = settings.path_get<gui::AreaObject>(prefix + "X").getOption();
+			std::string yOpt = settings.path_get<gui::AreaObject>(prefix + "Y").getOption();
+			return { parseAnchor(xOpt), parseAnchor(yOpt) };
 		}
 		//应用UIBase设置
 		void applyUIBaseSettings(gui::UIBase* obj, gui::AreaObject& mainSettings) {
@@ -2162,6 +2236,12 @@ namespace designer {
 				float ly = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
 				obj->setPosition({ lx, ly });
 				std::cout << "  applyUIBase pos=(" << lx << "," << ly << ")" << std::endl;
+
+				auto [rx, ry] = readRelative(mainSettings, "SetRelative");
+				obj->setRelative(rx, ry);
+
+				auto [ax, ay] = readAnchor(mainSettings, "SetAnchor");
+				obj->setAnchor(ax, ay);
 
 				path = "SetSizeX";
 				float sx = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
@@ -2193,8 +2273,8 @@ namespace designer {
 			obj->setCharacterSize(parseInt(mainSettings.path_get<gui::InputObject>("SetCharacterSize").getText()));
 			obj->setSpacing(parseFloat(mainSettings.path_get<gui::InputObject>("SetLetterSpacing").getText()),
 						   parseFloat(mainSettings.path_get<gui::InputObject>("SetLineSpacing").getText()));
-			auto [hJust, vJust] = readJustification(mainSettings, "SetJustification");
-			obj->setJustification(hJust, vJust);
+			auto [hJust, vJust] = readAlign(mainSettings, "SetAlign");
+			obj->setAlign(hJust, vJust);
 			std::string states[] = { "TextNormal", "TextOver", "TextFocus" };
 			for (int i = 0; i < 3; i++) {
 				std::string p = "Set" + states[i];
@@ -2229,8 +2309,8 @@ namespace designer {
 				obj->setImageId(mainSettings.path_get<gui::InputObject>("SetImageId").getText().toAnsiString());
 				obj->setScale({ parseFloat(mainSettings.path_get<gui::InputObject>("SetScaleX").getText()),
 								parseFloat(mainSettings.path_get<gui::InputObject>("SetScaleY").getText()) });
-				auto [hJust, vJust] = readJustification(mainSettings, "SetJustification");
-				obj->setJustification(hJust, vJust);
+				auto [hJust, vJust] = readAlign(mainSettings, "SetAlign");
+				obj->setAlign(hJust, vJust);
 				obj->setImageColor(
 					parseColor(mainSettings, "SetImageNormalColor"),
 					parseColor(mainSettings, "SetImageOverColor"),
@@ -2456,17 +2536,17 @@ namespace designer {
 					.setFont("ht")
 					.setCharacterSize(20)
 					.setSizeAuto()
-					.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToSaveLine) + 20))
 					.setShow(true)
-					.setCenter();
+					.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 				windowToSave.path_get<gui::ButtonObject>(key)
 					.setText(L"□"+sf::String(key))
 					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
 					.setFont("ht")
 					.setCharacterSize(40)
 					.setSizeAuto()
-					.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+					.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 					.setStyle(style["null"], style["null"], style["null"])
 					.setPosition(sf::Vector2f(0, static_cast<float>(40 * windowToSaveLine)));
 				windowToSaveLine++;
@@ -2493,17 +2573,17 @@ namespace designer {
 					.setFont("ht")
 					.setCharacterSize(20)
 					.setSizeAuto()
-					.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToExportLine) + 20))
 					.setShow(true)
-					.setCenter();
+					.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
 				windowToExport.path_get<gui::ButtonObject>(key)
 					.setText(L"□"+sf::String(key))
 					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
 					.setFont("ht")
 					.setCharacterSize(40)
 					.setSizeAuto()
-					.setJustification(gui::UIBase::Left, gui::UIBase::Mid)
+					.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 					.setStyle(style["null"], style["null"], style["null"])
 					.setPosition(sf::Vector2f(0, static_cast<float>(40 * windowToExportLine)));
 				windowToExportLine++;
@@ -2744,13 +2824,13 @@ namespace designer {
 
 				(*ptrimg)
 					.setImageId(imageId)
-					.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 					.setSizeAuto()
 					.setPosition(sf::Vector2f(level * 40.f, linePos));
 
 				(*ptropt)
 					.setText("    " + itemName)
-					.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 					.setFont("ht")
 					.setCharacterSize(40)
 					.setSizeAuto()
@@ -3116,11 +3196,11 @@ int main() {
 								auto ptrimg = mainList.sub.insert_named(ptropt, OptionName, gui::ImageObject{});
 								(*ptrimg)
 									.setImageId(option)
-									.setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+									.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 									.setSizeAuto()
 									.setPosition(sf::Vector2f(level*40.f, linePos));
 								(*ptropt)
-									.setText("    " + name).setJustification(gui::UIBase::Mid, gui::UIBase::Mid)
+									.setText("    " + name).setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 									.setFont("ht")
 									.setCharacterSize(40)
 									.setSizeAuto()
@@ -3552,13 +3632,6 @@ int main() {
 				if (evt->path.find(attr::garea::main_settings) == 0) {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();
-					//先同步pos/centerpos联动
-					std::string inputName = evt->name;
-					if (inputName == "SetLeftUpPositionX" || inputName == "SetLeftUpPositionY" ||
-						inputName == "SetCenterPositionX" || inputName == "SetCenterPositionY" ||
-						inputName == "SetSizeX" || inputName == "SetSizeY") {
-						designer::Name::syncPosition(menuManager.path_at<gui::AreaObject>(attr::garea::main_settings), inputName);
-					}
 					if (!ChosenOptionName.empty()) {
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
 						designer::Name::applySettings(ChosenType, designer::toDataPath(ChosenPath), menuManager.path_at<gui::AreaObject>(attr::garea::main_settings));
@@ -3588,6 +3661,12 @@ int main() {
 					if (!ChosenOptionName.empty()) {
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
 						designer::Name::applySettings(ChosenType, designer::toDataPath(ChosenPath), menuManager.path_at<gui::AreaObject>(attr::garea::main_settings));
+						//同步preview窗口
+						std::string windowName = designer::Name::getWindowName(ChosenPath);
+						auto* windowPtr = designer::data.sub.find_named<gui::AreaObject>(windowName);
+						if (windowPtr) {
+							designer::Preview::copyWindowToPreview(windowName, previewManager.window("preview"));
+						}
 					}
 				}
 			}

@@ -53,34 +53,52 @@ namespace gui {
 		friend class WindowManager;
 	protected:
 		sf::FloatRect posRect = sf::FloatRect(sf::Vector2f(), sf::Vector2f(1.f, 1.f));
+		sf::Vector2f position = sf::Vector2f();
+		sf::Vector2i relative = sf::Vector2i();
+		sf::Vector2i anchor = sf::Vector2i();
 		Style styles[3];
 		int currentStatu = gui::UIBase::Normal;
 		bool isShow = true;
 		virtual void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 		//std::set<std::string> linkList;
 	public:
+		enum class Relative { Left = 0, Right = 1, Top = 0, Bottom = 1 };
+		enum class Anchor { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
+		enum class Align { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
 		enum Statu { Normal = 0, Over = 1, Focus = 2 };
-		enum Justification { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
 		UIBase& setPosition(sf::Vector2f _pos) {
-			posRect.position = _pos;
+			position = _pos;
 			return *this;
 		}
-		//use this setter
-		//after : setPosition() , setSize()
-		//* this setter is always the last one
-		UIBase& setCenter() {
-			posRect.position -= posRect.size / 2.f;
+		UIBase& setPosition(sf::Vector2f _pos, UIBase::Relative xRelative, UIBase::Relative yRelative, UIBase::Anchor xAnchor, UIBase::Anchor yAnchor) {
+			position = _pos;
+			relative = { static_cast<int>(xRelative), static_cast<int>(yRelative) };
+			anchor = { static_cast<int>(xAnchor), static_cast<int>(yAnchor) };
 			return *this;
 		}
 		UIBase& setSize(sf::Vector2f _size) {
 			posRect.size = _size;
 			return *this;
 		}
+		UIBase& setRelative(UIBase::Relative xRelative, UIBase::Relative yRelative) {
+			relative = { static_cast<int>(xRelative), static_cast<int>(yRelative) };
+			return *this;
+		}
+		UIBase& setAnchor(UIBase::Anchor xAnchor, UIBase::Anchor yAnchor) {
+			anchor = { static_cast<int>(xAnchor), static_cast<int>(yAnchor) };
+			return *this;
+		}
 		sf::Vector2f getPosition() const {
-			return posRect.position;
+			return position;
 		}
 		sf::Vector2f getSize() const {
 			return posRect.size;
+		}
+		sf::Vector2<Relative> getRelative() const {
+			return static_cast<sf::Vector2<Relative>>(relative);
+		}
+		sf::Vector2<Anchor> getAnchor() const {
+			return static_cast<sf::Vector2<Anchor>>(anchor);
 		}
 		sf::FloatRect getPosRect() const {
 			return posRect;
@@ -109,6 +127,13 @@ namespace gui {
 			return *this;
 		}
 	protected:
+		void updatePosRect(sf::Vector2f fatherSize) {
+			posRect.position
+				= fatherSize.componentWiseMul(static_cast<sf::Vector2f>(relative))
+				+ position.componentWiseMul(sf::Vector2f(1,1) - static_cast<sf::Vector2f>(relative))
+				- position.componentWiseMul(static_cast<sf::Vector2f>(relative))
+				- posRect.size.componentWiseMul(static_cast<sf::Vector2f>(anchor)).componentWiseDiv(sf::Vector2f(2,2));
+		}
 		void setStatu(int statu, bool force = false) {
 			if (force || currentStatu != gui::UIBase::Focus) {
 				currentStatu = statu;
@@ -116,16 +141,19 @@ namespace gui {
 		}
 	public:
 		friend inline void read(BinaryFileStream& bf, UIBase& x) {
-			bf.readStruct(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
+			bf.readStruct(x.position, x.posRect.size, x.relative, x.anchor, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
 		}
 		friend inline void write(BinaryFileStream& bf, const UIBase& x) {
-			bf.writeStruct(x.posRect, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
+			bf.writeStruct(x.position, x.posRect.size, x.relative, x.anchor, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
 		}
 		friend inline void to_json(nlohmann::json& j, const UIBase& x) {
-			j = nlohmann::json{ {"posRect", x.posRect}, {"normalStyle", x.styles[gui::UIBase::Normal]}, {"overStyle", x.styles[gui::UIBase::Over]}, {"focusStyle", x.styles[gui::UIBase::Focus]}, {"isShow", x.isShow} };
+			j = nlohmann::json{ {"position", x.position}, {"size", x.posRect.size}, {"relative", x.relative}, {"anchor", x.anchor}, {"normalStyle", x.styles[gui::UIBase::Normal]}, {"overStyle", x.styles[gui::UIBase::Over]}, {"focusStyle", x.styles[gui::UIBase::Focus]}, {"isShow", x.isShow} };
 		}
 		friend inline void from_json(const nlohmann::json& j, UIBase& x) {
-			j.at("posRect").get_to(x.posRect);
+			j.at("position").get_to(x.position);
+			j.at("size").get_to(x.posRect.size);
+			j.at("relative").get_to(x.relative);
+			j.at("anchor").get_to(x.anchor);
 			j.at("normalStyle").get_to(x.styles[gui::UIBase::Normal]);
 			j.at("overStyle").get_to(x.styles[gui::UIBase::Over]);
 			j.at("focusStyle").get_to(x.styles[gui::UIBase::Focus]);
@@ -137,7 +165,6 @@ namespace gui {
 	public:
 		ImageObject() {}
 		//use this setter
-		//before : setCenter()
 		//after : setImage() , setScale() , setScaleTo()
 		ImageObject& setSizeAuto() {
 			posRect.size = static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale);
@@ -145,7 +172,7 @@ namespace gui {
 		}
 	protected:
 		std::string imageId;
-		sf::Vector2i justification = { gui::UIBase::Mid,gui::UIBase::Mid };
+		sf::Vector2i align = { static_cast<int>(gui::UIBase::Align::Mid), static_cast<int>(gui::UIBase::Align::Mid) };
 		sf::Vector2f scale = sf::Vector2f(1, 1);
 		sf::Color imageColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
@@ -159,9 +186,9 @@ namespace gui {
 		sf::Color& imageColor(int id) {
 			return imageColors[id];
 		}
-		ImageObject& setJustification(gui::UIBase::Justification xJus, gui::UIBase::Justification yJus) {
-			justification.x = xJus;
-			justification.y = yJus;
+		ImageObject& setAlign(gui::UIBase::Align xAlign, gui::UIBase::Align yAlign) {
+			align.x = static_cast<int>(xAlign);
+			align.y = static_cast<int>(yAlign);
 			return *this;
 		}
 		ImageObject& setScale(sf::Vector2f _scale) {
@@ -180,17 +207,19 @@ namespace gui {
 		}
 		const std::string& getImageId() const { return imageId; }
 		sf::Vector2f getScale() const { return scale; }
-		sf::Vector2i getJustification() const { return justification; }
+		sf::Vector2<Align> getAlign() const {
+			return static_cast<sf::Vector2<Align>>(align);
+		}
 		const sf::Color& getImageColor(int id) const { return imageColors[id]; }
 		friend inline void read(BinaryFileStream& bf, ImageObject& x) {
-			bf.readStruct(static_cast<UIBase&>(x), x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
+			bf.readStruct(static_cast<UIBase&>(x), x.imageId, x.scale, x.align, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
 		}
 		friend inline void write(BinaryFileStream& bf, const ImageObject& x) {
-			bf.writeStruct(static_cast<const UIBase&>(x), x.imageId, x.scale, x.justification, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
+			bf.writeStruct(static_cast<const UIBase&>(x), x.imageId, x.scale, x.align, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
 		}
 		friend inline void to_json(nlohmann::json& j, const ImageObject& x) {
 			nlohmann::json base = static_cast<const UIBase&>(x);
-			j = nlohmann::json{ {"UIBase", base}, {"imageId", x.imageId}, {"scale", x.scale}, {"justification", x.justification}, {"normalImageColor", x.imageColors[gui::UIBase::Normal]}, {"overImageColor", x.imageColors[gui::UIBase::Over]}, {"focusImageColor", x.imageColors[gui::UIBase::Focus]} };
+			j = nlohmann::json{ {"UIBase", base}, {"imageId", x.imageId}, {"scale", x.scale}, {"align", x.align}, {"normalImageColor", x.imageColors[gui::UIBase::Normal]}, {"overImageColor", x.imageColors[gui::UIBase::Over]}, {"focusImageColor", x.imageColors[gui::UIBase::Focus]} };
 		}
 		friend inline void from_json(const nlohmann::json& j, ImageObject& x) {
 			nlohmann::json base;
@@ -198,7 +227,7 @@ namespace gui {
 			base.get_to(static_cast<UIBase&>(x));
 			j.at("imageId").get_to(x.imageId);
 			j.at("scale").get_to(x.scale);
-			j.at("justification").get_to(x.justification);
+			j.at("align").get_to(x.align);
 			j.at("normalImageColor").get_to(x.imageColors[gui::UIBase::Normal]);
 			j.at("overImageColor").get_to(x.imageColors[gui::UIBase::Over]);
 			j.at("focusImageColor").get_to(x.imageColors[gui::UIBase::Focus]);
@@ -244,7 +273,6 @@ namespace gui {
 			return textStyles[id];
 		}
 		//use this setter
-		//before : setCenter()
 		//after : setFont() , setText() , setCharacterSize()
 		TextObject& setSizeAuto() {
 			textRender.setFont(fontManager[font]);
@@ -268,7 +296,7 @@ namespace gui {
 		sf::String text = "";
 		sf::Text textRender{ fontManager[font] };
 		sf::FloatRect textRect;
-		sf::Vector2i justification = { gui::UIBase::Mid,gui::UIBase::Mid };
+		sf::Vector2i align = { static_cast<int>(gui::UIBase::Align::Mid), static_cast<int>(gui::UIBase::Align::Mid) };
 		TextStyle textStyles[3];
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 	public:
@@ -286,9 +314,9 @@ namespace gui {
 			lineSpacing = _lineSpacing;
 			return *this;
 		}
-		TextObject& setJustification(gui::UIBase::Justification xJus, gui::UIBase::Justification yJus) {
-			justification.x = xJus;
-			justification.y = yJus;
+		TextObject& setAlign(gui::UIBase::Align xAlign, gui::UIBase::Align yAlign) {
+			align.x = static_cast<int>(xAlign);
+			align.y = static_cast<int>(yAlign);
 			return *this;
 		}
 		TextObject& setText(sf::String _text) {
@@ -305,19 +333,19 @@ namespace gui {
 		unsigned int getCharacterSize() const { return characterSize; }
 		float getLetterSpacing() const { return letterSpacing; }
 		float getLineSpacing() const { return lineSpacing; }
-		sf::Vector2i getJustification() const { return justification; }
+		sf::Vector2i getAlign() const { return align; }
 		friend inline void read(BinaryFileStream& bf, TextObject& x) {
 			bf.readStruct(static_cast<UIBase&>(x), x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
-				x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+				x.font, x.characterSize, x.align, x.letterSpacing, x.lineSpacing, x.text);
 			x.textRender.setFont(fontManager[x.font]);
 		}
 		friend inline void write(BinaryFileStream& bf, const TextObject& x) {
 			bf.writeStruct(static_cast<const UIBase&>(x), x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
-				x.font, x.characterSize, x.justification, x.letterSpacing, x.lineSpacing, x.text);
+				x.font, x.characterSize, x.align, x.letterSpacing, x.lineSpacing, x.text);
 		}
 		friend inline void to_json(nlohmann::json& j, const TextObject& x) {
 			nlohmann::json base = static_cast<const UIBase&>(x);
-			j = nlohmann::json{ {"UIBase", base}, {"normalTextStyle", x.textStyles[gui::UIBase::Normal]}, {"overTextStyle", x.textStyles[gui::UIBase::Over]}, {"focusTextStyle", x.textStyles[gui::UIBase::Focus]}, {"font", x.font}, {"characterSize", x.characterSize}, {"justification", x.justification}, {"letterSpacing", x.letterSpacing}, {"lineSpacing", x.lineSpacing}, {"text", x.text} };
+			j = nlohmann::json{ {"UIBase", base}, {"normalTextStyle", x.textStyles[gui::UIBase::Normal]}, {"overTextStyle", x.textStyles[gui::UIBase::Over]}, {"focusTextStyle", x.textStyles[gui::UIBase::Focus]}, {"font", x.font}, {"characterSize", x.characterSize}, {"align", x.align}, {"letterSpacing", x.letterSpacing}, {"lineSpacing", x.lineSpacing}, {"text", x.text} };
 		}
 		friend inline void from_json(const nlohmann::json& j, TextObject& x) {
 			nlohmann::json base;
@@ -328,7 +356,7 @@ namespace gui {
 			j.at("focusTextStyle").get_to(x.textStyles[gui::UIBase::Focus]);
 			j.at("font").get_to(x.font);
 			j.at("characterSize").get_to(x.characterSize);
-			j.at("justification").get_to(x.justification);
+			j.at("align").get_to(x.align);
 			j.at("letterSpacing").get_to(x.letterSpacing);
 			j.at("lineSpacing").get_to(x.lineSpacing);
 			j.at("text").get_to(x.text);
@@ -489,8 +517,8 @@ namespace gui {
 					textRect.size.x = textRender.findCharacterPos(i).x;
 			}
 			textRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
-			textRender.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification)) + scroll);
-			textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(justification));
+			textRender.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) + scroll);
+			textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));
 			size_t bestCursor = 0;
 			float minDist = std::numeric_limits<float>::max();
 			for (size_t i = 0; i <= text.getSize(); i++) {
@@ -1152,6 +1180,10 @@ namespace gui {
 				if (objectPathVisit(focus) == nullptr)
 					focus.clear();
 				updateSimpleMove(focus.type.has_value() ? path_find<AreaObject>(focus.path) : nullptr, updateOver());
+			}
+			//更新所有子对象的位置
+			for (auto& elem : layer.iterate()) {
+				elem->updatePosRect(static_cast<sf::Vector2f>(drawTarget.getSize()));
 			}
 			if (focus.is<InputObject>()) {
 				cursorBlinkTick++;
