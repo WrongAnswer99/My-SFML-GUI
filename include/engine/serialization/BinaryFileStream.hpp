@@ -337,6 +337,20 @@ inline void write(BinaryFileStream& bf, const std::vector<T>& x) {
 	}
 }
 
+// Fixed-size array serialization
+template<typename T, size_t N>
+inline void read(BinaryFileStream& bf, T (&x)[N]) {
+	for (size_t i = 0; i < N; ++i) {
+		bf.read(x[i]);
+	}
+}
+template<typename T, size_t N>
+inline void write(BinaryFileStream& bf, const T (&x)[N]) {
+	for (size_t i = 0; i < N; ++i) {
+		bf.write(x[i]);
+	}
+}
+
 // SFML type serialization
 #include "SFML/Graphics.hpp"
 

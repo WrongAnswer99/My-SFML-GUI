@@ -14,36 +14,45 @@ static void init() {
 	style["stdbf"].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
 
 	Main.setStyle(style["stda1"], style["stda1"], style["stda1"])
-		.setPosition(sf::Vector2f(0, 0))
-		.setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
+		.setPositionRelative(
+			{{gui::UIBase::Anchor::Left,gui::UIBase::Relative::LeftEdge,0.f},{gui::UIBase::Anchor::Right,gui::UIBase::Relative::RightEdge,0.f}},
+			{{gui::UIBase::Anchor::Top,gui::UIBase::Relative::TopEdge,0.f},{gui::UIBase::Anchor::Bottom,gui::UIBase::Relative::BottomEdge,0.f}}
+		);
 
 	Main.path_get<gui::ButtonObject>("button")
 		.setText(L"按钮")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(650, 500))
-		.setSize(sf::Vector2f(100, 50));
+		.setSizeAuto()
+		.setPositionRelative(
+			{{gui::UIBase::Anchor::Right,gui::UIBase::Relative::RightEdge,-50.f}},
+			{{gui::UIBase::Anchor::Bottom,gui::UIBase::Relative::BottomEdge,0.f}}
+		);
 
 	Main.path_get<gui::TextObject>("text")
 		.setText(L"这是外层窗口，被设置为不可拖动")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(400, 25))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setSizeAuto()
+		.setPositionRelative(
+			{{gui::UIBase::Anchor::Mid, gui::UIBase::Relative::MidLine, 0.f}},
+			{{gui::UIBase::Anchor::Top, gui::UIBase::Relative::TopEdge, 0.f}}
+		);
 
 	Main.path_get<gui::AreaObject>("area")
 		.setScrollable(sf::Vector2i(1, 1), sf::Vector2i(1, 1))
 		.setStyle(style["stda2"], style["stda2"], style["stda2"])
-		.setPosition(sf::Vector2f(50, 50))
-		.setSize(sf::Vector2f(700, 450));
+		.setPositionRelative(
+			{{gui::UIBase::Anchor::Left,gui::UIBase::Relative::LeftEdge,50.f},{gui::UIBase::Anchor::Right,gui::UIBase::Relative::RightEdge,-50.f}},
+			{{gui::UIBase::Anchor::Top,gui::UIBase::Relative::TopEdge,50.f},{gui::UIBase::Anchor::Bottom,gui::UIBase::Relative::BottomEdge,-50.f}}
+		);
 
 	Main.path_get<gui::TextObject>("area.text2")
 		.setText(L"↓↓↓向下滑↓↓↓\n当按下按钮时拖动，\n操作将转化为拖动，\n且不会触发按钮")
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setSizeAuto()
-		.setPosition(sf::Vector2f(350, 500))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 500), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 
 
 	
@@ -51,15 +60,13 @@ static void init() {
 		.setText(L"↑顶部，无法继续上拉")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 25))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 25), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 
 	Main.path_get<gui::TextObject>("area.text")
 		.setText(L"这是内层窗口，被设置为可拖动\n现已支持惯性滑动")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 100))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 100), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	
 	Main.path_get<gui::InputObject>("area.input")
 		.setText(L"这是一个文本框")
@@ -67,17 +74,15 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setSizeAuto()
-		.setPosition(sf::Vector2f(350, 175))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 175), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 
 	Main.path_get<gui::InputObject>("area.inputSlim")
 		.setText(L"这是一个窄文本框")
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 225))
-		.setSize(sf::Vector2f(400, 35))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 225),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(400, 35));
 	
 	Main.path_get<gui::InputObject>("area.inputFloat")
 		.setTypeLimit(gui::InputObject::Float)
@@ -86,131 +91,113 @@ static void init() {
 		.setFont("ht")
 		.setCharacterSize(50)
 		.setSizeAuto()
-		.setPosition(sf::Vector2f(1000, 225))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(1000, 225),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 
 	Main.path_get<gui::ButtonObject>("area.button")
 		.setText(L"按钮").setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 275))
-		.setSize(sf::Vector2f(100, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 275),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(100, 50));
 
 	Main.path_get<gui::OptionObject>("area.option1")
 		.setText(L"选项1")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 750))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 750),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::OptionObject>("area.option2")
 		.setText(L"选项2")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 800))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 800),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::OptionObject>("area.option3")
 		.setText(L"选项3")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 850))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 850),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::OptionObject>("area.option4")
 		.setText(L"选项4")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 900))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 900),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::OptionObject>("area.option5")
 		.setText(L"选项5")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 950))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 950),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 
 	Main.path_get<gui::TextObject>("area.1")
 		.setText(L"1")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 700))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 700), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::TextObject>("area.2")
 		.setText(L"2")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 1000))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 1000), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::TextObject>("area.3")
 		.setText(L"3")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 1300))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 1300),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::TextObject>("area.4")
 		.setText(L"4")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 1600))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 1600),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::TextObject>("area.5")
 		.setText(L"5")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 1900))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 1900),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 
 	Main.path_get<gui::TextObject>("area.6")
 		.setText(L"6")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(1000, 700))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(1000, 700), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::TextObject>("area.7")
 		.setText(L"7")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(1000, 1000))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(1000, 1000), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::TextObject>("area.8")
 		.setText(L"8")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(1000, 1300))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(1000, 1300), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::TextObject>("area.9")
 		.setText(L"9")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(1000, 1600))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(1000, 1600), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::TextObject>("area.10")
 		.setText(L"10")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(1000, 1900))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(1000, 1900), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::TextObject>("area.bottom")
 		.setText(L"↓底部")
 		.setFont("ht")
 		.setCharacterSize(50)
-		.setPosition(sf::Vector2f(350, 2200))
-		.setSize(sf::Vector2f(150, 50))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(350, 2200), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(150, 50));
 	imageManager.loadImage("test","D:/test.png");
 	Main.path_get<gui::ImageObject>("area.image")
 		.setImageId("test")
@@ -277,12 +264,15 @@ int main() {
 	}
 
 	windowManager.open("main",Main);
-	window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"测试", sf::Style::Close, sf::State::Windowed);
+	window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"测试", sf::Style::Close | sf::Style::Resize, sf::State::Windowed);
 	window.setFramerateLimit(60);
 	while (true) {
 		while (const std::optional sfEvt=window.pollEvent()) {
 			if (sfEvt->is<sf::Event::Closed>()) {
 				exit(0);
+			}
+			else if (auto* resized = sfEvt->getIf<sf::Event::Resized>()) {
+				window.setView(sf::View(sf::FloatRect({0.f,0.f},static_cast<sf::Vector2f>(resized->size))));
 			}
 			else {
 				windowManager.update(sfEvt);

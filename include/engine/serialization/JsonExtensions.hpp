@@ -3,6 +3,25 @@
 #include "SFML/Graphics.hpp"
 #include "engine/data/VarianTmap.hpp"
 
+// Fixed-size array JSON serialization - MUST be defined before any other specialization
+// that might trigger instantiation of array types like char[2]
+namespace nlohmann {
+	template<typename T, size_t N>
+	struct adl_serializer<T[N], std::enable_if_t<std::is_class_v<T>>> {
+		static void to_json(json& j, const T (&x)[N]) {
+			j = json::array();
+			for (size_t i = 0; i < N; i++) {
+				j.push_back(x[i]);
+			}
+		}
+		static void from_json(const json& j, T (&x)[N]) {
+			for (size_t i = 0; i < N; i++) {
+				j.at(i).get_to(x[i]);
+			}
+		}
+	};
+}
+
 // SFML type JSON serialization using adl_serializer specialization
 // This avoids injecting into the sf namespace
 namespace nlohmann {

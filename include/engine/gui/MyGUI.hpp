@@ -51,55 +51,142 @@ namespace gui {
 	class UIBase {
 		friend class AreaObject;
 		friend class WindowManager;
+	public:
+		enum class Anchor {
+			Left = 0, Right = 2, Width = 3,
+			Top = 0, Bottom = 2, Height = 3,
+			Mid = 1, Size = 3
+		};
+		enum class Relative { LeftEdge = 0, RightEdge = 2, TopEdge = 0, BottomEdge = 2 ,MidLine = 1 };
+		enum class Align { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
+		class DynamicPosition{
+			friend class UIBase;
+			float calcRelative(float fatherSize) const{
+				return (type & 0b000011) * fatherSize / 2.0f + value;
+			}
+		public:
+			bool isSize () const{
+				return getAnchor() == static_cast<int>(Anchor::Size);
+			}
+			bool isNormal () const{
+				return type == ((static_cast<int>(Anchor::Top) << 2) | static_cast<int>(Relative::TopEdge));
+			}
+			int getRelative () const{
+				return type & 0b000011;
+			}
+			int getAnchor () const{
+				return type >> 2;
+			}
+			int type = 0;
+			float value = 0;
+			DynamicPosition() = default;
+			DynamicPosition(Anchor _anchor, float _value = 0){
+				type = static_cast<int>(_anchor) << 2;
+				value = _value;
+			}
+			DynamicPosition(Anchor _anchor, Relative _relative, float _value = 0){
+				type = (static_cast<int>(_anchor) << 2) | static_cast<int>(_relative);
+				value = _value;
+			}
+			friend inline void read(BinaryFileStream& bf, DynamicPosition& x) {
+				bf.read(x.type, x.value);
+			}
+			friend inline void write(BinaryFileStream& bf, const DynamicPosition& x) {
+				bf.write(x.type, x.value);
+			}
+			friend inline void to_json(nlohmann::json& j, const DynamicPosition& x) {
+				j = nlohmann::json{ {"type", x.type}, {"value", x.value} };
+			}
+			friend inline void from_json(const nlohmann::json& j, DynamicPosition& x) {
+				j.at("type").get_to(x.type);
+				j.at("value").get_to(x.value);
+			}
+		};
 	protected:
-		sf::FloatRect posRect = sf::FloatRect(sf::Vector2f(), sf::Vector2f(1.f, 1.f));
-		sf::Vector2f position = sf::Vector2f();
-		sf::Vector2i relative = sf::Vector2i();
-		sf::Vector2i anchor = sf::Vector2i();
+		sf::FloatRect posRect = sf::FloatRect(sf::Vector2f(), sf::Vector2f());
+		sf::Vector2<std::pair<DynamicPosition, DynamicPosition>> relativePosition={
+			{{UIBase::Anchor::Left, UIBase::Relative::LeftEdge, 0}, {UIBase::Anchor::Width, 0}},
+			{{UIBase::Anchor::Top, UIBase::Relative::TopEdge, 0}, {UIBase::Anchor::Height, 0}}
+		};
 		Style styles[3];
 		int currentStatu = gui::UIBase::Normal;
 		bool isShow = true;
 		virtual void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 		//std::set<std::string> linkList;
 	public:
-		enum class Relative { Left = 0, Right = 1, Top = 0, Bottom = 1 };
-		enum class Anchor { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
-		enum class Align { Left = 0, Right = 2, Top = 0, Bottom = 2, Mid = 1 };
 		enum Statu { Normal = 0, Over = 1, Focus = 2 };
-		UIBase& setPosition(sf::Vector2f _pos) {
-			position = _pos;
+		UIBase& setPosition(sf::Vector2f _position) {
+			relativePosition.x.first = {UIBase::Anchor::Left, UIBase::Relative::LeftEdge, _position.x};
+			relativePosition.y.first = {UIBase::Anchor::Top, UIBase::Relative::TopEdge, _position.y};
 			return *this;
 		}
-		UIBase& setPosition(sf::Vector2f _pos, UIBase::Relative xRelative, UIBase::Relative yRelative, UIBase::Anchor xAnchor, UIBase::Anchor yAnchor) {
-			position = _pos;
-			relative = { static_cast<int>(xRelative), static_cast<int>(yRelative) };
-			anchor = { static_cast<int>(xAnchor), static_cast<int>(yAnchor) };
+		UIBase& setPosition(sf::Vector2f _position, sf::Vector2<Anchor> _anchor) {
+			relativePosition.x.first = {_anchor.x, UIBase::Relative::LeftEdge, _position.x};
+			relativePosition.y.first = {_anchor.y, UIBase::Relative::TopEdge, _position.y};
+			return *this;
+		}
+		UIBase& setPosition(sf::Vector2f _position, sf::Vector2<Anchor> _anchor, sf::Vector2<Relative> _relative) {
+			relativePosition.x.first = {_anchor.x, _relative.x, _position.x};
+			relativePosition.y.first = {_anchor.y, _relative.y, _position.y};
 			return *this;
 		}
 		UIBase& setSize(sf::Vector2f _size) {
-			posRect.size = _size;
+			if (relativePosition.x.second.isSize()) relativePosition.x.second = {UIBase::Anchor::Size, _size.x};
+			if (relativePosition.y.second.isSize()) relativePosition.y.second = {UIBase::Anchor::Size, _size.y};
 			return *this;
 		}
-		UIBase& setRelative(UIBase::Relative xRelative, UIBase::Relative yRelative) {
-			relative = { static_cast<int>(xRelative), static_cast<int>(yRelative) };
+		UIBase& setPositionRelative(std::initializer_list<UIBase::DynamicPosition> xRelative, std::initializer_list<UIBase::DynamicPosition> yRelative) {
+			if (xRelative.size() == 1){
+				auto& first = *xRelative.begin();
+				if (first.isSize()) goto setRelativeIllegal;
+				relativePosition.x.first = first;
+			}
+			else{
+				auto & first = *xRelative.begin(),&second = *std::next(xRelative.begin());
+				if (first.getAnchor() == second.getAnchor()) goto setRelativeIllegal;
+				if (first.getAnchor() < second.getAnchor()){
+					relativePosition.x.first = first;relativePosition.x.second = second;
+				}
+				else{
+					relativePosition.x.first = second;relativePosition.x.second = first;
+				}
+			}
+			if (yRelative.size() == 1){
+				auto& first = *yRelative.begin();
+				if (first.isSize()) goto setRelativeIllegal;
+				relativePosition.y.first = first;
+			}
+			else{
+				auto & first = *yRelative.begin(),&second = *std::next(yRelative.begin());
+				if (first.getAnchor() == second.getAnchor()) goto setRelativeIllegal;
+				if (first.getAnchor() < second.getAnchor()){
+					relativePosition.y.first = first;relativePosition.y.second = second;
+				}
+				else{
+					relativePosition.y.first = second;relativePosition.y.second = first;
+				}
+			}
 			return *this;
+			setRelativeIllegal:;
+			throw std::runtime_error("[UIBase::setRelative] Illegal relative position\n");
 		}
-		UIBase& setAnchor(UIBase::Anchor xAnchor, UIBase::Anchor yAnchor) {
-			anchor = { static_cast<int>(xAnchor), static_cast<int>(yAnchor) };
-			return *this;
+		//static getter
+		sf::Vector2<std::pair<DynamicPosition, DynamicPosition>> getDynamicPosition() const {
+			return relativePosition;
 		}
-		sf::Vector2f getPosition() const {
-			return position;
+		sf::Vector2<std::optional<float>> getPosition() const {
+			return {
+				relativePosition.x.first.isNormal() ? std::optional<float>(relativePosition.x.first.value) : std::nullopt,
+				relativePosition.y.first.isNormal() ? std::optional<float>(relativePosition.y.first.value) : std::nullopt
+			};
 		}
-		sf::Vector2f getSize() const {
-			return posRect.size;
+		sf::Vector2<std::optional<float>> getSize() const {
+			return {
+				relativePosition.x.second.isSize() ? std::optional<float>(relativePosition.x.second.value) : std::nullopt,
+				relativePosition.y.second.isSize() ? std::optional<float>(relativePosition.y.second.value) : std::nullopt
+			};
 		}
-		sf::Vector2<Relative> getRelative() const {
-			return static_cast<sf::Vector2<Relative>>(relative);
-		}
-		sf::Vector2<Anchor> getAnchor() const {
-			return static_cast<sf::Vector2<Anchor>>(anchor);
-		}
+		//dynamic getter
 		sf::FloatRect getPosRect() const {
 			return posRect;
 		}
@@ -128,11 +215,14 @@ namespace gui {
 		}
 	protected:
 		void updatePosRect(sf::Vector2f fatherSize) {
-			posRect.position
-				= fatherSize.componentWiseMul(static_cast<sf::Vector2f>(relative))
-				+ position.componentWiseMul(sf::Vector2f(1,1) - static_cast<sf::Vector2f>(relative))
-				- position.componentWiseMul(static_cast<sf::Vector2f>(relative))
-				- posRect.size.componentWiseMul(static_cast<sf::Vector2f>(anchor)).componentWiseDiv(sf::Vector2f(2,2));
+			if (relativePosition.x.second.isSize())
+				posRect.size.x = relativePosition.x.second.value;
+			else posRect.size.x = (relativePosition.x.second.calcRelative(fatherSize.x)-relativePosition.x.first.calcRelative(fatherSize.x)) * 2 / (relativePosition.x.second.getAnchor() - relativePosition.x.first.getAnchor());
+			if (relativePosition.y.second.isSize())
+				posRect.size.y = relativePosition.y.second.value;
+			else posRect.size.y = (relativePosition.y.second.calcRelative(fatherSize.y)-relativePosition.y.first.calcRelative(fatherSize.y)) * 2 / (relativePosition.y.second.getAnchor() - relativePosition.y.first.getAnchor());
+			posRect.position.x = relativePosition.x.first.calcRelative(fatherSize.x) - (relativePosition.x.first.getAnchor()) / 2.f * posRect.size.x;
+			posRect.position.y = relativePosition.y.first.calcRelative(fatherSize.y) - (relativePosition.y.first.getAnchor()) / 2.f * posRect.size.y;
 		}
 		void setStatu(int statu, bool force = false) {
 			if (force || currentStatu != gui::UIBase::Focus) {
@@ -141,22 +231,17 @@ namespace gui {
 		}
 	public:
 		friend inline void read(BinaryFileStream& bf, UIBase& x) {
-			bf.readStruct(x.position, x.posRect.size, x.relative, x.anchor, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
+			bf.readStruct(x.relativePosition, x.styles, x.isShow);
 		}
 		friend inline void write(BinaryFileStream& bf, const UIBase& x) {
-			bf.writeStruct(x.position, x.posRect.size, x.relative, x.anchor, x.styles[gui::UIBase::Normal], x.styles[gui::UIBase::Over], x.styles[gui::UIBase::Focus], x.isShow);
+			bf.writeStruct(x.relativePosition, x.styles, x.isShow);
 		}
 		friend inline void to_json(nlohmann::json& j, const UIBase& x) {
-			j = nlohmann::json{ {"position", x.position}, {"size", x.posRect.size}, {"relative", x.relative}, {"anchor", x.anchor}, {"normalStyle", x.styles[gui::UIBase::Normal]}, {"overStyle", x.styles[gui::UIBase::Over]}, {"focusStyle", x.styles[gui::UIBase::Focus]}, {"isShow", x.isShow} };
+			j = nlohmann::json{ {"position", x.relativePosition}, {"styles", x.styles}, {"isShow", x.isShow} };
 		}
 		friend inline void from_json(const nlohmann::json& j, UIBase& x) {
-			j.at("position").get_to(x.position);
-			j.at("size").get_to(x.posRect.size);
-			j.at("relative").get_to(x.relative);
-			j.at("anchor").get_to(x.anchor);
-			j.at("normalStyle").get_to(x.styles[gui::UIBase::Normal]);
-			j.at("overStyle").get_to(x.styles[gui::UIBase::Over]);
-			j.at("focusStyle").get_to(x.styles[gui::UIBase::Focus]);
+			j.at("position").get_to(x.relativePosition);
+			j.at("styles").get_to(x.styles);
 			j.at("isShow").get_to(x.isShow);
 		}
 	};
@@ -167,7 +252,7 @@ namespace gui {
 		//use this setter
 		//after : setImage() , setScale() , setScaleTo()
 		ImageObject& setSizeAuto() {
-			posRect.size = static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale);
+			setSize(static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale));
 			return *this;
 		}
 	protected:
@@ -212,14 +297,14 @@ namespace gui {
 		}
 		const sf::Color& getImageColor(int id) const { return imageColors[id]; }
 		friend inline void read(BinaryFileStream& bf, ImageObject& x) {
-			bf.readStruct(static_cast<UIBase&>(x), x.imageId, x.scale, x.align, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
+			bf.readStruct(static_cast<UIBase&>(x), x.imageId, x.scale, x.align, x.imageColors);
 		}
 		friend inline void write(BinaryFileStream& bf, const ImageObject& x) {
-			bf.writeStruct(static_cast<const UIBase&>(x), x.imageId, x.scale, x.align, x.imageColors[gui::UIBase::Normal], x.imageColors[gui::UIBase::Over], x.imageColors[gui::UIBase::Focus]);
+			bf.writeStruct(static_cast<const UIBase&>(x), x.imageId, x.scale, x.align, x.imageColors);
 		}
 		friend inline void to_json(nlohmann::json& j, const ImageObject& x) {
 			nlohmann::json base = static_cast<const UIBase&>(x);
-			j = nlohmann::json{ {"UIBase", base}, {"imageId", x.imageId}, {"scale", x.scale}, {"align", x.align}, {"normalImageColor", x.imageColors[gui::UIBase::Normal]}, {"overImageColor", x.imageColors[gui::UIBase::Over]}, {"focusImageColor", x.imageColors[gui::UIBase::Focus]} };
+			j = nlohmann::json{ {"UIBase", base}, {"imageId", x.imageId}, {"scale", x.scale}, {"align", x.align}, {"imageColors", x.imageColors} };
 		}
 		friend inline void from_json(const nlohmann::json& j, ImageObject& x) {
 			nlohmann::json base;
@@ -228,9 +313,7 @@ namespace gui {
 			j.at("imageId").get_to(x.imageId);
 			j.at("scale").get_to(x.scale);
 			j.at("align").get_to(x.align);
-			j.at("normalImageColor").get_to(x.imageColors[gui::UIBase::Normal]);
-			j.at("overImageColor").get_to(x.imageColors[gui::UIBase::Over]);
-			j.at("focusImageColor").get_to(x.imageColors[gui::UIBase::Focus]);
+			j.at("imageColors").get_to(x.imageColors);
 		}
 	};
 	class TextStyle{
@@ -275,18 +358,19 @@ namespace gui {
 		//use this setter
 		//after : setFont() , setText() , setCharacterSize()
 		TextObject& setSizeAuto() {
-			textRender.setFont(fontManager[font]);
 			textRender.setCharacterSize(characterSize);
 			textRender.setLineSpacing(lineSpacing);
 			textRender.setLetterSpacing(letterSpacing);
 			textRender.setString(text);
 			textRender.setPosition({ 0, 0 });
-			posRect.size.x = 0;
+			sf::Vector2f size;
+			size.x = 0;
 			for (int i = 0; i <= text.getSize(); i++) {
-				if (textRender.findCharacterPos(i).x > posRect.size.x)
-					posRect.size.x = textRender.findCharacterPos(i).x;
+				if (textRender.findCharacterPos(i).x > size.x)
+					size.x = textRender.findCharacterPos(i).x;
 			}
-			posRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
+			size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
+			setSize(size);
 			return *this;
 		}
 	protected:
@@ -296,6 +380,7 @@ namespace gui {
 		sf::String text = "";
 		sf::Text textRender{ fontManager[font] };
 		sf::FloatRect textRect;
+		sf::Vector2f textRenderOffsetFix;
 		sf::Vector2i align = { static_cast<int>(gui::UIBase::Align::Mid), static_cast<int>(gui::UIBase::Align::Mid) };
 		TextStyle textStyles[3];
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
@@ -335,25 +420,21 @@ namespace gui {
 		float getLineSpacing() const { return lineSpacing; }
 		sf::Vector2i getAlign() const { return align; }
 		friend inline void read(BinaryFileStream& bf, TextObject& x) {
-			bf.readStruct(static_cast<UIBase&>(x), x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
-				x.font, x.characterSize, x.align, x.letterSpacing, x.lineSpacing, x.text);
+			bf.readStruct(static_cast<UIBase&>(x), x.textStyles, x.font, x.characterSize, x.align, x.letterSpacing, x.lineSpacing, x.text);
 			x.textRender.setFont(fontManager[x.font]);
 		}
 		friend inline void write(BinaryFileStream& bf, const TextObject& x) {
-			bf.writeStruct(static_cast<const UIBase&>(x), x.textStyles[gui::UIBase::Normal], x.textStyles[gui::UIBase::Over], x.textStyles[gui::UIBase::Focus],
-				x.font, x.characterSize, x.align, x.letterSpacing, x.lineSpacing, x.text);
+			bf.writeStruct(static_cast<const UIBase&>(x), x.textStyles, x.font, x.characterSize, x.align, x.letterSpacing, x.lineSpacing, x.text);
 		}
 		friend inline void to_json(nlohmann::json& j, const TextObject& x) {
 			nlohmann::json base = static_cast<const UIBase&>(x);
-			j = nlohmann::json{ {"UIBase", base}, {"normalTextStyle", x.textStyles[gui::UIBase::Normal]}, {"overTextStyle", x.textStyles[gui::UIBase::Over]}, {"focusTextStyle", x.textStyles[gui::UIBase::Focus]}, {"font", x.font}, {"characterSize", x.characterSize}, {"align", x.align}, {"letterSpacing", x.letterSpacing}, {"lineSpacing", x.lineSpacing}, {"text", x.text} };
+			j = nlohmann::json{ {"UIBase", base}, {"textStyles", x.textStyles}, {"font", x.font}, {"characterSize", x.characterSize}, {"align", x.align}, {"letterSpacing", x.letterSpacing}, {"lineSpacing", x.lineSpacing}, {"text", x.text} };
 		}
 		friend inline void from_json(const nlohmann::json& j, TextObject& x) {
 			nlohmann::json base;
 			j.at("UIBase").get_to(base);
 			base.get_to(static_cast<UIBase&>(x));
-			j.at("normalTextStyle").get_to(x.textStyles[gui::UIBase::Normal]);
-			j.at("overTextStyle").get_to(x.textStyles[gui::UIBase::Over]);
-			j.at("focusTextStyle").get_to(x.textStyles[gui::UIBase::Focus]);
+			j.at("textStyles").get_to(x.textStyles);
 			j.at("font").get_to(x.font);
 			j.at("characterSize").get_to(x.characterSize);
 			j.at("align").get_to(x.align);
@@ -502,28 +583,11 @@ namespace gui {
 			}
 		}
 		void updateCursorByMousePos(sf::Vector2f mousePos) {
-			textRender.setFont(fontManager[font]);
-			textRender.setCharacterSize(characterSize);
-			textRender.setLineSpacing(lineSpacing);
-			textRender.setLetterSpacing(letterSpacing);
-			textRender.setString(text);
-			textRender.setPosition({ 0,0 });
-			sf::Vector2f offsetFix;
-			offsetFix.x = textRender.getGlobalBounds().position.x;
-			offsetFix.y = textRender.getGlobalBounds().position.y + textRender.getGlobalBounds().size.y - characterSize;
-			textRect.size.x = 0;
-			for (int i = 0; i <= text.getSize(); i++) {
-				if (textRender.findCharacterPos(i).x > textRect.size.x)
-					textRect.size.x = textRender.findCharacterPos(i).x;
-			}
-			textRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
-			textRender.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) + scroll);
-			textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));
 			size_t bestCursor = 0;
 			float minDist = std::numeric_limits<float>::max();
 			for (size_t i = 0; i <= text.getSize(); i++) {
 				sf::Vector2f charPos = textRender.findCharacterPos(i);
-				charPos += offsetFix;
+				charPos += textRenderOffsetFix;
 				float distX = std::abs(charPos.x - mousePos.x);
 				float distY = std::abs((charPos.y + characterSize / 2.f) - mousePos.y);
 				float dist = distX * distX + distY * distY;
@@ -625,14 +689,14 @@ namespace gui {
 		}
 	public:
 		friend inline void read(BinaryFileStream& bf, AreaObject& x) {
-			bf.readStruct(static_cast<UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
+			bf.readStruct(static_cast<UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.option);
 		}
 		friend inline void write(BinaryFileStream& bf, const AreaObject& x) {
-			bf.writeStruct(static_cast<const UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.scrollLimit, x.option);
+			bf.writeStruct(static_cast<const UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.option);
 		}
 		friend inline void to_json(nlohmann::json& j, const AreaObject& x) {
 			nlohmann::json base = static_cast<const UIBase&>(x);
-			j = nlohmann::json{ {"UIBase", base}, {"sub", VarianTmapJsonSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{const_cast<VarianTmap<UIBase>&>(x.sub)}}, {"mouseDragScrollable", x.mouseDragScrollable}, {"mouseWheelScrollable", x.mouseWheelScrollable}, {"scrollLimit", x.scrollLimit}, {"option", x.option} };
+			j = nlohmann::json{ {"UIBase", base}, {"sub", VarianTmapJsonSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{const_cast<VarianTmap<UIBase>&>(x.sub)}}, {"mouseDragScrollable", x.mouseDragScrollable}, {"mouseWheelScrollable", x.mouseWheelScrollable}, {"option", x.option} };
 		}
 		friend inline void from_json(const nlohmann::json& j, AreaObject& x) {
 			nlohmann::json base;
@@ -642,7 +706,6 @@ namespace gui {
 			j.at("sub").get_to(subWrapper);
 			j.at("mouseDragScrollable").get_to(x.mouseDragScrollable);
 			j.at("mouseWheelScrollable").get_to(x.mouseWheelScrollable);
-			j.at("scrollLimit").get_to(x.scrollLimit);
 			j.at("option").get_to(x.option);
 		}
 		AreaObject& setOption(const std::string& key) {

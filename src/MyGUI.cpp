@@ -84,9 +84,8 @@ namespace gui {
 			textRender.setOutlineColor(textStyles[currentStatu].outlineColor);
 			textRender.setPosition({ 0,0 });
 			//fix position offset
-			sf::Vector2f offsetFix;
-			offsetFix.x = textRender.getGlobalBounds().position.x;
-			offsetFix.y = textRender.getGlobalBounds().position.y + textRender.getGlobalBounds().size.y - characterSize;
+			textRenderOffsetFix.x = textRender.getGlobalBounds().position.x;
+			textRenderOffsetFix.y = textRender.getGlobalBounds().position.y + textRender.getGlobalBounds().size.y - characterSize;
 			textRender.setString(text);
 			textRect.size.x = 0;
 			for (int i = 0; i <= text.getSize(); i++) {
@@ -94,10 +93,10 @@ namespace gui {
 					textRect.size.x = textRender.findCharacterPos(i).x;
 			}
 			textRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
-			textRender.setPosition(-offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayAreaCur.position);
+			textRender.setPosition(-textRenderOffsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayAreaCur.position);
 			textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));
 			sf::Vector2f cursorPos = textRender.findCharacterPos(cursor);
-			cursorPos += offsetFix;
+			cursorPos += textRenderOffsetFix;
 			if (textRect.size.x > posRect.size.x) {
 				if (cursorPos.x < 0)
 					scroll.x += 0 - cursorPos.x;

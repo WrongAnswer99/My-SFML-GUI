@@ -300,23 +300,23 @@ namespace Init {
 			.setPosition(pos);
 		return area.path_get<gui::TextObject>(name);
 	}
-	gui::TextObject& addTitleText(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, sf::Vector2f size) {
+	gui::TextObject& addTitleText(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, sf::Vector2f size, sf::Vector2<gui::UIBase::Anchor> anchor = {gui::UIBase::Anchor::Left, gui::UIBase::Anchor::Top}) {
 		area.path_get<gui::TextObject>(name)
 			.setText(text)
 			.setFont("ht")
 			.setCharacterSize(40)
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Top)
-			.setPosition(pos)
+			.setPosition(pos, anchor)
 			.setSize(size);
 		return area.path_get<gui::TextObject>(name);
 	}
-	gui::ButtonObject& addSimpleButton(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, sf::Vector2f size) {
+	gui::ButtonObject& addSimpleButton(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, sf::Vector2f size, sf::Vector2<gui::UIBase::Anchor> anchor = {gui::UIBase::Anchor::Left, gui::UIBase::Anchor::Top}) {
 		area.path_get<gui::ButtonObject>(name)
 			.setText(text)
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 			.setFont("ht")
 			.setCharacterSize(40)
-			.setPosition(pos)
+			.setPosition(pos, anchor)
 			.setSize(size);
 		return area.path_get<gui::ButtonObject>(name);
 	}
@@ -381,6 +381,88 @@ namespace Init {
 			.setPosition(pos)
 			.setSize(size);
 		return area.path_get<gui::AreaObject>(name);
+	}
+	gui::AreaObject& addAnchorPointSettings(gui::AreaObject& area, const std::string& prefix, sf::Vector2f pos, sf::Vector2f size, const std::vector<std::string>& anchorOptions, const std::vector<std::string>& relativeOptions) {
+		float eachWidth = size.x / anchorOptions.size();
+		for (size_t i = 0; i < anchorOptions.size(); i++) {
+			addSimpleOption(area, prefix + "Anchor." + anchorOptions[i], sf::String::fromUtf8(anchorOptions[i].begin(), anchorOptions[i].end()), sf::Vector2f(eachWidth * i, 0), sf::Vector2f(eachWidth, size.y));
+		}
+		area.path_get<gui::AreaObject>(prefix + "Anchor")
+			.setOption(anchorOptions[0])
+			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
+			.setStyle(style["null"], style["null"], style["null"])
+			.setPosition(pos)
+			.setSize(size);
+
+		float relEachWidth = size.x / relativeOptions.size();
+		for (size_t i = 0; i < relativeOptions.size(); i++) {
+			addSimpleOption(area, prefix + "Relative." + relativeOptions[i], sf::String::fromUtf8(relativeOptions[i].begin(), relativeOptions[i].end()), sf::Vector2f(relEachWidth * i, 0), sf::Vector2f(relEachWidth, size.y));
+		}
+		area.path_get<gui::AreaObject>(prefix + "Relative")
+			.setOption(relativeOptions[0])
+			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
+			.setStyle(style["null"], style["null"], style["null"])
+			.setPosition(sf::Vector2f(pos.x, pos.y + size.y))
+			.setSize(size);
+
+		addSimpleInput(area, prefix + "Value", gui::InputObject::Float, sf::Vector2f(pos.x, pos.y + size.y * 2), size);
+		return area.path_get<gui::AreaObject>(prefix + "Anchor");
+	}
+	gui::AreaObject& addAnchorPointSettingsLabeled(gui::AreaObject& area, const std::string& prefix, sf::Vector2f pos, sf::Vector2f size,
+		const std::vector<std::string>& anchorOptions, const std::vector<std::string>& relativeOptions,
+		const sf::String& anchorLabel, const sf::String& relativeLabel, const sf::String& valueLabel,
+		const std::string& defaultAnchor = "", const std::string& defaultRelative = "") {
+		float labelWidth = 200;
+		float controlWidth = size.x - labelWidth;
+
+		std::string anchorDefault = defaultAnchor.empty() ? anchorOptions[0] : defaultAnchor;
+		std::string relativeDefault = defaultRelative.empty() ? relativeOptions[0] : defaultRelative;
+
+		addSimpleText(area, prefix + "AnchorLabel", anchorLabel, sf::Vector2f(0, pos.y));
+		float eachWidth = controlWidth / anchorOptions.size();
+		for (size_t i = 0; i < anchorOptions.size(); i++) {
+			addSimpleOption(area, prefix + "Anchor." + anchorOptions[i], sf::String::fromUtf8(anchorOptions[i].begin(), anchorOptions[i].end()),
+				sf::Vector2f(eachWidth * i, 0), sf::Vector2f(eachWidth, size.y));
+			area.sub.get<gui::AreaObject>(prefix + "Anchor").sub.emplace_named<gui::TextObject>(
+				area.sub.get<gui::AreaObject>(prefix + "Anchor").sub.end(),
+				anchorOptions[i] + "_disabled", gui::TextObject{});
+			area.sub.get<gui::AreaObject>(prefix + "Anchor").sub.get<gui::TextObject>(anchorOptions[i] + "_disabled")
+				.setText(sf::String::fromUtf8(anchorOptions[i].begin(), anchorOptions[i].end()))
+				.setFont("ht")
+				.setCharacterSize(40)
+				.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
+				.setSizeAuto()
+				.setPosition(sf::Vector2f(eachWidth * i, 0))
+				.setSize(sf::Vector2f(eachWidth, size.y));
+			for (int s = 0; s < 3; s++) {
+				area.sub.get<gui::AreaObject>(prefix + "Anchor").sub.get<gui::TextObject>(anchorOptions[i] + "_disabled").textStyle(s).set(sf::Color(150, 150, 150), sf::Color(150, 150, 150));
+			}
+		}
+		area.path_get<gui::AreaObject>(prefix + "Anchor")
+			.setOption(anchorDefault)
+			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
+			.setStyle(style["null"], style["null"], style["null"])
+			.setPosition(sf::Vector2f(labelWidth, pos.y))
+			.setSize(sf::Vector2f(controlWidth, size.y));
+
+		addSimpleText(area, prefix + "RelativeLabel", relativeLabel, sf::Vector2f(0, pos.y + size.y));
+		float relEachWidth = controlWidth / relativeOptions.size();
+		for (size_t i = 0; i < relativeOptions.size(); i++) {
+			addSimpleOption(area, prefix + "Relative." + relativeOptions[i], sf::String::fromUtf8(relativeOptions[i].begin(), relativeOptions[i].end()),
+				sf::Vector2f(relEachWidth * i, 0), sf::Vector2f(relEachWidth, size.y));
+		}
+		area.path_get<gui::AreaObject>(prefix + "Relative")
+			.setOption(relativeDefault)
+			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
+			.setStyle(style["null"], style["null"], style["null"])
+			.setPosition(sf::Vector2f(labelWidth, pos.y + size.y))
+			.setSize(sf::Vector2f(controlWidth, size.y));
+
+		addSimpleText(area, prefix + "ValueLabel", valueLabel, sf::Vector2f(0, pos.y + size.y * 2));
+		addSimpleInput(area, prefix + "Value", gui::InputObject::Float, sf::Vector2f(0, 0), sf::Vector2f(controlWidth, size.y));
+		area.path_get<gui::InputObject>(prefix + "Value")
+			.setPosition(sf::Vector2f(labelWidth, pos.y + size.y * 2));
+		return area.path_get<gui::AreaObject>(prefix + "Anchor");
 	}
 	gui::AreaObject& addAlignBar(gui::AreaObject& area, const std::string& name, sf::Vector2f pos, sf::Vector2f size, const std::string& defaultX, const std::string& defaultY) {
 		float eachWidth = size.x / 6;
@@ -572,7 +654,7 @@ static void init() {
 
 	int NewLine = 0;
 
-	Init::addTitleText(New, "title", L"添加", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addTitleText(New, "title", L"添加", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	NewLine++;
 
 	imageManager.loadImage("area", "resources/UIdesigner/area.png");
@@ -623,8 +705,7 @@ static void init() {
 		.setCharacterSize(20)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * NewLine) + 20))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * NewLine) + 20),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	New.path_get<gui::TextObject>("isSubDisabledText")
 		.setText(L"□在当前区域子类中创建")
 		.setTextStyle(textStyle["stdto"], textStyle["stdto"], textStyle["stdto"])
@@ -646,21 +727,20 @@ static void init() {
 		.setSize(sf::Vector2f(480, 40));
 	NewLine++;
 
-	Init::addSimpleButton(New, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * NewLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
-	Init::addSimpleButton(New, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * NewLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(New, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * NewLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
+	Init::addSimpleButton(New, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * NewLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	NewLine++;
 	New
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
-		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
-		.setSize(sf::Vector2f(600, static_cast<float>(40 * NewLine)))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * NewLine)));
 
 
 	//Open窗口初始化
 	int OpenLine = 0;
 
-	Init::addTitleText(Open, "title", L"打开文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addTitleText(Open, "title", L"打开文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	OpenLine++;
 
 	Init::addSimpleOption(Open, "binary", L"Binary", sf::Vector2f(0, static_cast<float>(40 * OpenLine)), sf::Vector2f(300, 40));
@@ -688,26 +768,24 @@ static void init() {
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setStyle(style["null"], style["null"], style["null"])
-		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * OpenLine) + 20))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * OpenLine) + 20),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	Open.path_get<gui::TextObject>("importToCurrent").setShow(false);
 	OpenLine++;
 
-	Init::addSimpleButton(Open, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
-	Init::addSimpleButton(Open, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(Open, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
+	Init::addSimpleButton(Open, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * OpenLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	OpenLine++;
 	Open
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
-		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
-		.setSize(sf::Vector2f(600, static_cast<float>(40 * OpenLine)))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * OpenLine)));
 
 
 	//Save窗口初始化
 	int SaveLine = 0;
 
-	Init::addTitleText(Save, "title", L"保存文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addTitleText(Save, "title", L"保存文件", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	SaveLine++;
 
 	Init::addSimpleOption(Save, "binary", L"Binary", sf::Vector2f(0, static_cast<float>(40 * SaveLine)), sf::Vector2f(300, 40));
@@ -728,20 +806,19 @@ static void init() {
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * SaveLine)))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * 5)));
 	SaveLine += 5;
-	Init::addSimpleButton(Save, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
-	Init::addSimpleButton(Save, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(Save, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
+	Init::addSimpleButton(Save, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * SaveLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	SaveLine++;
 	Save
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
-		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
-		.setSize(sf::Vector2f(600, static_cast<float>(40 * SaveLine)))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * SaveLine)));
 
 	//ExportReflection窗口初始化
 	int ExportReflectionLine = 0;
 
-	Init::addTitleText(ExportReflection, "title", L"导出反射", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addTitleText(ExportReflection, "title", L"导出反射", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	ExportReflectionLine++;
 
 	Init::addSimpleText(ExportReflection, "filepath", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
@@ -758,21 +835,19 @@ static void init() {
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * 5)));
 	ExportReflectionLine += 5;
-	Init::addSimpleButton(ExportReflection, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
-	Init::addSimpleButton(ExportReflection, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(ExportReflection, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
+	Init::addSimpleButton(ExportReflection, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * ExportReflectionLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	ExportReflectionLine++;
 	ExportReflection
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
-		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
-		.setSize(sf::Vector2f(600, static_cast<float>(40 * ExportReflectionLine)))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
-
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * ExportReflectionLine)));
 
 	//Paste窗口初始化
 	int PasteLine = 0;
 
-	Init::addTitleText(Paste, "title", L"粘贴", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addTitleText(Paste, "title", L"粘贴", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	PasteLine++;
 
 	Paste.path_get<gui::ButtonObject>("isSubText")
@@ -790,8 +865,7 @@ static void init() {
 		.setCharacterSize(20)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * PasteLine) + 20))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * PasteLine) + 20),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	Paste.path_get<gui::TextObject>("isSubDisabledText")
 		.setText(L"□粘贴到当前区域子类中")
 		.setTextStyle(textStyle["stdto"], textStyle["stdto"], textStyle["stdto"])
@@ -814,21 +888,20 @@ static void init() {
 		.setSize(sf::Vector2f(600 - 160, 40));
 	PasteLine++;
 
-	Init::addSimpleButton(Paste, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
-	Init::addSimpleButton(Paste, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(Paste, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
+	Init::addSimpleButton(Paste, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * PasteLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	PasteLine++;
 	Paste
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
-		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
-		.setSize(sf::Vector2f(600, static_cast<float>(40 * PasteLine)))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * PasteLine)));
 
 
 	//Rename窗口初始化
 	int RenameLine = 0;
 
-	Init::addTitleText(Rename, "title", L"重命名", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addTitleText(Rename, "title", L"重命名", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	RenameLine++;
 
 	Init::addSimpleText(Rename, "nameLabel", L"新名称：", sf::Vector2f(0, static_cast<float>(40 * RenameLine)));
@@ -842,20 +915,19 @@ static void init() {
 		.setSize(sf::Vector2f(600 - 160, 40));
 	RenameLine++;
 
-	Init::addSimpleButton(Rename, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
-	Init::addSimpleButton(Rename, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addSimpleButton(Rename, "ok", L"确定", sf::Vector2f(600 / 4, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
+	Init::addSimpleButton(Rename, "cancel", L"取消", sf::Vector2f(600 / 4 * 3, static_cast<float>(40 * RenameLine) + 20), sf::Vector2f(300, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	RenameLine++;
 	Rename
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
-		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
-		.setSize(sf::Vector2f(600, static_cast<float>(40 * RenameLine)))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * RenameLine)));
 
 	//About窗口初始化
 	int AboutLine = 0;
 
-	Init::addTitleText(About, "title", L"关于", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40)).setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+	Init::addTitleText(About, "title", L"关于", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	AboutLine++;
 
 	About.path_get<gui::AreaObject>("content")
@@ -877,10 +949,8 @@ static void init() {
 	About
 		.setOption()
 		.setStyle(style["stda1"], style["stda1"], style["stda1"])
-		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2))
-		.setSize(sf::Vector2f(600, static_cast<float>(40 * AboutLine)))
-		.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
-
+		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+		.setSize(sf::Vector2f(600, static_cast<float>(40 * AboutLine)));
 
 	///
 	int UIBaseLine = 0;
@@ -888,21 +958,31 @@ static void init() {
 	Init::addTitleText(settings::UIBase, "UIBaseSettings", L"基础设置", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40));
 	UIBaseLine++;
 
-	Init::addSimpleText(settings::UIBase, "SetLeftUpPosition", L"锚点坐标:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
-	Init::addPairInput(settings::UIBase, "SetLeftUpPositionX", "SetLeftUpPositionY", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40), gui::InputObject::Float);
+	Init::addSimpleText(settings::UIBase, "XSettingsTitle", L"X设置", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
 	UIBaseLine++;
 
-	Init::addSimpleText(settings::UIBase, "SetRelative", L"相对边线:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
-	Init::addRelativeBar(settings::UIBase, "SetRelative", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Left", "Top");
+	Init::addAnchorPointSettingsLabeled(settings::UIBase, "SetX1", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40),
+		{"Left", "Mid", "Right", "Width"}, {"LeftEdge", "MidLine", "RightEdge"},
+		L"锚定类型:", L"关联线型:", L"差值:");
+	UIBaseLine += 3;
+
+	Init::addAnchorPointSettingsLabeled(settings::UIBase, "SetX2", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40),
+		{"Left", "Mid", "Right", "Width"}, {"LeftEdge", "MidLine", "RightEdge"},
+		L"锚定类型:", L"关联线型:", L"差值:", "Width", "LeftEdge");
+	UIBaseLine += 3;
+
+	Init::addSimpleText(settings::UIBase, "YSettingsTitle", L"Y设置", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
 	UIBaseLine++;
 
-	Init::addSimpleText(settings::UIBase, "SetAnchor", L"锚点位置:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
-	Init::addAnchorBar(settings::UIBase, "SetAnchor", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Left", "Top");
-	UIBaseLine++;
+	Init::addAnchorPointSettingsLabeled(settings::UIBase, "SetY1", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40),
+		{"Top", "Mid", "Bottom", "Height"}, {"TopEdge", "MidLine", "BottomEdge"},
+		L"锚定类型:", L"关联线型:", L"差值:");
+	UIBaseLine += 3;
 
-	Init::addSimpleText(settings::UIBase, "SetSize", L"大小(宽高):", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
-	Init::addPairInput(settings::UIBase, "SetSizeX", "SetSizeY", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40), gui::InputObject::Float);
-	UIBaseLine++;
+	Init::addAnchorPointSettingsLabeled(settings::UIBase, "SetY2", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth, 40),
+		{"Top", "Mid", "Bottom", "Height"}, {"TopEdge", "MidLine", "BottomEdge"},
+		L"锚定类型:", L"关联线型:", L"差值:", "Height", "TopEdge");
+	UIBaseLine += 3;
 
 	Init::addSimpleText(settings::UIBase, "SetShow", L"是否显示:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
 	Init::addBoolInput(settings::UIBase, "SetShow", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40));
@@ -1213,34 +1293,27 @@ namespace designer {
 		//将指定的窗口数据复制到预览窗口（仅在切换窗口时调用）
 		//该参数为名称，用'-'连接
 		void copyWindowToPreview(const std::string& windowName, gui::AreaObject& previewData) {
-			//清空现有的预览数据
 			previewData.sub.clear();
-			//从data中找到对应的窗口并复制到预览
 			if (auto* windowPtr = data.sub.find_named<gui::AreaObject>(windowName)) {
-				//同步窗口的UIBase属性到preview窗口
-				previewData.setPosition(windowPtr->getPosition());
-				previewData.setSize(windowPtr->getSize());
-				previewData.setRelative(static_cast<gui::UIBase::Relative>(windowPtr->getRelative().x),
-				                        static_cast<gui::UIBase::Relative>(windowPtr->getRelative().y));
-				previewData.setAnchor(static_cast<gui::UIBase::Anchor>(windowPtr->getAnchor().x),
-				                      static_cast<gui::UIBase::Anchor>(windowPtr->getAnchor().y));
+				auto relPos = windowPtr->getDynamicPosition();
+				previewData.setPositionRelative(
+					{relPos.x.first, relPos.x.second},
+					{relPos.y.first, relPos.y.second}
+				);
 				for (int i = 0; i < 3; i++) {
 					previewData.style(i) = windowPtr->style(i);
 				}
-				//将窗口的子元素合并到预览数据
 				previewData.sub.merge(windowPtr->sub);
 			}
 			currentWindowName = windowName;
 		}
-		//根据dataPath在preview中找到对应的对象并应用修改
 		template<typename T>
 		void syncUIBase(T* src, T* dst) {
-			dst->setPosition(src->getPosition());
-			dst->setSize(src->getSize());
-			dst->setRelative(static_cast<gui::UIBase::Relative>(src->getRelative().x),
-			                 static_cast<gui::UIBase::Relative>(src->getRelative().y));
-			dst->setAnchor(static_cast<gui::UIBase::Anchor>(src->getAnchor().x),
-			               static_cast<gui::UIBase::Anchor>(src->getAnchor().y));
+			auto relPos = src->getDynamicPosition();
+			dst->setPositionRelative(
+				{relPos.x.first, relPos.x.second},
+				{relPos.y.first, relPos.y.second}
+			);
 			dst->setShow(src->getShow());
 			for (int i = 0; i < 3; i++) {
 				dst->style(i) = src->style(i);
@@ -1391,20 +1464,6 @@ namespace designer {
 				}
 			}
 		}
-		//窗口大小改变时同步preview窗口大小
-		void syncWindowSize() {
-			if (currentWindowName == "") return;
-			if (auto* windowPtr = data.sub.find_named<gui::AreaObject>(currentWindowName)) {
-				sf::Vector2f pos = windowPtr->getPosition();
-				sf::Vector2f size = windowPtr->getSize();
-				unsigned int newWidth = std::max(static_cast<unsigned int>(windowWidth), static_cast<unsigned int>(pos.x + size.x));
-				unsigned int newHeight = std::max(static_cast<unsigned int>(windowHeight), static_cast<unsigned int>(pos.y + size.y));
-				if (static_cast<unsigned int>(preview.getSize().x) != newWidth || static_cast<unsigned int>(preview.getSize().y) != newHeight) {
-					preview.setSize(sf::Vector2u(newWidth, newHeight));
-					preview.setView(sf::View(sf::FloatRect(sf::Vector2f(0.f, 0.f), sf::Vector2f(static_cast<float>(newWidth), static_cast<float>(newHeight)))));
-				}
-			}
-		}
 	}
 	//传入参数使用的是名称的函数，名称即用'-'连接的字符串，操作的是mainList中的对象
 	namespace Name {
@@ -1473,7 +1532,8 @@ namespace designer {
 			void moveDown(const std::string& optionName, const gui::AreaObject& mainList) {
 				auto iter = mainList.sub.find_order_named<gui::ImageObject>(optionName);
 				while (iter != mainList.sub.end()) {
-					(*iter)->setPosition((*iter)->getPosition() + sf::Vector2f(0.f, 40.f));
+					auto dynPos = (*iter)->getDynamicPosition();
+					(*iter)->setPosition(sf::Vector2f(dynPos.x.first.value, dynPos.y.first.value + 40.f));
 					iter++;
 				}
 			}
@@ -1529,10 +1589,12 @@ namespace designer {
 				float startY = 0.f;
 				for (auto it = mainList.sub.begin(); it != mainList.sub.end(); it++) {
 					if (auto* img = mainList.sub.find<gui::ImageObject>(it)) {
-						img->setPosition(sf::Vector2f(img->getPosition().x, startY));
+						float imgX = img->getDynamicPosition().x.first.value;
+						img->setPosition(sf::Vector2f(imgX, startY));
 					}
 					if (auto* opt = mainList.sub.find<gui::OptionObject>(it)) {
-						opt->setPosition(sf::Vector2f(opt->getPosition().x, startY));
+						float optX = opt->getDynamicPosition().x.first.value;
+						opt->setPosition(sf::Vector2f(optX, startY));
 						startY += 40.f;
 					}
 				}
@@ -1893,7 +1955,8 @@ namespace designer {
 				// 从下一个不被删除的元素开始，上移所有元素
 				auto iter = mainList.sub.find_order_named<gui::ImageObject>(nextNotDeleted);
 				while (iter != mainList.sub.end()) {
-					(*iter)->setPosition((*iter)->getPosition() - sf::Vector2f(0.f, 40.f * elementsToDelete));
+					auto dynPos = (*iter)->getDynamicPosition();
+					(*iter)->setPosition(sf::Vector2f(dynPos.x.first.value, dynPos.y.first.value - 40.f * elementsToDelete));
 					iter++;
 				}
 			}
@@ -2045,7 +2108,7 @@ namespace designer {
 					float linePos = (it == designer::nameList.begin()) ? 0.f : 
 						mainList.sub.find_named<gui::OptionObject>(
 							*designer::nameList.find<std::string>(std::prev(it))
-						)->getPosition().y + 40.f;
+						)->getDynamicPosition().y.first.value + 40.f;
 					
 					auto ptropt = mainList.sub.insert_named(mainList.sub.end(), optionName, gui::OptionObject{});
 					(*ptropt)
@@ -2065,31 +2128,56 @@ namespace designer {
 			}
 		}
 		
+		void updateAnchorSettings(gui::AreaObject& mainSettings, bool isY);
+		
 		void fillUIBaseSettings(gui::AreaObject& mainSettings, gui::UIBase* obj) {
-			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionX").setText(floatToStr(obj->getPosition().x));
-			mainSettings.path_get<gui::InputObject>("SetLeftUpPositionY").setText(floatToStr(obj->getPosition().y));
-			{
-				std::string rOptsX[] = { "Left", "Right" };
-				std::string rOptsY[] = { "Top", "Bottom" };
-				int rx = static_cast<int>(obj->getRelative().x);
-				int ry = static_cast<int>(obj->getRelative().y);
-				auto* relXArea = mainSettings.sub.find_named<gui::AreaObject>("SetRelativeX");
-				auto* relYArea = mainSettings.sub.find_named<gui::AreaObject>("SetRelativeY");
-				if (relXArea) relXArea->setOption(rOptsX[rx]);
-				if (relYArea) relYArea->setOption(rOptsY[ry]);
-			}
-			{
-				std::string aOptsX[] = { "Left", "Mid", "Right" };
-				std::string aOptsY[] = { "Top", "Mid", "Bottom" };
-				int ax = static_cast<int>(obj->getAnchor().x);
-				int ay = static_cast<int>(obj->getAnchor().y);
-				auto* ancXArea = mainSettings.sub.find_named<gui::AreaObject>("SetAnchorX");
-				auto* ancYArea = mainSettings.sub.find_named<gui::AreaObject>("SetAnchorY");
-				if (ancXArea) ancXArea->setOption(aOptsX[ax]);
-				if (ancYArea) ancYArea->setOption(aOptsY[ay]);
-			}
-			mainSettings.path_get<gui::InputObject>("SetSizeX").setText(floatToStr(obj->getSize().x));
-			mainSettings.path_get<gui::InputObject>("SetSizeY").setText(floatToStr(obj->getSize().y));
+			auto relPos = obj->getDynamicPosition();
+			
+			auto fillAnchorPoint = [&](const std::string& prefix, const gui::UIBase::DynamicPosition& rp, bool isY) {
+				int anchor = static_cast<int>(rp.getAnchor());
+				int relative = static_cast<int>(rp.getRelative());
+				
+				std::string anchorOpt;
+				if (isY) {
+					if (anchor == 0) anchorOpt = "Top";
+					else if (anchor == 1) anchorOpt = "Mid";
+					else if (anchor == 2) anchorOpt = "Bottom";
+					else if (anchor == 3) anchorOpt = "Height";
+				} else {
+					if (anchor == 0) anchorOpt = "Left";
+					else if (anchor == 1) anchorOpt = "Mid";
+					else if (anchor == 2) anchorOpt = "Right";
+					else if (anchor == 3) anchorOpt = "Width";
+				}
+				
+				auto* ancArea = mainSettings.sub.find_named<gui::AreaObject>(prefix + "Anchor");
+				if (ancArea && !anchorOpt.empty()) ancArea->setOption(anchorOpt);
+				
+				std::string relativeOpt;
+				if (isY) {
+					if (relative == 0) relativeOpt = "TopEdge";
+					else if (relative == 1) relativeOpt = "MidLine";
+					else if (relative == 2) relativeOpt = "BottomEdge";
+				} else {
+					if (relative == 0) relativeOpt = "LeftEdge";
+					else if (relative == 1) relativeOpt = "MidLine";
+					else if (relative == 2) relativeOpt = "RightEdge";
+				}
+				
+				auto* relArea = mainSettings.sub.find_named<gui::AreaObject>(prefix + "Relative");
+				if (relArea && !relativeOpt.empty()) relArea->setOption(relativeOpt);
+				
+				mainSettings.path_get<gui::InputObject>(prefix + "Value").setText(floatToStr(rp.value));
+			};
+			
+			fillAnchorPoint("SetX1", relPos.x.first, false);
+			fillAnchorPoint("SetX2", relPos.x.second, false);
+			fillAnchorPoint("SetY1", relPos.y.first, true);
+			fillAnchorPoint("SetY2", relPos.y.second, true);
+			
+			updateAnchorSettings(mainSettings, false);
+			updateAnchorSettings(mainSettings, true);
+			
 			mainSettings.path_get<gui::InputObject>("SetShow").setText(obj->getShow() ? L"1" : L"0");
 			for (int i = 0; i < 3; i++) {
 				std::string stateName[] = { "Normal", "Over", "Focus" };
@@ -2207,48 +2295,83 @@ namespace designer {
 			std::cout << "  readAlign[" << prefix << "] X=" << xOpt << " Y=" << yOpt << std::endl;
 			return { parseAlign(xOpt), parseAlign(yOpt) };
 		}
-		gui::UIBase::Relative parseRelative(const std::string& opt) {
-			if (opt == "Right" || opt == "Bottom") return gui::UIBase::Relative::Right;
-			return gui::UIBase::Relative::Left;
-		}
-		std::pair<gui::UIBase::Relative, gui::UIBase::Relative> readRelative(gui::AreaObject& settings, const std::string& prefix) {
-			std::string xOpt = settings.path_get<gui::AreaObject>(prefix + "X").getOption();
-			std::string yOpt = settings.path_get<gui::AreaObject>(prefix + "Y").getOption();
-			return { parseRelative(xOpt), parseRelative(yOpt) };
-		}
 		gui::UIBase::Anchor parseAnchor(const std::string& opt) {
 			if (opt == "Left" || opt == "Top") return gui::UIBase::Anchor::Left;
 			if (opt == "Right" || opt == "Bottom") return gui::UIBase::Anchor::Right;
-			return gui::UIBase::Anchor::Mid;
+			if (opt == "Mid") return gui::UIBase::Anchor::Mid;
+			if (opt == "Width") return gui::UIBase::Anchor::Width;
+			if (opt == "Height") return gui::UIBase::Anchor::Height;
+			return gui::UIBase::Anchor::Left;  // 默认值
 		}
-		std::pair<gui::UIBase::Anchor, gui::UIBase::Anchor> readAnchor(gui::AreaObject& settings, const std::string& prefix) {
-			std::string xOpt = settings.path_get<gui::AreaObject>(prefix + "X").getOption();
-			std::string yOpt = settings.path_get<gui::AreaObject>(prefix + "Y").getOption();
-			return { parseAnchor(xOpt), parseAnchor(yOpt) };
+		
+		gui::UIBase::Relative parseRelative(const std::string& opt) {
+			if (opt == "LeftEdge" || opt == "TopEdge") return gui::UIBase::Relative::LeftEdge;
+			if (opt == "RightEdge" || opt == "BottomEdge") return gui::UIBase::Relative::RightEdge;
+			if (opt == "MidLine") return gui::UIBase::Relative::MidLine;
+			return gui::UIBase::Relative::LeftEdge;  // 默认值
 		}
+		
+		void updateAnchorSettings(gui::AreaObject& mainSettings, bool isY) {
+			std::string prefix1 = isY ? "SetY1" : "SetX1";
+			std::string prefix2 = isY ? "SetY2" : "SetX2";
+			
+			auto* anchorArea1 = mainSettings.sub.find_named<gui::AreaObject>(prefix1 + "Anchor");
+			auto* anchorArea2 = mainSettings.sub.find_named<gui::AreaObject>(prefix2 + "Anchor");
+			
+			if (!anchorArea1 || !anchorArea2) {
+				return;
+			}
+			
+			std::string anchor1 = anchorArea1->getOption();
+			std::string anchor2 = anchorArea2->getOption();
+			
+			auto* optInArea2 = anchorArea2->sub.find_named<gui::OptionObject>(anchor1);
+			if (optInArea2) {
+				optInArea2->setShow(false);
+			}
+			for (auto& opt : anchorArea2->sub.iterate<gui::OptionObject>()) {
+				if (anchorArea2->sub.find_key(&opt) != anchor1) {
+					opt.setShow(true);
+				}
+			}
+			
+			auto* optInArea1 = anchorArea1->sub.find_named<gui::OptionObject>(anchor2);
+			if (optInArea1) {
+				optInArea1->setShow(false);
+			}
+			for (auto& opt : anchorArea1->sub.iterate<gui::OptionObject>()) {
+				if (anchorArea1->sub.find_key(&opt) != anchor2) {
+					opt.setShow(true);
+				}
+			}
+		}
+		
+		std::pair<gui::UIBase::Anchor, gui::UIBase::Relative> readAnchorPoint(gui::AreaObject& settings, const std::string& prefix) {
+			std::string anchorOpt = settings.path_get<gui::AreaObject>(prefix + "Anchor").getOption();
+			std::string relativeOpt = settings.path_get<gui::AreaObject>(prefix + "Relative").getOption();
+			return { parseAnchor(anchorOpt), parseRelative(relativeOpt) };
+		}
+		
 		//应用UIBase设置
 		void applyUIBaseSettings(gui::UIBase* obj, gui::AreaObject& mainSettings) {
 			std::string path;
 			try {
-				path = "SetLeftUpPositionX";
-				float lx = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
-				path = "SetLeftUpPositionY";
-				float ly = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
-				obj->setPosition({ lx, ly });
-				std::cout << "  applyUIBase pos=(" << lx << "," << ly << ")" << std::endl;
-
-				auto [rx, ry] = readRelative(mainSettings, "SetRelative");
-				obj->setRelative(rx, ry);
-
-				auto [ax, ay] = readAnchor(mainSettings, "SetAnchor");
-				obj->setAnchor(ax, ay);
-
-				path = "SetSizeX";
-				float sx = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
-				path = "SetSizeY";
-				float sy = parseFloat(mainSettings.path_get<gui::InputObject>(path).getText());
-				obj->setSize({ sx, sy });
-				std::cout << "  applyUIBase size=(" << sx << "," << sy << ")" << std::endl;
+				auto [x1Anchor, x1Relative] = readAnchorPoint(mainSettings, "SetX1");
+				float x1Value = parseFloat(mainSettings.path_get<gui::InputObject>("SetX1Value").getText());
+				
+				auto [x2Anchor, x2Relative] = readAnchorPoint(mainSettings, "SetX2");
+				float x2Value = parseFloat(mainSettings.path_get<gui::InputObject>("SetX2Value").getText());
+				
+				auto [y1Anchor, y1Relative] = readAnchorPoint(mainSettings, "SetY1");
+				float y1Value = parseFloat(mainSettings.path_get<gui::InputObject>("SetY1Value").getText());
+				
+				auto [y2Anchor, y2Relative] = readAnchorPoint(mainSettings, "SetY2");
+				float y2Value = parseFloat(mainSettings.path_get<gui::InputObject>("SetY2Value").getText());
+				
+				obj->setPositionRelative(
+					{gui::UIBase::DynamicPosition(x1Anchor, x1Relative, x1Value), gui::UIBase::DynamicPosition(x2Anchor, x2Relative, x2Value)},
+					{gui::UIBase::DynamicPosition(y1Anchor, y1Relative, y1Value), gui::UIBase::DynamicPosition(y2Anchor, y2Relative, y2Value)}
+				);
 
 				path = "SetShow";
 				obj->setShow(parseInt(mainSettings.path_get<gui::InputObject>(path).getText()) != 0);
@@ -2339,7 +2462,6 @@ namespace designer {
 			}
 			//同步到preview窗口
 			designer::Preview::applyToPreview(type, dataPath);
-			designer::Preview::syncWindowSize();
 		}
 		//该参数type为类型标识；name为名称，用'-'连接
 		void switchOption(const std::string& type,const std::string& name) {
@@ -2537,9 +2659,8 @@ namespace designer {
 					.setCharacterSize(20)
 					.setSizeAuto()
 					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToSaveLine) + 20))
-					.setShow(true)
-					.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToSaveLine) + 20), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+					.setShow(true);
 				windowToSave.path_get<gui::ButtonObject>(key)
 					.setText(L"□"+sf::String(key))
 					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
@@ -2574,9 +2695,8 @@ namespace designer {
 					.setCharacterSize(20)
 					.setSizeAuto()
 					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToExportLine) + 20))
-					.setShow(true)
-					.setAnchor(gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid);
+					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToExportLine) + 20), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
+					.setShow(true);
 				windowToExport.path_get<gui::ButtonObject>(key)
 					.setText(L"□"+sf::String(key))
 					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
@@ -2776,7 +2896,7 @@ namespace designer {
 				if (nextOptionPtr == nullptr) {
 					point.linePos = designer::nameList.size() * 40.f;
 				} else {
-					point.linePos = nextOptionPtr->getPosition().y;
+					point.linePos = nextOptionPtr->getDynamicPosition().y.first.value;
 				}
 
 				return point;
@@ -2936,7 +3056,6 @@ namespace designer {
 					designer::Name::getWindowName(firstNewName),
 					previewManager.window("preview")
 				);
-				designer::Preview::syncWindowSize();
 			}
 		}
 
@@ -3047,9 +3166,9 @@ namespace designer {
 				if (auto* opt = mainList.sub.find_named<gui::OptionObject>(oldName)) {
 					mainList.sub.rename_named<gui::OptionObject>(oldName, newName);
 					auto* optPtr = mainList.sub.find_named<gui::OptionObject>(newName);
-					std::cout << "  before setSizeAuto: text=" << optPtr->getText().toAnsiString() << " size=" << optPtr->getSize().x << "x" << optPtr->getSize().y << std::endl;
+					std::cout << "  before setSizeAuto: text=" << optPtr->getText().toAnsiString() << std::endl;
 					optPtr->setText("    " + displayName).setSizeAuto();
-					std::cout << "  after setSizeAuto: text=" << optPtr->getText().toAnsiString() << " size=" << optPtr->getSize().x << "x" << optPtr->getSize().y << std::endl;
+					std::cout << "  after setSizeAuto: text=" << optPtr->getText().toAnsiString() << std::endl;
 				}
 			}
 
@@ -3119,18 +3238,35 @@ int main() {
 		.setPosition({0,0})
 		.setSize({0,0});
 	previewManager.open("preview", PreviewWindow);
-	preview.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"Preview", sf::Style::Close, sf::State::Windowed);
+	preview.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"Preview", sf::Style::Close | sf::Style::Resize, sf::State::Windowed);
 	preview.setFramerateLimit(60);
 	
 	menuManager.open("main",Main);
-	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close, sf::State::Windowed);
+	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close | sf::Style::Resize, sf::State::Windowed);
 	menu.setFramerateLimit(60);
 	
+	sf::Clock outputClock;
+	
 	while (true) {
+		if (outputClock.getElapsedTime().asSeconds() >= 1.0f) {
+			outputClock.restart();
+			auto& mouseCoordX = Main.path_get<gui::TextObject>("mouseCoordX");
+			auto& mouseCoordY = Main.path_get<gui::TextObject>("mouseCoordY");
+			auto posX = mouseCoordX.getPosition();
+			auto sizeX = mouseCoordX.getSize();
+			auto posY = mouseCoordY.getPosition();
+			auto sizeY = mouseCoordY.getSize();
+			std::cout << "mouseCoordX - posRect: position(" << posX.x.value() << ", " << posX.y.value() << ") size(" << sizeX.x.value() << ", " << sizeX.y.value() << ")" << std::endl;
+			std::cout << "mouseCoordY - posRect: position(" << posY.x.value() << ", " << posY.y.value() << ") size(" << sizeY.x.value() << ", " << sizeY.y.value() << ")" << std::endl;
+		}
+		
 		//处理菜单窗口事件
 		while (const std::optional sfEvt = menu.pollEvent()) {
 			if (sfEvt->is<sf::Event::Closed>()) {
 				exit(0);
+			}
+			else if (auto* resized = sfEvt->getIf<sf::Event::Resized>()) {
+				menu.setView(sf::View(sf::FloatRect(sf::Vector2f(0, 0), static_cast<sf::Vector2f>(resized->size))));
 			}
 			else {
 				menuManager.update(sfEvt);
@@ -3142,6 +3278,9 @@ int main() {
 			if (sfEvt->is<sf::Event::Closed>()) {
 				//预览窗口关闭时退出程序
 				exit(0);
+			}
+			else if (auto* resized = sfEvt->getIf<sf::Event::Resized>()) {
+				preview.setView(sf::View(sf::FloatRect(sf::Vector2f(0, 0), static_cast<sf::Vector2f>(resized->size))));
 			}
 			else {
 				previewManager.update(sfEvt);
@@ -3187,7 +3326,7 @@ int main() {
 								gui::OptionObject* nextOptionPtr = mainList.sub.find_named<gui::OptionObject>(nextOptionName);
 								if (nextOptionPtr == nullptr)
 									linePos = designer::nameList.size() * 40.f;
-								else linePos = nextOptionPtr->getPosition().y;
+								else linePos = nextOptionPtr->getDynamicPosition().y.first.value;
 								size_t level = designer::Name::countLevel(path);
 								designer::Name::createHelper::moveDown(nextOptionName,mainList);
 								designer::nameList.insert_named(designer::nameList.find_order_named<std::string>(nextOptionName),OptionName, OptionName);
@@ -3213,7 +3352,6 @@ int main() {
 								std::string dataPath = designer::toDataPath(path);//该变量为路径，用'_'连接
 								designer::Preview::currentWindowName = ""; //重置以强制重新拷贝
 								designer::Preview::copyWindowToPreview(designer::Name::getWindowName(path), previewManager.window("preview"));
-								designer::Preview::syncWindowSize();
 								menuManager.close("new");
 							}
 						}
@@ -3302,7 +3440,6 @@ int main() {
 						if (auto* firstWindow = designer::data.sub.find<gui::AreaObject>(designer::data.sub.begin())) {
 							std::string firstWindowName = designer::data.sub.find_key(designer::data.sub.begin());
 							designer::Preview::copyWindowToPreview(firstWindowName, previewManager.window("preview"));
-							designer::Preview::syncWindowSize();
 						}
 						//记录打开的文件路径和格式（仅直接打开时记录，导入到当前不记录）
 						if (!importToCurrent) {
@@ -3656,11 +3793,20 @@ int main() {
 				}
 				//settings面板中的选项被选中时（如justification/typeLimit），应用设置到data
 				if (evt->path.find(attr::garea::main_settings) == 0) {
+					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
+					
+					if (evt->path == "main_settings_SetX1Anchor" || evt->path == "main_settings_SetX2Anchor") {
+						designer::Name::updateAnchorSettings(mainSettings, false);
+					}
+					if (evt->path == "main_settings_SetY1Anchor" || evt->path == "main_settings_SetY2Anchor") {
+						designer::Name::updateAnchorSettings(mainSettings, true);
+					}
+					
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();
 					if (!ChosenOptionName.empty()) {
 						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
-						designer::Name::applySettings(ChosenType, designer::toDataPath(ChosenPath), menuManager.path_at<gui::AreaObject>(attr::garea::main_settings));
+						designer::Name::applySettings(ChosenType, designer::toDataPath(ChosenPath), mainSettings);
 						//同步preview窗口
 						std::string windowName = designer::Name::getWindowName(ChosenPath);
 						auto* windowPtr = designer::data.sub.find_named<gui::AreaObject>(windowName);
@@ -3685,14 +3831,12 @@ int main() {
 				std::string windowName = designer::Name::getWindowName(fullPath);
 				//只在切换窗口时才拷贝
 				designer::Preview::copyWindowToPreview(windowName, previewManager.window("preview"));
-				//根据窗口大小调整preview窗口大小
-				designer::Preview::syncWindowSize();
 			}
 		
 		//更新鼠标坐标显示
 		sf::Vector2i mousePos = sf::Mouse::getPosition(preview);
-		menuManager.path_at<gui::TextObject>("main.mouseCoordX").setText("x:" + std::to_string(mousePos.x)).setSizeAuto();
-		menuManager.path_at<gui::TextObject>("main.mouseCoordY").setText("y:" + std::to_string(mousePos.y)).setSizeAuto();
+		menuManager.path_at<gui::TextObject>("main.mouseCoordX").setText(L"x:" + std::to_wstring(mousePos.x)).setSizeAuto();
+		menuManager.path_at<gui::TextObject>("main.mouseCoordY").setText(L"y:" + std::to_wstring(mousePos.y)).setSizeAuto();
 		
 		menu.clear();
 		menuManager.draw(menu);
