@@ -198,7 +198,7 @@ static void init() {
 		.setCharacterSize(50)
 		.setPosition(sf::Vector2f(350, 2200), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(150, 50));
-	imageManager.loadImage("test","D:/test.png");
+	gui::UIimageManager.loadImage("test","D:/test.png");
 	Main.path_get<gui::ImageObject>("area.image")
 		.setImageId("test")
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)

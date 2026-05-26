@@ -3,12 +3,13 @@
 #include "engine/event/Event.hpp"
 #include "engine/serialization/BinaryFileStream.hpp"
 #include "engine/serialization/JsonExtensions.hpp"
-#include "engine/core/SFMLBase.hpp"
+#include "engine/resource/ResourceManager.hpp"
 #include "engine/data/VarianTmap.hpp"
 #include "engine/data/RollArray.hpp"
 //if exist then check condition
 #define ensure(existCondition,condition) (!(existCondition)||((existCondition)&&(condition)))
 namespace gui {
+	inline ImageManager UIimageManager;
 	namespace Events{
 		struct UIEventBase : public EventBase {
 			std::string path;
@@ -22,6 +23,37 @@ namespace gui {
 		struct OptionSelected : public UIEventBase {};
 		struct InputSelected : public UIEventBase {};
 		struct InputDeselected : public UIEventBase {};
+	}
+	//快速绘制简图
+	namespace _builtinGUIdraw {
+		inline void Rect(sf::RenderTarget& r, const sf::Vector2f& point1, const sf::Vector2f& point2, sf::Color fillcolor, sf::Color linecolor = sf::Color::Transparent, float thickness = 0) {
+			sf::RectangleShape rect;
+			rect.setOrigin((point2 - point1) / 2.0f);
+			rect.setPosition((point1 + point2) / 2.f);
+			rect.setSize(point2 - point1);
+			rect.setFillColor(fillcolor);
+			rect.setOutlineColor(linecolor);
+			rect.setOutlineThickness(thickness);
+			r.draw(rect);
+		}
+		inline void Line(sf::RenderTarget& r, const sf::Vector2f& point1, const sf::Vector2f& point2, sf::Color color, float thickness) {
+			sf::RectangleShape rect;
+			sf::CircleShape circle;
+			float len = (point2 - point1).length();
+			rect.setPosition((point1 + point2) / 2.f);
+			rect.setOrigin({ len / 2.0f, thickness / 2.0f });
+			rect.setSize({ len, thickness });
+			rect.setFillColor(color);
+			rect.setRotation((point2 - point1).angle());
+			r.draw(rect);
+			circle.setOrigin({ thickness / 2.0f, thickness / 2.0f });
+			circle.setRadius(thickness / 2.0f);
+			circle.setFillColor(color);
+			circle.setPosition(point1);
+			r.draw(circle);
+			circle.setPosition(point2);
+			r.draw(circle);
+		}
 	}
 	class WindowManager;
 	class Style {
@@ -252,7 +284,7 @@ namespace gui {
 		//use this setter
 		//after : setImage() , setScale() , setScaleTo()
 		ImageObject& setSizeAuto() {
-			setSize(static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale));
+			setSize(static_cast<sf::Vector2f>(UIimageManager[imageId].getSize()).componentWiseMul(scale));
 			return *this;
 		}
 	protected:
@@ -283,7 +315,7 @@ namespace gui {
 		//use this setter
 		//after : setImage()
 		ImageObject& setScaleTo(sf::Vector2f _size) {
-			scale = _size.componentWiseDiv(static_cast<sf::Vector2f>(imageManager[imageId].getSize()));
+			scale = _size.componentWiseDiv(static_cast<sf::Vector2f>(UIimageManager[imageId].getSize()));
 			return *this;
 		}
 		ImageObject& setImageId(const std::string& _imageId) {

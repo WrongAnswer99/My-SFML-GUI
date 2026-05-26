@@ -261,6 +261,8 @@ int windowWidth = 1600, windowHeight = 900;
 gui::WindowManager menuManager,previewManager;
 sf::RenderWindow menu, preview;
 gui::AreaObject Main, New, Open, Save, Paste, Rename, About, ExportReflection;
+bool previewRelativeMode = false;
+sf::Vector2i previewReferencePoint(0, 0);
 namespace settings {
 	gui::AreaObject UIBase, Area, Input, Image, Text;
 }
@@ -594,7 +596,7 @@ namespace Init {
 		addColorInputs4(area, "SetImage" + stateName + "Color", line, inputStartX, fullWidth, fullWidth);
 	}
 	void loadAndAddButton(gui::AreaObject& area, const std::string& name, const std::string& iconPath, const sf::String& buttonText, sf::Vector2f pos) {
-		imageManager.loadImage(name, iconPath);
+		gui::UIimageManager.loadImage(name, iconPath);
 		addSimpleImage(area, name, name, pos);
 		addAutoButton(area, name, buttonText, pos);
 	}
@@ -657,7 +659,7 @@ static void init() {
 	Init::addTitleText(New, "title", L"添加", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	NewLine++;
 
-	imageManager.loadImage("area", "resources/UIdesigner/area.png");
+	gui::UIimageManager.loadImage("area", "resources/UIdesigner/area.png");
 	Init::addSimpleImage(New, "window", "area", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "window", L"    新建窗口", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
@@ -666,27 +668,27 @@ static void init() {
 	Init::addAutoOption(New, "area", L"    新建区域", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("input", "resources/UIdesigner/input.png");
+	gui::UIimageManager.loadImage("input", "resources/UIdesigner/input.png");
 	Init::addSimpleImage(New, "input", "input", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "input", L"    新建输入框", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("button", "resources/UIdesigner/button.png");
+	gui::UIimageManager.loadImage("button", "resources/UIdesigner/button.png");
 	Init::addSimpleImage(New, "button", "button", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "button", L"    新建按钮", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("option", "resources/UIdesigner/option.png");
+	gui::UIimageManager.loadImage("option", "resources/UIdesigner/option.png");
 	Init::addSimpleImage(New, "option", "option", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "option", L"    新建选项", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("image", "resources/UIdesigner/image.png");
+	gui::UIimageManager.loadImage("image", "resources/UIdesigner/image.png");
 	Init::addSimpleImage(New, "image", "image", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "image", L"    新建图片", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	imageManager.loadImage("text", "resources/UIdesigner/text.png");
+	gui::UIimageManager.loadImage("text", "resources/UIdesigner/text.png");
 	Init::addSimpleImage(New, "text", "text", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "text", L"    新建文本", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
@@ -3245,20 +3247,7 @@ int main() {
 	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close | sf::Style::Resize, sf::State::Windowed);
 	menu.setFramerateLimit(60);
 	
-	sf::Clock outputClock;
-	
 	while (true) {
-		if (outputClock.getElapsedTime().asSeconds() >= 1.0f) {
-			outputClock.restart();
-			auto& mouseCoordX = Main.path_get<gui::TextObject>("mouseCoordX");
-			auto& mouseCoordY = Main.path_get<gui::TextObject>("mouseCoordY");
-			auto posX = mouseCoordX.getPosition();
-			auto sizeX = mouseCoordX.getSize();
-			auto posY = mouseCoordY.getPosition();
-			auto sizeY = mouseCoordY.getSize();
-			std::cout << "mouseCoordX - posRect: position(" << posX.x.value() << ", " << posX.y.value() << ") size(" << sizeX.x.value() << ", " << sizeX.y.value() << ")" << std::endl;
-			std::cout << "mouseCoordY - posRect: position(" << posY.x.value() << ", " << posY.y.value() << ") size(" << sizeY.x.value() << ", " << sizeY.y.value() << ")" << std::endl;
-		}
 		
 		//处理菜单窗口事件
 		while (const std::optional sfEvt = menu.pollEvent()) {
@@ -3281,6 +3270,17 @@ int main() {
 			}
 			else if (auto* resized = sfEvt->getIf<sf::Event::Resized>()) {
 				preview.setView(sf::View(sf::FloatRect(sf::Vector2f(0, 0), static_cast<sf::Vector2f>(resized->size))));
+			}
+			else if (auto* btn = sfEvt->getIf<sf::Event::MouseButtonPressed>()) {
+				if (btn->button == sf::Mouse::Button::Right) {
+					if (previewRelativeMode) {
+						previewRelativeMode = false;
+					} else {
+						previewReferencePoint = sf::Mouse::getPosition(preview);
+						previewRelativeMode = true;
+					}
+				}
+				previewManager.update(sfEvt);
 			}
 			else {
 				previewManager.update(sfEvt);
@@ -3835,8 +3835,15 @@ int main() {
 		
 		//更新鼠标坐标显示
 		sf::Vector2i mousePos = sf::Mouse::getPosition(preview);
-		menuManager.path_at<gui::TextObject>("main.mouseCoordX").setText(L"x:" + std::to_wstring(mousePos.x)).setSizeAuto();
-		menuManager.path_at<gui::TextObject>("main.mouseCoordY").setText(L"y:" + std::to_wstring(mousePos.y)).setSizeAuto();
+		if (previewRelativeMode) {
+			int dx = mousePos.x - previewReferencePoint.x;
+			int dy = mousePos.y - previewReferencePoint.y;
+			menuManager.path_at<gui::TextObject>("main.mouseCoordX").setText(L"dx:" + std::to_wstring(dx)).setSizeAuto();
+			menuManager.path_at<gui::TextObject>("main.mouseCoordY").setText(L"dy:" + std::to_wstring(dy)).setSizeAuto();
+		} else {
+			menuManager.path_at<gui::TextObject>("main.mouseCoordX").setText(L"x:" + std::to_wstring(mousePos.x)).setSizeAuto();
+			menuManager.path_at<gui::TextObject>("main.mouseCoordY").setText(L"y:" + std::to_wstring(mousePos.y)).setSizeAuto();
+		}
 		
 		menu.clear();
 		menuManager.draw(menu);

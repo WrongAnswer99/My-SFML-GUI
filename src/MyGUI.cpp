@@ -4,7 +4,7 @@ namespace gui {
 		if (!isShow)
 			return;
 		if (posRect.findIntersection(displayArea)) {
-			Draw::Rect(
+			_builtinGUIdraw::Rect(
 				r,
 				posRect.position - displayArea.position,
 				posRect.position - displayArea.position + posRect.size,
@@ -19,8 +19,8 @@ namespace gui {
 			return;
 		UIBase::draw(r, displayArea, windowManager);
 		if (posRect.findIntersection(displayArea)) {
-			sf::Sprite imageRender(imageManager[imageId]);
-			imageRender.setPosition(posRect.position + ((posRect.size - static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayArea.position);
+			sf::Sprite imageRender(UIimageManager[imageId]);
+			imageRender.setPosition(posRect.position + ((posRect.size - static_cast<sf::Vector2f>(UIimageManager[imageId].getSize()).componentWiseMul(scale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayArea.position);
 			imageRender.setScale(scale);
 			imageRender.setColor(imageColors[currentStatu]);
 			r.draw(imageRender);
@@ -53,9 +53,9 @@ namespace gui {
 		textRender.setPosition(posRect.position - offsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayArea.position);
 		textRect.position = posRect.position + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));
 
-		if (textRect.findIntersection(displayArea)) {
+				if (textRect.findIntersection(displayArea)) {
 			//debug
-			/*Display::Draw::Rect(
+			/*_builtinGUIdraw::Rect(
 				r,
 				textRect.position - displayArea.position,
 				textRect.position - displayArea.position + textRect.size,
@@ -125,7 +125,7 @@ namespace gui {
 			}
 			else scroll.y = 0;
 			//debug
-			/*Display::Draw::Rect(
+			/*_builtinGUIdraw::Rect(
 				rCur,
 				textRect.position - displayAreaCur.position,
 				textRect.position - displayAreaCur.position + textRect.size,
@@ -136,7 +136,7 @@ namespace gui {
 
 			//draw cursor
 			if (currentStatu == gui::UIBase::Focus && (windowManager.cursorBlinkTick >= 0 && windowManager.cursorBlinkTick < windowManager.cursorBlinkRate / 2)) {
-				Draw::Line(
+				_builtinGUIdraw::Line(
 					rCur,
 					cursorPos,
 					cursorPos + sf::Vector2f(0, (float)characterSize),

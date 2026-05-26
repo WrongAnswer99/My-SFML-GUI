@@ -50,7 +50,7 @@ set(HEADERS
     include/engine/gui/MyGUI.hpp
     include/engine/event/Event.hpp
     include/engine/serialization/BinaryFileStream.hpp
-    include/engine/core/SFMLBase.hpp
+    include/engine/resource/ResourceManager.hpp
     include/engine/data/VarianTmap.hpp
     include/engine/data/RollArray.hpp
 )
