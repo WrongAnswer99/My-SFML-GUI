@@ -3280,11 +3280,8 @@ int main() {
 						previewRelativeMode = true;
 					}
 				}
-				previewManager.update(sfEvt);
 			}
-			else {
-				previewManager.update(sfEvt);
-			}
+			previewManager.update(sfEvt);
 		}
 		while (auto evtptr = menuManager.pollEvent()) {
 			if (auto evt = evtptr->getIf<gui::Events::ButtonPressed>()) {
@@ -3825,13 +3822,15 @@ int main() {
 		}
 		//切换窗口时更新预览
 		gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
-			std::string ChosenOptionName = mainList.getOption();
-			if (!ChosenOptionName.empty()) {
-				auto [type, fullPath] = designer::getType(ChosenOptionName);
-				std::string windowName = designer::Name::getWindowName(fullPath);
-				//只在切换窗口时才拷贝
+		std::string ChosenOptionName = mainList.getOption();
+		if (!ChosenOptionName.empty()) {
+			auto [type, fullPath] = designer::getType(ChosenOptionName);
+			std::string windowName = designer::Name::getWindowName(fullPath);
+			//只在切换窗口时才拷贝
+			if (windowName != designer::Preview::currentWindowName) {
 				designer::Preview::copyWindowToPreview(windowName, previewManager.window("preview"));
 			}
+		}
 		
 		//更新鼠标坐标显示
 		sf::Vector2i mousePos = sf::Mouse::getPosition(preview);
