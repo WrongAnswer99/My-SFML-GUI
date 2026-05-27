@@ -314,8 +314,10 @@ namespace gui {
 		}
 		//use this setter
 		//after : setImage()
-		ImageObject& setScaleTo(sf::Vector2f _size) {
-			scale = _size.componentWiseDiv(static_cast<sf::Vector2f>(UIimageManager[imageId].getSize()));
+		ImageObject& setScaleAuto() {
+			auto sizeOptional = getSize();
+			if (sizeOptional.x.has_value() && sizeOptional.y.has_value())
+				scale = sf::Vector2f(sizeOptional.x.value(), sizeOptional.y.value()).componentWiseDiv(static_cast<sf::Vector2f>(UIimageManager[imageId].getSize()));
 			return *this;
 		}
 		ImageObject& setImageId(const std::string& _imageId) {

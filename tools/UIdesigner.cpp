@@ -73,8 +73,10 @@ namespace attr {
 	}
 	namespace gimage {
 		def(main_settings_SetImageId);
+		def(main_settings_SetImageSizeAuto);
 		def(main_settings_SetScaleX);
 		def(main_settings_SetScaleY);
+		def(main_settings_SetScaleAuto);
 		def(main_settings_SetAlignX_Left);
 		def(main_settings_SetAlignX_Mid);
 		def(main_settings_SetAlignX_Right);
@@ -144,6 +146,9 @@ namespace attr {
 		def(main_settings_SetCharacterSize);
 		def(main_settings_SetLetterSpacing);
 		def(main_settings_SetLineSpacing);
+		def(main_settings_SetSizeAuto);
+		def(main_settings_SetImageSizeAuto);
+		def(main_settings_SetScaleAuto);
 		def(main_settings_SetAlignX_Left);
 		def(main_settings_SetAlignX_Mid);
 		def(main_settings_SetAlignX_Right);
@@ -1031,6 +1036,9 @@ static void init() {
 	Init::addStringInput(settings::Text, "SetText", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	TextLine++;
 
+	Init::addSimpleButton(settings::Text, "SetSizeAuto", L"自动设置大小", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
+	TextLine++;
+
 	Init::addSimpleText(settings::Text, "SetFont", L"字体:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
 	Init::addStringInput(settings::Text, "SetFont", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	TextLine++;
@@ -1061,8 +1069,14 @@ static void init() {
 	Init::addStringInput(settings::Image, "SetImageId", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	ImageLine++;
 
+	Init::addSimpleButton(settings::Image, "SetImageSizeAuto", L"自动设置大小", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40));
+	ImageLine++;
+
 	Init::addSimpleText(settings::Image, "SetScale", L"缩放:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
 	Init::addPairInput(settings::Image, "SetScaleX", "SetScaleY", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40), gui::InputObject::Float);
+	ImageLine++;
+
+	Init::addSimpleButton(settings::Image, "SetScaleAuto", L"自动设置缩放", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	ImageLine++;
 
 	Init::addSimpleText(settings::Image, "SetAlign", L"对齐方式:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
@@ -3244,7 +3258,7 @@ int main() {
 	preview.setFramerateLimit(60);
 	
 	menuManager.open("main",Main);
-	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close | sf::Style::Resize, sf::State::Windowed);
+	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close, sf::State::Windowed);
 	menu.setFramerateLimit(60);
 	
 	while (true) {
@@ -3608,6 +3622,83 @@ int main() {
 				}
 				if (evt->wholePath() == attr::gbutton::paste_isSubText) {
 					menuManager.path_at<gui::TextObject>(attr::gtext::paste_isSub).toggleShow();
+				}
+				if (evt->wholePath() == attr::gbutton::main_settings_SetSizeAuto) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
+					std::string ChosenOptionName = mainList.getOption();
+					if (!ChosenOptionName.empty()) {
+						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						std::string dataPath = designer::toDataPath(ChosenPath);
+						designer::Name::applySettings(ChosenType, dataPath, mainSettings);
+
+						if (ChosenType == attr::designer::type::button) {
+							auto* obj = designer::data.path_find<gui::ButtonObject>(dataPath);
+							if (obj) {
+								obj->setSizeAuto();
+								designer::Name::fillButtonSettings(mainSettings, obj);
+							}
+						}
+						else if (ChosenType == attr::designer::type::input) {
+							auto* obj = designer::data.path_find<gui::InputObject>(dataPath);
+							if (obj) {
+								obj->setSizeAuto();
+								designer::Name::fillInputSettings(mainSettings, obj);
+							}
+						}
+						else if (ChosenType == attr::designer::type::option) {
+							auto* obj = designer::data.path_find<gui::OptionObject>(dataPath);
+							if (obj) {
+								obj->setSizeAuto();
+								designer::Name::fillOptionSettings(mainSettings, obj);
+							}
+						}
+						else if (ChosenType == attr::designer::type::text) {
+							auto* obj = designer::data.path_find<gui::TextObject>(dataPath);
+							if (obj) {
+								obj->setSizeAuto();
+								designer::Name::fillTextSettings(mainSettings, obj);
+							}
+						}
+
+						designer::Preview::applyToPreview(ChosenType, dataPath);
+					}
+				}
+				if (evt->wholePath() == attr::gbutton::main_settings_SetImageSizeAuto) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
+					std::string ChosenOptionName = mainList.getOption();
+					if (!ChosenOptionName.empty()) {
+						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						if (ChosenType == attr::designer::type::image) {
+							std::string dataPath = designer::toDataPath(ChosenPath);
+							designer::Name::applySettings(ChosenType, dataPath, mainSettings);
+							auto* obj = designer::data.path_find<gui::ImageObject>(dataPath);
+							if (obj) {
+								obj->setSizeAuto();
+								designer::Name::fillImageSettings(mainSettings, obj);
+								designer::Preview::applyToPreview(ChosenType, dataPath);
+							}
+						}
+					}
+				}
+				if (evt->wholePath() == attr::gbutton::main_settings_SetScaleAuto) {
+					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
+					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
+					std::string ChosenOptionName = mainList.getOption();
+					if (!ChosenOptionName.empty()) {
+						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						if (ChosenType == attr::designer::type::image) {
+							std::string dataPath = designer::toDataPath(ChosenPath);
+							designer::Name::applySettings(ChosenType, dataPath, mainSettings);
+							auto* obj = designer::data.path_find<gui::ImageObject>(dataPath);
+							if (obj) {
+								obj->setScaleAuto();
+								designer::Name::fillImageSettings(mainSettings, obj);
+								designer::Preview::applyToPreview(ChosenType, dataPath);
+							}
+						}
+					}
 				}
 				//处理删除按钮按下事件
 				if (evt->wholePath() == attr::gbutton::main_delete) {
