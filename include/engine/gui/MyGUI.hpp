@@ -246,12 +246,15 @@ namespace gui {
 		}
 	protected:
 		void updatePosRect(sf::Vector2f fatherSize) {
+			auto nonNegative = [](float value) {
+				return value < 0.f ? 0.f : value;
+			};
 			if (relativePosition.x.second.isSize())
-				posRect.size.x = relativePosition.x.second.value;
-			else posRect.size.x = (relativePosition.x.second.calcRelative(fatherSize.x)-relativePosition.x.first.calcRelative(fatherSize.x)) * 2 / (relativePosition.x.second.getAnchor() - relativePosition.x.first.getAnchor());
+				posRect.size.x = nonNegative(relativePosition.x.second.value);
+			else posRect.size.x = nonNegative((relativePosition.x.second.calcRelative(fatherSize.x)-relativePosition.x.first.calcRelative(fatherSize.x)) * 2 / (relativePosition.x.second.getAnchor() - relativePosition.x.first.getAnchor()));
 			if (relativePosition.y.second.isSize())
-				posRect.size.y = relativePosition.y.second.value;
-			else posRect.size.y = (relativePosition.y.second.calcRelative(fatherSize.y)-relativePosition.y.first.calcRelative(fatherSize.y)) * 2 / (relativePosition.y.second.getAnchor() - relativePosition.y.first.getAnchor());
+				posRect.size.y = nonNegative(relativePosition.y.second.value);
+			else posRect.size.y = nonNegative((relativePosition.y.second.calcRelative(fatherSize.y)-relativePosition.y.first.calcRelative(fatherSize.y)) * 2 / (relativePosition.y.second.getAnchor() - relativePosition.y.first.getAnchor()));
 			posRect.position.x = relativePosition.x.first.calcRelative(fatherSize.x) - (relativePosition.x.first.getAnchor()) / 2.f * posRect.size.x;
 			posRect.position.y = relativePosition.y.first.calcRelative(fatherSize.y) - (relativePosition.y.first.getAnchor()) / 2.f * posRect.size.y;
 		}

@@ -3411,6 +3411,17 @@ int main() {
 							j.get_to(loadedData);
 						}
 						if (importToCurrent) {
+							bool hasDuplicateAreaName = false;
+							for (auto it = loadedData.sub.begin(); it != loadedData.sub.end(); it++) {
+								std::string key = loadedData.sub.find_key(it);
+								if (loadedData.sub.find<gui::AreaObject>(it) && designer::data.sub.find_named<gui::AreaObject>(key)) {
+									std::cout << "Open import canceled: duplicate AreaObject name \"" << key << "\"" << std::endl;
+									hasDuplicateAreaName = true;
+									break;
+								}
+							}
+							if (hasDuplicateAreaName)
+								continue;
 							//导入到当前：追加到data末尾
 							for (auto it = loadedData.sub.begin(); it != loadedData.sub.end(); it++) {
 								std::string key = loadedData.sub.find_key(it);
