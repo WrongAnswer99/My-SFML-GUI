@@ -50,9 +50,9 @@ set(HEADERS
     include/engine/gui/MyGUI.hpp
     include/engine/event/Event.hpp
     include/engine/serialization/BinaryFileStream.hpp
+    include/engine/serialization/JsonExtensions.hpp
     include/engine/resource/ResourceManager.hpp
     include/engine/data/VarianTmap.hpp
-    include/engine/data/RollArray.hpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
