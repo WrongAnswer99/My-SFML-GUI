@@ -220,7 +220,7 @@ static void init() {
 		.setPosition(sf::Vector2f(600, 450));
 }
 int main() {
-	fontManager.loadFont("ht", "resources/FZHTJW.TTF");
+	fontManager.loadAuto();
 	init();
 
 	// 序列化测试：先保存到文件

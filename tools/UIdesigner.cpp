@@ -1,4 +1,4 @@
-﻿#include "engine/gui/MyGUI.hpp"
+#include "engine/gui/MyGUI.hpp"
 #include <fstream>
 #include <functional>
 
@@ -277,7 +277,7 @@ namespace Init {
 			.setTypeLimit(type)
 			.setText(text)
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-			.setFont("ht")
+			.setFont("default")
 			.setCharacterSize(40)
 			.setPosition(pos)
 			.setSize(size);
@@ -300,7 +300,7 @@ namespace Init {
 	gui::TextObject& addSimpleText(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, gui::UIBase::Align hJust = gui::UIBase::Align::Left, gui::UIBase::Align vJust = gui::UIBase::Align::Mid) {
 		area.path_get<gui::TextObject>(name)
 			.setText(text)
-			.setFont("ht")
+			.setFont("default")
 			.setCharacterSize(40)
 			.setSizeAuto()
 			.setAlign(hJust, vJust)
@@ -310,7 +310,7 @@ namespace Init {
 	gui::TextObject& addTitleText(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, sf::Vector2f size, sf::Vector2<gui::UIBase::Anchor> anchor = {gui::UIBase::Anchor::Left, gui::UIBase::Anchor::Top}) {
 		area.path_get<gui::TextObject>(name)
 			.setText(text)
-			.setFont("ht")
+			.setFont("default")
 			.setCharacterSize(40)
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Top)
 			.setPosition(pos, anchor)
@@ -321,7 +321,7 @@ namespace Init {
 		area.path_get<gui::ButtonObject>(name)
 			.setText(text)
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-			.setFont("ht")
+			.setFont("default")
 			.setCharacterSize(40)
 			.setPosition(pos, anchor)
 			.setSize(size);
@@ -331,7 +331,7 @@ namespace Init {
 		area.path_get<gui::ButtonObject>(name)
 			.setText(text)
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-			.setFont("ht")
+			.setFont("default")
 			.setCharacterSize(40)
 			.setSizeAuto()
 			.setPosition(pos);
@@ -348,7 +348,7 @@ namespace Init {
 	gui::OptionObject& addSimpleOption(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos, sf::Vector2f size) {
 		area.path_get<gui::OptionObject>(name)
 			.setText(text)
-			.setFont("ht")
+			.setFont("default")
 			.setCharacterSize(40)
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 			.setPosition(pos)
@@ -358,7 +358,7 @@ namespace Init {
 	gui::OptionObject& addAutoOption(gui::AreaObject& area, const std::string& name, const sf::String& text, sf::Vector2f pos) {
 		area.path_get<gui::OptionObject>(name)
 			.setText(text)
-			.setFont("ht")
+			.setFont("default")
 			.setCharacterSize(40)
 			.setSizeAuto()
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
@@ -435,7 +435,7 @@ namespace Init {
 				anchorOptions[i] + "_disabled", gui::TextObject{});
 			area.sub.get<gui::AreaObject>(prefix + "Anchor").sub.get<gui::TextObject>(anchorOptions[i] + "_disabled")
 				.setText(sf::String::fromUtf8(anchorOptions[i].begin(), anchorOptions[i].end()))
-				.setFont("ht")
+				.setFont("default")
 				.setCharacterSize(40)
 				.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 				.setSizeAuto()
@@ -644,14 +644,14 @@ static void init() {
 
 	Main.path_get<gui::TextObject>("mouseCoordX")
 		.setText(L"x:0")
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) - 400, 0));
 	Main.path_get<gui::TextObject>("mouseCoordY")
 		.setText(L"y:0")
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
@@ -700,7 +700,7 @@ static void init() {
 	New.path_get<gui::ButtonObject>("isSubText")
 		.setText(L"□在当前区域子类中创建")
 		.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
@@ -708,7 +708,7 @@ static void init() {
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	New.path_get<gui::TextObject>("isSub")
 		.setText(L"√")
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(20)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
@@ -716,7 +716,7 @@ static void init() {
 	New.path_get<gui::TextObject>("isSubDisabledText")
 		.setText(L"□在当前区域子类中创建")
 		.setTextStyle(textStyle["stdto"], textStyle["stdto"], textStyle["stdto"])
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
@@ -728,7 +728,7 @@ static void init() {
 		.setStringTypeLimit(true, {}, { {L'A',L'Z'},{L'a',L'z'},{L'0',L'9'}})
 		.setText(L"")
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setPosition(sf::Vector2f(120, static_cast<float>(40 * NewLine)))
 		.setSize(sf::Vector2f(480, 40));
@@ -762,7 +762,7 @@ static void init() {
 	Open.path_get<gui::ButtonObject>("importToCurrentText")
 		.setText(L"□导入到当前")
 		.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
@@ -770,7 +770,7 @@ static void init() {
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * OpenLine)));
 	Open.path_get<gui::TextObject>("importToCurrent")
 		.setText(L"√")
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(20)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
@@ -860,7 +860,7 @@ static void init() {
 	Paste.path_get<gui::ButtonObject>("isSubText")
 		.setText(L"□粘贴到当前区域子类中")
 		.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
@@ -868,7 +868,7 @@ static void init() {
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * PasteLine)));
 	Paste.path_get<gui::TextObject>("isSub")
 		.setText(L"√")
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(20)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
@@ -876,7 +876,7 @@ static void init() {
 	Paste.path_get<gui::TextObject>("isSubDisabledText")
 		.setText(L"□粘贴到当前区域子类中")
 		.setTextStyle(textStyle["stdto"], textStyle["stdto"], textStyle["stdto"])
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
@@ -889,7 +889,7 @@ static void init() {
 		.setTypeLimit(gui::InputObject::String)
 		.setText(L"")
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setPosition(sf::Vector2f(160, static_cast<float>(40 * PasteLine)))
 		.setSize(sf::Vector2f(600 - 160, 40));
@@ -916,7 +916,7 @@ static void init() {
 		.setStringTypeLimit(true, {}, { {L'A',L'Z'},{L'a',L'z'},{L'0',L'9'} })
 		.setText(L"")
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setPosition(sf::Vector2f(160, static_cast<float>(40 * RenameLine)))
 		.setSize(sf::Vector2f(600 - 160, 40));
@@ -944,7 +944,7 @@ static void init() {
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * 3)));
 	About.path_get<gui::TextObject>("content.text1")
 		.setText(L"My-SFML-GUI设计器\n项目地址:https://github.com/WrongAnswer99/My-SFML-GUI")
-		.setFont("ht")
+		.setFont("default")
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
@@ -2127,7 +2127,7 @@ namespace designer {
 				auto ptropt = mainList.sub.insert_named(mainList.sub.end(), optionName, gui::OptionObject{});
 				(*ptropt)
 					.setText("    " + name).setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-					.setFont("ht")
+					.setFont("default")
 					.setCharacterSize(40)
 					.setSizeAuto()
 					.setPosition(sf::Vector2f(level * 40.f, linePos));
@@ -2666,7 +2666,7 @@ namespace designer {
 				std::string key = designer::data.sub.find_key(it);
 				windowToSave.path_get<gui::TextObject>(key)
 					.setText(L"√")
-					.setFont("ht")
+					.setFont("default")
 					.setCharacterSize(20)
 					.setSizeAuto()
 					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
@@ -2675,7 +2675,7 @@ namespace designer {
 				windowToSave.path_get<gui::ButtonObject>(key)
 					.setText(L"□"+sf::String(key))
 					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
-					.setFont("ht")
+					.setFont("default")
 					.setCharacterSize(40)
 					.setSizeAuto()
 					.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
@@ -2702,7 +2702,7 @@ namespace designer {
 				std::string key = designer::data.sub.find_key(it);
 				windowToExport.path_get<gui::TextObject>(key)
 					.setText(L"√")
-					.setFont("ht")
+					.setFont("default")
 					.setCharacterSize(20)
 					.setSizeAuto()
 					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
@@ -2711,7 +2711,7 @@ namespace designer {
 				windowToExport.path_get<gui::ButtonObject>(key)
 					.setText(L"□"+sf::String(key))
 					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
-					.setFont("ht")
+					.setFont("default")
 					.setCharacterSize(40)
 					.setSizeAuto()
 					.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
@@ -2962,7 +2962,7 @@ namespace designer {
 				(*ptropt)
 					.setText("    " + itemName)
 					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-					.setFont("ht")
+					.setFont("default")
 					.setCharacterSize(40)
 					.setSizeAuto()
 					.setPosition(sf::Vector2f(level * 40.f, linePos));
@@ -3226,7 +3226,7 @@ namespace designer {
 	}
 }
 int main() {
-	fontManager.loadFont("ht", "resources/FZHTJW.TTF");
+	fontManager.loadAuto();
 
 	init();
 
@@ -3344,7 +3344,7 @@ int main() {
 									.setPosition(sf::Vector2f(level*40.f, linePos));
 								(*ptropt)
 									.setText("    " + name).setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-									.setFont("ht")
+									.setFont("default")
 									.setCharacterSize(40)
 									.setSizeAuto()
 									.setPosition(sf::Vector2f(level*40.f, linePos));
