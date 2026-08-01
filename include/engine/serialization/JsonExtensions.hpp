@@ -152,7 +152,7 @@ public:
 		((readHelper[std::type_index(typeid(T))] = [&](const nlohmann::json& elem) {
 			std::string key;
 			elem.at("key").get_to(key);
-			T* pointer = x.data->template push_back_named<T>(key, T{});
+			T* pointer = x.data->template push_back<T>(key, T{});
 			elem.at("value").get_to(*pointer);
 		}), ...);
 		for (const auto& elem : j) {
@@ -162,3 +162,231 @@ public:
 		}
 	}
 };
+
+#include "engine/gui/MyGUI.hpp"
+
+// 类型别名，避免重复书写长类型
+namespace gui {
+using GUIvarianTmapJsonSerializer = VarianTmapJsonSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>;
+}
+namespace nlohmann {
+
+// Style（公开成员直接访问）
+template<>
+struct adl_serializer<gui::Style> {
+	static void to_json(json& j, const gui::Style& x) {
+		j = json{ {"backgroundColor", x.backgroundColor}, {"outlineColor", x.outlineColor}, {"outlineThickness", x.outlineThickness} };
+	}
+	static void from_json(const json& j, gui::Style& x) {
+		j.at("backgroundColor").get_to(x.backgroundColor);
+		j.at("outlineColor").get_to(x.outlineColor);
+		j.at("outlineThickness").get_to(x.outlineThickness);
+	}
+};
+
+// DynamicPosition（type 拆为 anchor + relative 分别存储）
+template<>
+struct adl_serializer<gui::UIBase::DynamicPosition> {
+	static void to_json(json& j, const gui::UIBase::DynamicPosition& x) {
+		j = json{ {"anchor", x.getAnchor()}, {"relative", x.getRelative()}, {"value", x.getValue()} };
+	}
+	static void from_json(const json& j, gui::UIBase::DynamicPosition& x) {
+		int anchor, relative;
+		float value;
+		j.at("anchor").get_to(anchor);
+		j.at("relative").get_to(relative);
+		j.at("value").get_to(value);
+		x.setAnchor(static_cast<gui::UIBase::Anchor>(anchor));
+		x.setRelative(static_cast<gui::UIBase::Relative>(relative));
+		x.setValue(value);
+	}
+};
+
+// UIBase（protected 成员，使用 getter/setter）
+template<>
+struct adl_serializer<gui::UIBase> {
+	static void to_json(json& j, const gui::UIBase& x) {
+		j = json{ {"position", x.getDynamicPosition()}, {"styles", {x.getStyle(0), x.getStyle(1), x.getStyle(2)}}, {"isShow", x.getShow()} };
+	}
+	static void from_json(const json& j, gui::UIBase& x) {
+		sf::Vector2<std::pair<gui::UIBase::DynamicPosition, gui::UIBase::DynamicPosition>> pos;
+		std::array<gui::Style, 3> styles;
+		bool isShow;
+		j.at("position").get_to(pos);
+		j.at("styles").get_to(styles);
+		j.at("isShow").get_to(isShow);
+		x.setPositionRelative({pos.x.first, pos.x.second}, {pos.y.first, pos.y.second});
+		x.setStyle(styles[0], styles[1], styles[2]);
+		x.setShow(isShow);
+	}
+};
+
+// ImageObject（protected 成员，使用 getter/setter）
+template<>
+struct adl_serializer<gui::ImageObject> {
+	static void to_json(json& j, const gui::ImageObject& x) {
+		json base = static_cast<const gui::UIBase&>(x);
+		j = json{ {"UIBase", base}, {"imageId", x.getImageId()}, {"scale", x.getScale()}, {"align", x.getAlign()}, {"imageColors", {x.getImageColor(0), x.getImageColor(1), x.getImageColor(2)}} };
+	}
+	static void from_json(const json& j, gui::ImageObject& x) {
+		json base;
+		j.at("UIBase").get_to(base);
+		base.get_to(static_cast<gui::UIBase&>(x));
+		std::string imageId;
+		sf::Vector2f scale;
+		sf::Vector2i align;
+		std::array<sf::Color, 3> imageColors;
+		j.at("imageId").get_to(imageId);
+		j.at("scale").get_to(scale);
+		j.at("align").get_to(align);
+		j.at("imageColors").get_to(imageColors);
+		x.setImageId(imageId);
+		x.setScale(scale);
+		x.setAlign(static_cast<gui::UIBase::Align>(align.x), static_cast<gui::UIBase::Align>(align.y));
+		x.setImageColor(imageColors[0], imageColors[1], imageColors[2]);
+	}
+};
+
+// TextStyle（公开成员直接访问）
+template<>
+struct adl_serializer<gui::TextStyle> {
+	static void to_json(json& j, const gui::TextStyle& x) {
+		j = json{ {"fillColor", x.fillColor}, {"outlineColor", x.outlineColor} };
+	}
+	static void from_json(const json& j, gui::TextStyle& x) {
+		j.at("fillColor").get_to(x.fillColor);
+		j.at("outlineColor").get_to(x.outlineColor);
+	}
+};
+
+// TextObject（protected 成员，使用 getter/setter）
+template<>
+struct adl_serializer<gui::TextObject> {
+	static void to_json(json& j, const gui::TextObject& x) {
+		json base = static_cast<const gui::UIBase&>(x);
+		j = json{ {"UIBase", base}, {"textStyles", {x.getTextStyle(0), x.getTextStyle(1), x.getTextStyle(2)}}, {"font", x.getFont()}, {"characterSize", x.getCharacterSize()}, {"align", x.getAlign()}, {"letterSpacing", x.getLetterSpacing()}, {"lineSpacing", x.getLineSpacing()}, {"text", x.getText()} };
+	}
+	static void from_json(const json& j, gui::TextObject& x) {
+		json base;
+		j.at("UIBase").get_to(base);
+		base.get_to(static_cast<gui::UIBase&>(x));
+		std::array<gui::TextStyle, 3> textStyles;
+		std::string font;
+		unsigned int characterSize;
+		sf::Vector2i align;
+		float letterSpacing, lineSpacing;
+		sf::String text;
+		j.at("textStyles").get_to(textStyles);
+		j.at("font").get_to(font);
+		j.at("characterSize").get_to(characterSize);
+		j.at("align").get_to(align);
+		j.at("letterSpacing").get_to(letterSpacing);
+		j.at("lineSpacing").get_to(lineSpacing);
+		j.at("text").get_to(text);
+		x.setTextStyle(textStyles[0], textStyles[1], textStyles[2]);
+		x.setFont(font);
+		x.setCharacterSize(characterSize);
+		x.setAlign(static_cast<gui::UIBase::Align>(align.x), static_cast<gui::UIBase::Align>(align.y));
+		x.setSpacing(letterSpacing, lineSpacing);
+		x.setText(text);
+	}
+};
+
+// InputLimit（private 成员，使用 getter）
+template<>
+struct adl_serializer<gui::InputObject::InputLimit> {
+	static void to_json(json& j, const gui::InputObject::InputLimit& x) {
+		j = json{ {"isAllowList", x.getIsAllowList()}, {"single", x.getSingle()}, {"range", x.getRange()} };
+	}
+	static void from_json(const json& j, gui::InputObject::InputLimit& x) {
+		bool isAllowList;
+		std::vector<char32_t> single;
+		std::vector<std::pair<char32_t, char32_t>> range;
+		j.at("isAllowList").get_to(isAllowList);
+		j.at("single").get_to(single);
+		j.at("range").get_to(range);
+		x.setIsAllowList(isAllowList);
+		x.setSingle(single);
+		x.setRange(range);
+	}
+};
+
+// InputObject
+// 序列化逻辑：inputLimit 仅当 typeLimit == String 时才写入有意义的输入限制
+// 导出时：若 typeLimit == String 则输出实际的 inputLimit（通过 getStringTypeLimit），否则输出空构造的 InputLimit{}
+// 导入时：先读 typeLimit，仅当 typeLimit == String 才赋值 inputLimit（通过 setStringTypeLimit）
+template<>
+struct adl_serializer<gui::InputObject> {
+	static void to_json(json& j, const gui::InputObject& x) {
+		json base = static_cast<const gui::TextObject&>(x);
+		if (x.getTypeLimit() == gui::InputObject::String) {
+			j = json{ {"TextObject", base}, {"sizeLimit", x.getSizeLimit()}, {"typeLimit", x.getTypeLimit()}, {"inputLimit", *x.getStringTypeLimit()} };
+		} else {
+			j = json{ {"TextObject", base}, {"sizeLimit", x.getSizeLimit()}, {"typeLimit", x.getTypeLimit()}, {"inputLimit", gui::InputObject::InputLimit{}} };
+		}
+	}
+	static void from_json(const json& j, gui::InputObject& x) {
+		json base;
+		j.at("TextObject").get_to(base);
+		base.get_to(static_cast<gui::TextObject&>(x));
+		size_t sizeLimit;
+		int typeLimit;
+		j.at("sizeLimit").get_to(sizeLimit);
+		j.at("typeLimit").get_to(typeLimit);
+		x.setSizeLimit(sizeLimit);
+		x.setTypeLimit(static_cast<gui::InputObject::InputType>(typeLimit));
+		if (typeLimit == gui::InputObject::String) {
+			gui::InputObject::InputLimit inputLimit;
+			j.at("inputLimit").get_to(inputLimit);
+			x.setStringTypeLimit(inputLimit.getIsAllowList(), inputLimit.getSingle(), inputLimit.getRange());
+		}
+		x.setText(x.getText());
+	}
+};
+
+// ButtonObject（无新增成员，委托给 TextObject）
+template<>
+struct adl_serializer<gui::ButtonObject> {
+	static void to_json(json& j, const gui::ButtonObject& x) {
+		j = static_cast<const gui::TextObject&>(x);
+	}
+	static void from_json(const json& j, gui::ButtonObject& x) {
+		j.get_to(static_cast<gui::TextObject&>(x));
+	}
+};
+
+// OptionObject（无新增成员，委托给 ButtonObject）
+template<>
+struct adl_serializer<gui::OptionObject> {
+	static void to_json(json& j, const gui::OptionObject& x) {
+		j = static_cast<const gui::ButtonObject&>(x);
+	}
+	static void from_json(const json& j, gui::OptionObject& x) {
+		j.get_to(static_cast<gui::ButtonObject&>(x));
+	}
+};
+
+// AreaObject（protected 成员使用 getter/setter，sub 公开）
+template<>
+struct adl_serializer<gui::AreaObject> {
+	static void to_json(json& j, const gui::AreaObject& x) {
+		json base = static_cast<const gui::UIBase&>(x);
+		j = json{ {"UIBase", base}, {"sub", gui::GUIvarianTmapJsonSerializer{const_cast<VarianTmap<gui::UIBase>&>(x.sub)}}, {"mouseDragScrollable", x.getMouseDragScrollable()}, {"mouseWheelScrollable", x.getMouseWheelScrollable()}, {"option", x.getOption()} };
+	}
+	static void from_json(const json& j, gui::AreaObject& x) {
+		json base;
+		j.at("UIBase").get_to(base);
+		base.get_to(static_cast<gui::UIBase&>(x));
+		auto subWrapper = gui::GUIvarianTmapJsonSerializer{x.sub};
+		j.at("sub").get_to(subWrapper);
+		sf::Vector2i mouseDragScrollable, mouseWheelScrollable;
+		std::string option;
+		j.at("mouseDragScrollable").get_to(mouseDragScrollable);
+		j.at("mouseWheelScrollable").get_to(mouseWheelScrollable);
+		j.at("option").get_to(option);
+		x.setScrollable(mouseDragScrollable, mouseWheelScrollable);
+		x.setOption(option);
+	}
+};
+
+}

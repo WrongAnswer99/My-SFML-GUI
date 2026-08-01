@@ -41,9 +41,8 @@ endif()
 message(STATUS "Found nlohmann/json in ${NLOHMANN_JSON_DIR}")
 add_subdirectory(${NLOHMANN_JSON_DIR} ${CMAKE_CURRENT_BINARY_DIR}/json-build)
 
-set(SOURCES
-    src/main.cpp
-    src/MyGUI.cpp
+set(GUI_SOURCES
+    src/engine/gui/MyGUI.cpp
 )
 
 set(HEADERS
@@ -51,15 +50,25 @@ set(HEADERS
     include/engine/event/Event.hpp
     include/engine/serialization/BinaryFileStream.hpp
     include/engine/serialization/JsonExtensions.hpp
-    include/engine/resource/ResourceManager.hpp
+    include/engine/resource/Resources.hpp
+    include/engine/resource/ImageResource.hpp
+    include/engine/resource/FontResource.hpp
     include/engine/data/VarianTmap.hpp
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+# 主游戏可执行文件
+add_executable(mygame src/main.cpp ${GUI_SOURCES} ${HEADERS})
 
-add_executable(UIdesigner tools/UIdesigner.cpp src/MyGUI.cpp ${HEADERS})
+# UI设计器工具
+add_executable(UIdesigner tools/UIdesigner.cpp ${GUI_SOURCES} ${HEADERS})
 
-target_include_directories(${PROJECT_NAME} PRIVATE
+# UI测试工具
+add_executable(UItest tools/UItest.cpp ${GUI_SOURCES} ${HEADERS})
+
+# VarianTmap测试工具
+add_executable(VarianTmapTest tools/VarianTmapTest.cpp ${HEADERS})
+
+target_include_directories(mygame PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
@@ -67,11 +76,21 @@ target_include_directories(UIdesigner PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wa,-mbig-obj)
+target_include_directories(UItest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_include_directories(VarianTmapTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_compile_options(mygame PRIVATE -Wa,-mbig-obj)
 
 target_compile_options(UIdesigner PRIVATE -Wa,-mbig-obj)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_compile_options(UItest PRIVATE -Wa,-mbig-obj)
+
+target_link_libraries(mygame PRIVATE
     sfml-graphics
     sfml-window
     sfml-system
@@ -79,6 +98,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(UIdesigner PRIVATE
+    sfml-graphics
+    sfml-window
+    sfml-system
+    nlohmann_json::nlohmann_json
+)
+
+target_link_libraries(UItest PRIVATE
     sfml-graphics
     sfml-window
     sfml-system

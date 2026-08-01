@@ -1,14 +1,11 @@
 #pragma once
 #include <set>
 #include "engine/event/Event.hpp"
-#include "engine/serialization/BinaryFileStream.hpp"
-#include "engine/serialization/JsonExtensions.hpp"
-#include "engine/resource/ResourceManager.hpp"
+#include "engine/resource/Resources.hpp"
 #include "engine/data/VarianTmap.hpp"
 //if exist then check condition
 #define ensure(existCondition,condition) (!(existCondition)||((existCondition)&&(condition)))
 namespace gui {
-	inline ImageManager UIimageManager;
 	namespace Events{
 		struct UIEventBase : public EventBase {
 			std::string path;
@@ -64,20 +61,6 @@ namespace gui {
 			outlineColor = _outlineColor;
 			outlineThickness = _outlineThickness;
 		}
-		friend inline void read(BinaryFileStream& bf, Style& x) {
-			bf.readStruct(x.backgroundColor, x.outlineColor, x.outlineThickness);
-		}
-		friend inline void write(BinaryFileStream& bf, const Style& x) {
-			bf.writeStruct(x.backgroundColor, x.outlineColor, x.outlineThickness);
-		}
-		friend inline void to_json(nlohmann::json& j, const Style& x) {
-			j = nlohmann::json{ {"backgroundColor", x.backgroundColor}, {"outlineColor", x.outlineColor}, {"outlineThickness", x.outlineThickness} };
-		}
-		friend inline void from_json(const nlohmann::json& j, Style& x) {
-			j.at("backgroundColor").get_to(x.backgroundColor);
-			j.at("outlineColor").get_to(x.outlineColor);
-			j.at("outlineThickness").get_to(x.outlineThickness);
-		}
 	};
 	class UIBase {
 		friend class AreaObject;
@@ -95,21 +78,9 @@ namespace gui {
 			float calcRelative(float fatherSize) const{
 				return (type & 0b000011) * fatherSize / 2.0f + value;
 			}
-		public:
-			bool isSize () const{
-				return getAnchor() == static_cast<int>(Anchor::Size);
-			}
-			bool isNormal () const{
-				return type == ((static_cast<int>(Anchor::Top) << 2) | static_cast<int>(Relative::TopEdge));
-			}
-			int getRelative () const{
-				return type & 0b000011;
-			}
-			int getAnchor () const{
-				return type >> 2;
-			}
-			int type = 0;
+			char type = 0;
 			float value = 0;
+		public:
 			DynamicPosition() = default;
 			DynamicPosition(Anchor _anchor, float _value = 0){
 				type = static_cast<int>(_anchor) << 2;
@@ -119,18 +90,32 @@ namespace gui {
 				type = (static_cast<int>(_anchor) << 2) | static_cast<int>(_relative);
 				value = _value;
 			}
-			friend inline void read(BinaryFileStream& bf, DynamicPosition& x) {
-				bf.read(x.type, x.value);
+			bool isSize () const{
+				return getAnchor() == static_cast<int>(Anchor::Size);
 			}
-			friend inline void write(BinaryFileStream& bf, const DynamicPosition& x) {
-				bf.write(x.type, x.value);
+			bool isNormal () const{
+				return type == ((static_cast<int>(Anchor::Top) << 2) | static_cast<int>(Relative::TopEdge));
 			}
-			friend inline void to_json(nlohmann::json& j, const DynamicPosition& x) {
-				j = nlohmann::json{ {"type", x.type}, {"value", x.value} };
+			DynamicPosition& setRelative (Relative _relative){
+				type = (type & 0b111100) | static_cast<int>(_relative);
+				return *this;
 			}
-			friend inline void from_json(const nlohmann::json& j, DynamicPosition& x) {
-				j.at("type").get_to(x.type);
-				j.at("value").get_to(x.value);
+			DynamicPosition& setAnchor (Anchor _anchor){
+				type = (type & 0b000011) | (static_cast<int>(_anchor) << 2);
+				return *this;
+			}
+			DynamicPosition& setValue (float _value){
+				value = _value;
+				return *this;
+			}
+			int getRelative () const{
+				return type & 0b000011;
+			}
+			int getAnchor () const{
+				return type >> 2;
+			}
+			float getValue () const{
+				return value;
 			}
 		};
 	protected:
@@ -198,7 +183,7 @@ namespace gui {
 				}
 			}
 			return *this;
-			setRelativeIllegal:;
+		setRelativeIllegal:;
 			throw std::runtime_error("[UIBase::setRelative] Illegal relative position\n");
 		}
 		//static getter
@@ -228,6 +213,12 @@ namespace gui {
 			return *this;
 		}
 		Style& style(int id) {
+			return styles[id];
+		}
+		Style& getStyle(int id) {
+			return styles[id];
+		}
+		const Style& getStyle(int id) const {
 			return styles[id];
 		}
 		int getStatu() const {
@@ -263,21 +254,6 @@ namespace gui {
 				currentStatu = statu;
 			}
 		}
-	public:
-		friend inline void read(BinaryFileStream& bf, UIBase& x) {
-			bf.readStruct(x.relativePosition, x.styles, x.isShow);
-		}
-		friend inline void write(BinaryFileStream& bf, const UIBase& x) {
-			bf.writeStruct(x.relativePosition, x.styles, x.isShow);
-		}
-		friend inline void to_json(nlohmann::json& j, const UIBase& x) {
-			j = nlohmann::json{ {"position", x.relativePosition}, {"styles", x.styles}, {"isShow", x.isShow} };
-		}
-		friend inline void from_json(const nlohmann::json& j, UIBase& x) {
-			j.at("position").get_to(x.relativePosition);
-			j.at("styles").get_to(x.styles);
-			j.at("isShow").get_to(x.isShow);
-		}
 	};
 	class ImageObject :public UIBase {
 		friend class WindowManager;
@@ -286,7 +262,7 @@ namespace gui {
 		//use this setter
 		//after : setImage() , setScale() , setScaleTo()
 		ImageObject& setSizeAuto() {
-			setSize(static_cast<sf::Vector2f>(UIimageManager[imageId].getSize()).componentWiseMul(scale));
+			setSize(static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale));
 			return *this;
 		}
 	protected:
@@ -316,10 +292,12 @@ namespace gui {
 		}
 		//use this setter
 		//after : setImage()
-		ImageObject& setScaleAuto() {
-			auto sizeOptional = getSize();
-			if (sizeOptional.x.has_value() && sizeOptional.y.has_value())
-				scale = sf::Vector2f(sizeOptional.x.value(), sizeOptional.y.value()).componentWiseDiv(static_cast<sf::Vector2f>(UIimageManager[imageId].getSize()));
+		//设置自动缩放，autoAxes的x/y为true时对应轴实时根据posRect自动缩放
+		ImageObject& setScaleAuto(sf::Vector2i _autoScalable = { 1, 1 }) {
+			if (_autoScalable.x)
+				scale.x = -1.f;
+			if (_autoScalable.y)
+				scale.y = -1.f;
 			return *this;
 		}
 		ImageObject& setImageId(const std::string& _imageId) {
@@ -332,25 +310,6 @@ namespace gui {
 			return static_cast<sf::Vector2<Align>>(align);
 		}
 		const sf::Color& getImageColor(int id) const { return imageColors[id]; }
-		friend inline void read(BinaryFileStream& bf, ImageObject& x) {
-			bf.readStruct(static_cast<UIBase&>(x), x.imageId, x.scale, x.align, x.imageColors);
-		}
-		friend inline void write(BinaryFileStream& bf, const ImageObject& x) {
-			bf.writeStruct(static_cast<const UIBase&>(x), x.imageId, x.scale, x.align, x.imageColors);
-		}
-		friend inline void to_json(nlohmann::json& j, const ImageObject& x) {
-			nlohmann::json base = static_cast<const UIBase&>(x);
-			j = nlohmann::json{ {"UIBase", base}, {"imageId", x.imageId}, {"scale", x.scale}, {"align", x.align}, {"imageColors", x.imageColors} };
-		}
-		friend inline void from_json(const nlohmann::json& j, ImageObject& x) {
-			nlohmann::json base;
-			j.at("UIBase").get_to(base);
-			base.get_to(static_cast<UIBase&>(x));
-			j.at("imageId").get_to(x.imageId);
-			j.at("scale").get_to(x.scale);
-			j.at("align").get_to(x.align);
-			j.at("imageColors").get_to(x.imageColors);
-		}
 	};
 	class TextStyle{
 	public:
@@ -359,19 +318,6 @@ namespace gui {
 		void set(sf::Color _fillColor, sf::Color _outlineColor) {
 			fillColor = _fillColor;
 			outlineColor = _outlineColor;
-		}
-		friend inline void read(BinaryFileStream& bf, TextStyle& x) {
-			bf.readStruct(x.fillColor, x.outlineColor);
-		}
-		friend inline void write(BinaryFileStream& bf, const TextStyle& x) {
-			bf.writeStruct(x.fillColor, x.outlineColor);
-		}
-		friend inline void to_json(nlohmann::json& j, const TextStyle& x) {
-			j = nlohmann::json{ {"fillColor", x.fillColor}, {"outlineColor", x.outlineColor} };
-		}
-		friend inline void from_json(const nlohmann::json& j, TextStyle& x) {
-			j.at("fillColor").get_to(x.fillColor);
-			j.at("outlineColor").get_to(x.outlineColor);
 		}
 	};
 	class TextObject :public UIBase {
@@ -389,6 +335,12 @@ namespace gui {
 			return *this;
 		}
 		TextStyle& textStyle(int id) {
+			return textStyles[id];
+		}
+		TextStyle& getTextStyle(int id) {
+			return textStyles[id];
+		}
+		const TextStyle& getTextStyle(int id) const {
 			return textStyles[id];
 		}
 		//use this setter
@@ -455,30 +407,6 @@ namespace gui {
 		float getLetterSpacing() const { return letterSpacing; }
 		float getLineSpacing() const { return lineSpacing; }
 		sf::Vector2i getAlign() const { return align; }
-		friend inline void read(BinaryFileStream& bf, TextObject& x) {
-			bf.readStruct(static_cast<UIBase&>(x), x.textStyles, x.font, x.characterSize, x.align, x.letterSpacing, x.lineSpacing, x.text);
-			x.textRender.setFont(fontManager[x.font]);
-		}
-		friend inline void write(BinaryFileStream& bf, const TextObject& x) {
-			bf.writeStruct(static_cast<const UIBase&>(x), x.textStyles, x.font, x.characterSize, x.align, x.letterSpacing, x.lineSpacing, x.text);
-		}
-		friend inline void to_json(nlohmann::json& j, const TextObject& x) {
-			nlohmann::json base = static_cast<const UIBase&>(x);
-			j = nlohmann::json{ {"UIBase", base}, {"textStyles", x.textStyles}, {"font", x.font}, {"characterSize", x.characterSize}, {"align", x.align}, {"letterSpacing", x.letterSpacing}, {"lineSpacing", x.lineSpacing}, {"text", x.text} };
-		}
-		friend inline void from_json(const nlohmann::json& j, TextObject& x) {
-			nlohmann::json base;
-			j.at("UIBase").get_to(base);
-			base.get_to(static_cast<UIBase&>(x));
-			j.at("textStyles").get_to(x.textStyles);
-			j.at("font").get_to(x.font);
-			j.at("characterSize").get_to(x.characterSize);
-			j.at("align").get_to(x.align);
-			j.at("letterSpacing").get_to(x.letterSpacing);
-			j.at("lineSpacing").get_to(x.lineSpacing);
-			j.at("text").get_to(x.text);
-			x.textRender.setFont(fontManager[x.font]);
-		}
 	};
 	class ButtonObject :public TextObject {
 		friend class WindowManager;
@@ -500,15 +428,13 @@ namespace gui {
 			styles[gui::UIBase::Over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
 			styles[gui::UIBase::Focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
 		}
-	protected:
-		int typeLimit = gui::InputObject::String;
-		size_t sizeLimit = INT_MAX;
 		class InputLimit {
 			bool isAllowList = false;
 			std::vector<char32_t>single;
 			std::vector<std::pair<char32_t, char32_t>>range;
 		public:
-			void set(bool _isAllowList, std::initializer_list<char32_t> _single, std::initializer_list<std::pair<char32_t, char32_t>> _range) {
+			InputLimit() {}
+			InputLimit(bool _isAllowList, std::initializer_list<char32_t> _single, std::initializer_list<std::pair<char32_t, char32_t>> _range) {
 				isAllowList = _isAllowList;
 				single = _single;
 				range = _range;
@@ -516,6 +442,24 @@ namespace gui {
 					if (elem.first > elem.second)
 						std::swap(elem.first, elem.second);
 			}
+			InputLimit& setIsAllowList(bool value) {
+				isAllowList = value;
+				return *this;
+			}
+			bool getIsAllowList() const { return isAllowList; }
+			InputLimit& setSingle(const std::vector<char32_t>& value) {
+				single = value;
+				return *this;
+			}
+			const std::vector<char32_t>& getSingle() const { return single; }
+			InputLimit& setRange(const std::vector<std::pair<char32_t, char32_t>>& value) {
+				range = value;
+				for (auto& elem : range)
+					if (elem.first > elem.second)
+						std::swap(elem.first, elem.second);
+				return *this;
+			}
+			const std::vector<std::pair<char32_t, char32_t>>& getRange() const { return range; }
 			bool isLegal(char32_t ch) {
 				for (auto& elem : single)
 					if (ch == elem)return isAllowList;
@@ -534,21 +478,12 @@ namespace gui {
 				}
 				return pos;
 			}
-			friend inline void read(BinaryFileStream& bf, InputLimit& x) {
-				bf.readStruct(x.isAllowList, x.single, x.range);
-			}
-			friend inline void write(BinaryFileStream& bf, const InputLimit& x) {
-				bf.writeStruct(x.isAllowList, x.single, x.range);
-			}
-			friend inline void to_json(nlohmann::json& j, const InputLimit& x) {
-				j = nlohmann::json{ {"isAllowList", x.isAllowList}, {"single", x.single}, {"range", x.range} };
-			}
-			friend inline void from_json(const nlohmann::json& j, InputLimit& x) {
-				j.at("isAllowList").get_to(x.isAllowList);
-				j.at("single").get_to(x.single);
-				j.at("range").get_to(x.range);
-			}
-		}inputLimit;
+		};
+	protected:
+		InputLimit inputLimit;
+		int typeLimit = gui::InputObject::String;
+		size_t sizeLimit = INT_MAX;
+		
 		size_t cursor = 0;
 		sf::Vector2f scroll;
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
@@ -640,41 +575,29 @@ namespace gui {
 			sizeLimit = _sizeLimit;
 			return *this;
 		}
+		size_t getSizeLimit() const { return sizeLimit; }
 		InputObject& setTypeLimit(gui::InputObject::InputType _typeLimit) {
 			typeLimit = _typeLimit;
 			return *this;
 		}
-		InputObject& setStringTypeLimit(bool _isAllowList, std::initializer_list<char32_t> _single, std::initializer_list<std::pair<char32_t, char32_t>> _range) {
+		int getTypeLimit() const { return typeLimit; }
+		InputObject& setStringTypeLimit(bool _isAllowList, const std::vector<char32_t>& _single, const std::vector<std::pair<char32_t, char32_t>>& _range) {
 			typeLimit = gui::InputObject::String;
-			inputLimit.set(_isAllowList, _single, _range);
+			inputLimit.setIsAllowList(_isAllowList).setSingle(_single).setRange(_range);
 			return *this;
+		}
+		std::optional<InputLimit> getStringTypeLimit() const {
+			if (typeLimit != gui::InputObject::String)return {};
+			return inputLimit;
+		}
+		std::optional<InputLimit> getStringTypeLimit() {
+			if (typeLimit != gui::InputObject::String)return {};
+			return inputLimit;
 		}
 		InputObject& setText(sf::String _text) {
 			text = _text;
 			cursor = text.getSize();
 			return *this;
-		}
-		int getTypeLimit() const { return typeLimit; }
-		size_t getSizeLimit() const { return sizeLimit; }
-		friend inline void read(BinaryFileStream& bf, InputObject& x) {
-			bf.readStruct(static_cast<TextObject&>(x), x.sizeLimit, x.typeLimit, x.inputLimit);
-			x.cursor = x.text.getSize();
-		}
-		friend inline void write(BinaryFileStream& bf, const InputObject& x) {
-			bf.writeStruct(static_cast<const TextObject&>(x), x.sizeLimit, x.typeLimit, x.inputLimit);
-		}
-		friend inline void to_json(nlohmann::json& j, const InputObject& x) {
-			nlohmann::json base = static_cast<const TextObject&>(x);
-			j = nlohmann::json{ {"TextObject", base}, {"sizeLimit", x.sizeLimit}, {"typeLimit", x.typeLimit}, {"inputLimit", x.inputLimit} };
-		}
-		friend inline void from_json(const nlohmann::json& j, InputObject& x) {
-			nlohmann::json base;
-			j.at("TextObject").get_to(base);
-			base.get_to(static_cast<TextObject&>(x));
-			j.at("sizeLimit").get_to(x.sizeLimit);
-			j.at("typeLimit").get_to(x.typeLimit);
-			j.at("inputLimit").get_to(x.inputLimit);
-			x.cursor = x.text.getSize();
 		}
 	};
 	class AreaObject :public UIBase {
@@ -724,41 +647,21 @@ namespace gui {
 			return *this;
 		}
 	public:
-		friend inline void read(BinaryFileStream& bf, AreaObject& x) {
-			bf.readStruct(static_cast<UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.option);
-		}
-		friend inline void write(BinaryFileStream& bf, const AreaObject& x) {
-			bf.writeStruct(static_cast<const UIBase&>(x), VarianTmapSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub}, x.mouseDragScrollable, x.mouseWheelScrollable, x.option);
-		}
-		friend inline void to_json(nlohmann::json& j, const AreaObject& x) {
-			nlohmann::json base = static_cast<const UIBase&>(x);
-			j = nlohmann::json{ {"UIBase", base}, {"sub", VarianTmapJsonSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{const_cast<VarianTmap<UIBase>&>(x.sub)}}, {"mouseDragScrollable", x.mouseDragScrollable}, {"mouseWheelScrollable", x.mouseWheelScrollable}, {"option", x.option} };
-		}
-		friend inline void from_json(const nlohmann::json& j, AreaObject& x) {
-			nlohmann::json base;
-			j.at("UIBase").get_to(base);
-			base.get_to(static_cast<UIBase&>(x));
-			auto subWrapper = VarianTmapJsonSerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>{x.sub};
-			j.at("sub").get_to(subWrapper);
-			j.at("mouseDragScrollable").get_to(x.mouseDragScrollable);
-			j.at("mouseWheelScrollable").get_to(x.mouseWheelScrollable);
-			j.at("option").get_to(x.option);
-		}
 		AreaObject& setOption(const std::string& key) {
 			if (option!="") {
-				if (auto ptr = sub.find_named<OptionObject>(option))
+				if (auto ptr = sub.find<OptionObject>(option))
 					ptr->setStatu(gui::UIBase::Normal, true);
 				else option = "";
 			}
 			option = key;
-			if (auto ptr = sub.find_named<OptionObject>(key)) {
+			if (auto ptr = sub.find<OptionObject>(key)) {
 				ptr->setStatu(gui::UIBase::Focus);
 			}
 			return *this;
 		}
 		AreaObject& setOption() {
 			if (option != "") {
-				if (auto ptr = sub.find_named<OptionObject>(option))
+				if (auto ptr = sub.find<OptionObject>(option))
 					ptr->setStatu(gui::UIBase::Normal, true);
 				else option = "";
 			}
@@ -776,7 +679,7 @@ namespace gui {
 	protected:
 		void updateOption() {
 			if (option!="") {
-				if (auto ptr = sub.find_named<OptionObject>(option))
+				if (auto ptr = sub.find<OptionObject>(option))
 					ptr->setStatu(gui::UIBase::Focus);
 				else option = "";
 			}
@@ -835,13 +738,13 @@ namespace gui {
 			std::string temp = "";
 			for (int i = 0; i < path.size(); i++) {
 				if (path[i] == '_' || path[i] == '.') {
-					areaPtr = areaPtr->sub.find_named<AreaObject>(temp);
+					areaPtr = areaPtr->sub.find<AreaObject>(temp);
 					temp = "";
 					if (areaPtr == nullptr)return nullptr;
 				}
 				else temp.push_back(path[i]);
 			}
-			return areaPtr->sub.find_named<T>(temp);
+			return areaPtr->sub.find<T>(temp);
 		}
 		template<typename T>
 		T* path_find(const std::string& path) {
@@ -875,6 +778,9 @@ namespace gui {
 			template<typename T>
 			void setType() {
 				type = std::type_index(typeid(T));
+			}
+			void setType(std::type_index type) {
+				this->type = type;
 			}
 			template<typename T>
 			bool is() const {
@@ -939,26 +845,23 @@ namespace gui {
 			layer.clear();
 		}
 		void open(const std::string& id) {
-			if (layer.find_named<AreaObject>(id)) {
-				std::cerr << "[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
+			if (layer.find(id)) {
 				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
-			layer.emplace_named<AreaObject>(layer.end(),id);
+			layer.emplace<AreaObject>(layer.end(),id);
 		}
 		void open(const std::string& id,const AreaObject& Window) {
-			if (layer.find_named<AreaObject>(id)) {
-				std::cerr << "[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
+			if (layer.find(id)) {
 				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
-			auto ptr=layer.push_back_named(id, Window);
+			auto ptr=layer.push_back<AreaObject>(id, Window);
 			ptr->updateOption();
 		}
 		void open(const std::string& id, AreaObject&& Window) {
-			if (layer.find_named<AreaObject>(id)) {
-				std::cerr << "[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " << id << "\n";
+			if (layer.find(id)) {
 				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
-			auto ptr = layer.push_back_named(id, Window);
+			auto ptr = layer.push_back<AreaObject>(id, Window);
 			ptr->updateOption();
 		}
 		size_t close(const std::string& id) {
@@ -981,10 +884,9 @@ namespace gui {
 			return count;
 		}
 		AreaObject& window(const std::string& id) {
-			if (auto ptr = layer.find_named<AreaObject>(id))
+			if (auto ptr = layer.find(id))
 				return *ptr;
 			else {
-				std::cerr << "[WindowManager::window] Window ID not found 未找到指定的窗口ID\n  id: " << id << "\n";
 				throw std::runtime_error("[WindowManager::window] Window ID not found 未找到指定的窗口ID\n  id: " + id + "\n");
 			}
 		}
@@ -1010,7 +912,6 @@ namespace gui {
 				if (areaPtr != nullptr)
 					return areaPtr->sub.get<T>(temp);
 				else {
-					std::cerr << "[WindowManager::path_get] Path error. 路径错误\n  path: " << path << "\n";
 					throw std::runtime_error("[WindowManager::path_get] Path error. 路径错误\n  path: " + path + "\n");
 				}
 			}
@@ -1037,7 +938,6 @@ namespace gui {
 				if (areaPtr != nullptr)
 					return areaPtr->sub.at<T>(temp);
 				else {
-					std::cerr << "[WindowManager::path_at] Path error. 路径错误\n  path: " << path << "\n";
 					throw std::runtime_error("[WindowManager::path_at] Path error. 路径错误\n  path: " + path + "\n");
 				}
 			}
@@ -1049,8 +949,8 @@ namespace gui {
 			for (int i = 0; i < path.size(); i++) {
 				if (path[i] == '_' || path[i] == '.') {
 					if (areaPtr == nullptr)
-						areaPtr = layer.find_named<AreaObject>(temp);
-					else areaPtr = areaPtr->sub.find_named<AreaObject>(temp);
+						areaPtr = layer.find<AreaObject>(temp);
+					else areaPtr = areaPtr->sub.find<AreaObject>(temp);
 					temp = "";
 					if (areaPtr == nullptr)return nullptr;
 				}
@@ -1058,10 +958,10 @@ namespace gui {
 			}
 			if constexpr (std::is_same_v<T, AreaObject>) {
 				if (areaPtr == nullptr)
-					return layer.find_named<AreaObject>(temp);
-				else return areaPtr->sub.find_named<T>(temp);
+					return layer.find(temp);
+				else return areaPtr->sub.find<T>(temp);
 			}
-			else return areaPtr->sub.find_named<T>(temp);
+			else return areaPtr->sub.find<T>(temp);
 		}
 		const std::optional<Event> pollEvent() {
 			return event.pollEvent();
@@ -1073,13 +973,8 @@ namespace gui {
 				areaPtr = path_find<gui::AreaObject>(obj.path);
 				if (areaPtr == nullptr) return nullptr;
 			}
-
-			if (obj.is<gui::ButtonObject>())
-				return areaPtr->sub.find_named<ButtonObject>(obj.name);
-			else if (obj.is<gui::OptionObject>())
-				return areaPtr->sub.find_named<OptionObject>(obj.name);
-			else if (obj.is<gui::InputObject>())
-				return areaPtr->sub.find_named<InputObject>(obj.name);
+			if (obj.is<gui::ButtonObject>() || obj.is<gui::OptionObject>() || obj.is<gui::InputObject>())
+				return areaPtr->sub.find(obj.name);
 			else if (obj.is<gui::AreaObject>())
 				return areaPtr;
 			else return nullptr;
@@ -1106,18 +1001,9 @@ namespace gui {
 							if (areaPtr == nullptr)
 								return nullptr;
 							over.path = path;
-							if (areaPtr->sub.find<ButtonObject>(elem)) {
-								over.setType<ButtonObject>();
-								over.name = areaPtr->sub.find_key(elem);
-								return areaPtr;
-							}
-							if (areaPtr->sub.find<OptionObject>(elem)) {
-								over.setType<OptionObject>();
-								over.name = areaPtr->sub.find_key(elem);
-								return areaPtr;
-							}
-							if (areaPtr->sub.find<InputObject>(elem)) {
-								over.setType<InputObject>();
+							auto typeIdx = areaPtr->sub.find_type_index(elem);
+							if (typeIdx == std::type_index(typeid(ButtonObject)) || typeIdx == std::type_index(typeid(OptionObject)) || typeIdx == std::type_index(typeid(InputObject))) {
+								over.setType(typeIdx);
 								over.name = areaPtr->sub.find_key(elem);
 								return areaPtr;
 							}

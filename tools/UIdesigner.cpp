@@ -1,4 +1,6 @@
 #include "engine/gui/MyGUI.hpp"
+#include "engine/serialization/BinaryFileStream.hpp"
+#include "engine/serialization/JsonExtensions.hpp"
 #include <fstream>
 #include <functional>
 
@@ -430,7 +432,7 @@ namespace Init {
 		for (size_t i = 0; i < anchorOptions.size(); i++) {
 			addSimpleOption(area, prefix + "Anchor." + anchorOptions[i], sf::String::fromUtf8(anchorOptions[i].begin(), anchorOptions[i].end()),
 				sf::Vector2f(eachWidth * i, 0), sf::Vector2f(eachWidth, size.y));
-			area.sub.get<gui::AreaObject>(prefix + "Anchor").sub.emplace_named<gui::TextObject>(
+			area.sub.get<gui::AreaObject>(prefix + "Anchor").sub.emplace<gui::TextObject>(
 				area.sub.get<gui::AreaObject>(prefix + "Anchor").sub.end(),
 				anchorOptions[i] + "_disabled", gui::TextObject{});
 			area.sub.get<gui::AreaObject>(prefix + "Anchor").sub.get<gui::TextObject>(anchorOptions[i] + "_disabled")
@@ -564,7 +566,7 @@ namespace Init {
 		addSimpleText(area, "Set" + stateName + "OutlineColor", L"轮廓颜色:", sf::Vector2f(0, static_cast<float>(40 * line)));
 		addColorInputs4(area, "Set" + stateName + "OutlineColor", line, inputStartX, fullWidth, fullWidth);
 		line++;
-		addSimpleText(area, "Set" + stateName + "OutlineThickness", L"轮廓粗细:", sf::Vector2f(0, static_cast<float>(40 * line)));
+		addSimpleText(area, "Set" + stateName + "OutlineThicknessText", L"轮廓粗细:", sf::Vector2f(0, static_cast<float>(40 * line)));
 		addSimpleInput(area, "Set" + stateName + "OutlineThickness", gui::InputObject::Int, sf::Vector2f(inputStartX, static_cast<float>(40 * line)), sf::Vector2f(fullWidth - inputStartX, 40));
 	}
 	void addTextStyleInputs(gui::AreaObject& area, const std::string& stateName, int& line, float inputStartX, float fullWidth) {
@@ -600,9 +602,8 @@ namespace Init {
 		addSimpleText(area, "SetImage" + stateName + "Color", L"图片颜色:", sf::Vector2f(0, static_cast<float>(40 * line)));
 		addColorInputs4(area, "SetImage" + stateName + "Color", line, inputStartX, fullWidth, fullWidth);
 	}
-	void loadAndAddButton(gui::AreaObject& area, const std::string& name, const std::string& iconPath, const sf::String& buttonText, sf::Vector2f pos) {
-		gui::UIimageManager.loadImage(name, iconPath);
-		addSimpleImage(area, name, name, pos);
+	void loadAndAddButton(gui::AreaObject& area, const std::string& name, const sf::String& buttonText, sf::Vector2f pos) {
+		addSimpleImage(area, name + "(icon)", name, pos);
 		addAutoButton(area, name, buttonText, pos);
 	}
 }
@@ -622,25 +623,25 @@ static void init() {
 		.setPosition(sf::Vector2f(0, 0))
 		.setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
 
-	Init::loadAndAddButton(Main, "open", "resources/UIdesigner/open.png", L"    打开", sf::Vector2f(40, 0));
-	Init::loadAndAddButton(Main, "save", "resources/UIdesigner/save.png", L"    保存", sf::Vector2f(40 + 124 * 1, 0));
+	Init::loadAndAddButton(Main, "open", L"    打开", sf::Vector2f(40, 0));
+	Init::loadAndAddButton(Main, "save", L"    保存", sf::Vector2f(40 + 124 * 1, 0));
 
-	Init::loadAndAddButton(Main, "exportReflection", "resources/UIdesigner/export.png", L"    导出反射", sf::Vector2f(40 + 124 * 2, 0));
+	Init::loadAndAddButton(Main, "exportReflection", L"    导出反射", sf::Vector2f(40 + 124 * 2, 0));
 
-	Init::loadAndAddButton(Main, "about", "resources/UIdesigner/about.png", L"    关于", sf::Vector2f(static_cast<float>(windowWidth - 40 - 124), static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "about", L"    关于", sf::Vector2f(static_cast<float>(windowWidth - 40 - 124), static_cast<float>(windowHeight - 40)));
 
 	float halfWindowWidth = static_cast<float>((windowWidth - 40 * 2 - 10) / 2);
 	Init::addSimpleArea(Main, "list", sf::Vector2f(40, 42), sf::Vector2f(halfWindowWidth, static_cast<float>(windowHeight - 42 * 2)), sf::Vector2i(0, 0), sf::Vector2i(1, 1));
 	Init::addSimpleArea(Main, "settings", sf::Vector2f(static_cast<float>(halfWindowWidth + 40 + 10), 42), sf::Vector2f(halfWindowWidth, static_cast<float>(windowHeight - 42 * 2)), sf::Vector2i(0, 0), sf::Vector2i(1, 1));
 
-	Init::loadAndAddButton(Main, "new", "resources/UIdesigner/new.png", L"    添加", sf::Vector2f(40, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "delete", "resources/UIdesigner/delete.png", L"    删除", sf::Vector2f(40 + 124 * 1, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "moveup", "resources/UIdesigner/moveup.png", L"    上移", sf::Vector2f(40 + 124 * 2, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "movedown", "resources/UIdesigner/movedown.png", L"    下移", sf::Vector2f(40 + 124 * 3, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "rename", "resources/UIdesigner/rename.png", L"    重命名", sf::Vector2f(40 + 124 * 4, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "cut", "resources/UIdesigner/cut.png", L"    剪切", sf::Vector2f(40 + 124 * 4 + 164 * 1, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "copy", "resources/UIdesigner/copy.png", L"    复制", sf::Vector2f(40 + 124 * 5 + 164 * 1, static_cast<float>(windowHeight - 40)));
-	Init::loadAndAddButton(Main, "paste", "resources/UIdesigner/paste.png", L"    粘贴", sf::Vector2f(40 + 124 * 6 + 164 * 1, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "new", L"    添加", sf::Vector2f(40, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "delete", L"    删除", sf::Vector2f(40 + 124 * 1, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "moveup", L"    上移", sf::Vector2f(40 + 124 * 2, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "movedown", L"    下移", sf::Vector2f(40 + 124 * 3, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "rename", L"    重命名", sf::Vector2f(40 + 124 * 4, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "cut", L"    剪切", sf::Vector2f(40 + 124 * 4 + 164 * 1, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "copy", L"    复制", sf::Vector2f(40 + 124 * 5 + 164 * 1, static_cast<float>(windowHeight - 40)));
+	Init::loadAndAddButton(Main, "paste", L"    粘贴", sf::Vector2f(40 + 124 * 6 + 164 * 1, static_cast<float>(windowHeight - 40)));
 
 	Main.path_get<gui::TextObject>("mouseCoordX")
 		.setText(L"x:0")
@@ -664,37 +665,31 @@ static void init() {
 	Init::addTitleText(New, "title", L"添加", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	NewLine++;
 
-	gui::UIimageManager.loadImage("area", "resources/UIdesigner/area.png");
-	Init::addSimpleImage(New, "window", "area", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
+	Init::addSimpleImage(New, "windowIcon", "area", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "window", L"    新建窗口", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	Init::addSimpleImage(New, "area", "area", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
+	Init::addSimpleImage(New, "areaIcon", "area", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "area", L"    新建区域", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	gui::UIimageManager.loadImage("input", "resources/UIdesigner/input.png");
-	Init::addSimpleImage(New, "input", "input", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
+	Init::addSimpleImage(New, "inputIcon", "input", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "input", L"    新建输入框", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	gui::UIimageManager.loadImage("button", "resources/UIdesigner/button.png");
-	Init::addSimpleImage(New, "button", "button", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
+	Init::addSimpleImage(New, "buttonIcon", "button", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "button", L"    新建按钮", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	gui::UIimageManager.loadImage("option", "resources/UIdesigner/option.png");
-	Init::addSimpleImage(New, "option", "option", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
+	Init::addSimpleImage(New, "optionIcon", "option", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "option", L"    新建选项", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	gui::UIimageManager.loadImage("image", "resources/UIdesigner/image.png");
-	Init::addSimpleImage(New, "image", "image", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
+	Init::addSimpleImage(New, "imageIcon", "image", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "image", L"    新建图片", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 
-	gui::UIimageManager.loadImage("text", "resources/UIdesigner/text.png");
-	Init::addSimpleImage(New, "text", "text", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
+	Init::addSimpleImage(New, "textIcon", "text", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	Init::addAutoOption(New, "text", L"    新建文本", sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
 	New.path_get<gui::ButtonObject>("isSubText")
@@ -722,7 +717,7 @@ static void init() {
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	NewLine++;
-	Init::addTitleText(New, "name", L"名称：", sf::Vector2f(0, static_cast<float>(40 * NewLine)),sf::Vector2f(120,40));
+	Init::addTitleText(New, "nameText", L"名称：", sf::Vector2f(0, static_cast<float>(40 * NewLine)),sf::Vector2f(120,40));
 
 	New.path_get<gui::InputObject>("name")
 		.setStringTypeLimit(true, {}, { {L'A',L'Z'},{L'a',L'z'},{L'0',L'9'}})
@@ -754,7 +749,7 @@ static void init() {
 	Init::addSimpleOption(Open, "json", L"JSON", sf::Vector2f(300, static_cast<float>(40 * OpenLine)), sf::Vector2f(300, 40));
 	OpenLine++;
 
-	Init::addSimpleText(Open, "filepath", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * OpenLine)));
+	Init::addSimpleText(Open, "filepathText", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * OpenLine)));
 
 	Init::addSimpleInput(Open, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * OpenLine)), sf::Vector2f(600 - 160, 40), L"");
 	OpenLine++;
@@ -799,12 +794,12 @@ static void init() {
 	Init::addSimpleOption(Save, "json", L"JSON", sf::Vector2f(300, static_cast<float>(40 * SaveLine)), sf::Vector2f(300, 40));
 	SaveLine++;
 
-	Init::addSimpleText(Save, "filepath", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * SaveLine)));
+	Init::addSimpleText(Save, "filepathText", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * SaveLine)));
 
 	Init::addSimpleInput(Save, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * SaveLine)), sf::Vector2f(600 - 160, 40), L"");
 	SaveLine++;
 
-	Init::addSimpleText(Save, "windowToSave", L"要保存的窗口：", sf::Vector2f(0, static_cast<float>(40 * SaveLine)));
+	Init::addSimpleText(Save, "windowToSaveText", L"要保存的窗口：", sf::Vector2f(0, static_cast<float>(40 * SaveLine)));
 	SaveLine++;
 
 	Save.path_get<gui::AreaObject>("windowToSave")
@@ -828,12 +823,12 @@ static void init() {
 	Init::addTitleText(ExportReflection, "title", L"导出反射", sf::Vector2f(600 / 2, 20), sf::Vector2f(600, 40),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	ExportReflectionLine++;
 
-	Init::addSimpleText(ExportReflection, "filepath", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
+	Init::addSimpleText(ExportReflection, "filepathText", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
 
 	Init::addSimpleInput(ExportReflection, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * ExportReflectionLine)), sf::Vector2f(600 - 160, 40), L"");
 	ExportReflectionLine++;
 
-	Init::addSimpleText(ExportReflection, "windowToExport", L"要导出的窗口：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
+	Init::addSimpleText(ExportReflection, "windowToExportText", L"要导出的窗口：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
 	ExportReflectionLine++;
 
 	ExportReflection.path_get<gui::AreaObject>("windowToExport")
@@ -991,7 +986,7 @@ static void init() {
 		L"锚定类型:", L"关联线型:", L"差值:", "Height", "TopEdge");
 	UIBaseLine += 3;
 
-	Init::addSimpleText(settings::UIBase, "SetShow", L"是否显示:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
+	Init::addSimpleText(settings::UIBase, "SetShowText", L"是否显示:", sf::Vector2f(0, static_cast<float>(40 * UIBaseLine)));
 	Init::addBoolInput(settings::UIBase, "SetShow", sf::Vector2f(200, static_cast<float>(40 * UIBaseLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	UIBaseLine++; UIBaseLine++;
 
@@ -1008,7 +1003,7 @@ static void init() {
 	Init::addTitleText(settings::Area, "AreaSettings", L"Area设置", sf::Vector2f(0, static_cast<float>(40 * AreaLine)), sf::Vector2f(halfWindowWidth, 40));
 	AreaLine++;
 
-	Init::addSimpleText(settings::Area, "SetOption", L"默认子Option:", sf::Vector2f(0, static_cast<float>(40 * AreaLine)));
+	Init::addSimpleText(settings::Area, "SetOptionText", L"默认子Option:", sf::Vector2f(0, static_cast<float>(40 * AreaLine)));
 	Init::addAlphaInput(settings::Area, "SetOption", sf::Vector2f(260, static_cast<float>(40 * AreaLine)), sf::Vector2f(halfWindowWidth - 260, 40));
 	AreaLine++;
 
@@ -1032,30 +1027,30 @@ static void init() {
 	Init::addTextStyleInputs(settings::Text, "Focus", TextLine, 200, halfWindowWidth);
 	TextLine++; TextLine++;
 
-	Init::addSimpleText(settings::Text, "SetText", L"文字:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
+	Init::addSimpleText(settings::Text, "SetTextText", L"文字:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
 	Init::addStringInput(settings::Text, "SetText", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	TextLine++;
 
 	Init::addSimpleButton(settings::Text, "SetSizeAuto", L"自动设置大小", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	TextLine++;
 
-	Init::addSimpleText(settings::Text, "SetFont", L"字体:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
+	Init::addSimpleText(settings::Text, "SetFontText", L"字体:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
 	Init::addStringInput(settings::Text, "SetFont", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	TextLine++;
 
-	Init::addSimpleText(settings::Text, "SetCharacterSize", L"文字大小:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
+	Init::addSimpleText(settings::Text, "SetCharacterSizeText", L"文字大小:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
 	Init::addSimpleInput(settings::Text, "SetCharacterSize", gui::InputObject::Int, sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	TextLine++;
 
-	Init::addSimpleText(settings::Text, "SetLetterSpacing", L"字间距:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
+	Init::addSimpleText(settings::Text, "SetLetterSpacingText", L"字间距:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
 	Init::addSimpleInput(settings::Text, "SetLetterSpacing", gui::InputObject::Float, sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	TextLine++;
 
-	Init::addSimpleText(settings::Text, "SetLineSpacing", L"行间距:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
+	Init::addSimpleText(settings::Text, "SetLineSpacingText", L"行间距:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
 	Init::addSimpleInput(settings::Text, "SetLineSpacing", gui::InputObject::Float, sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	TextLine++;
 
-	Init::addSimpleText(settings::Text, "SetAlign", L"对齐方式:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
+	Init::addSimpleText(settings::Text, "SetAlignText", L"对齐方式:", sf::Vector2f(0, static_cast<float>(40 * TextLine)));
 	Init::addAlignBar(settings::Text, "SetAlign", sf::Vector2f(200, static_cast<float>(40 * TextLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Mid", "Mid");
 	TextLine++;	TextLine++;
 
@@ -1065,21 +1060,21 @@ static void init() {
 	Init::addTitleText(settings::Image, "ImageSettings", L"图片设置", sf::Vector2f(0, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth, 40));
 	ImageLine++;
 
-	Init::addSimpleText(settings::Image, "SetImageId", L"图片ID:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
+	Init::addSimpleText(settings::Image, "SetImageIdText", L"图片ID:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
 	Init::addStringInput(settings::Image, "SetImageId", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	ImageLine++;
 
 	Init::addSimpleButton(settings::Image, "SetImageSizeAuto", L"自动设置大小", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	ImageLine++;
 
-	Init::addSimpleText(settings::Image, "SetScale", L"缩放:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
+	Init::addSimpleText(settings::Image, "SetScaleText", L"缩放:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
 	Init::addPairInput(settings::Image, "SetScaleX", "SetScaleY", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40), gui::InputObject::Float);
 	ImageLine++;
 
 	Init::addSimpleButton(settings::Image, "SetScaleAuto", L"自动设置缩放", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	ImageLine++;
 
-	Init::addSimpleText(settings::Image, "SetAlign", L"对齐方式:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
+	Init::addSimpleText(settings::Image, "SetAlignText", L"对齐方式:", sf::Vector2f(0, static_cast<float>(40 * ImageLine)));
 	Init::addAlignBar(settings::Image, "SetAlign", sf::Vector2f(200, static_cast<float>(40 * ImageLine)), sf::Vector2f(halfWindowWidth - 200, 40), "Mid", "Mid");
 	ImageLine++;	ImageLine++;
 
@@ -1095,11 +1090,11 @@ static void init() {
 	Init::addTitleText(settings::Input, "InputSettings", L"输入框设置", sf::Vector2f(0, static_cast<float>(40 * InputLine)), sf::Vector2f(halfWindowWidth, 40));
 	InputLine++;
 
-	Init::addSimpleText(settings::Input, "SetTypeLimit", L"输入类型:", sf::Vector2f(0, static_cast<float>(40 * InputLine)));
+	Init::addSimpleText(settings::Input, "SetTypeLimitText", L"输入类型:", sf::Vector2f(0, static_cast<float>(40 * InputLine)));
 	Init::addTypeLimitBar(settings::Input, "SetTypeLimit", sf::Vector2f(200, static_cast<float>(40 * InputLine)), sf::Vector2f(halfWindowWidth - 200, 40), "String");
 	InputLine++;
 
-	Init::addSimpleText(settings::Input, "SetSizeLimit", L"长度限制:", sf::Vector2f(0, static_cast<float>(40 * InputLine)));
+	Init::addSimpleText(settings::Input, "SetSizeLimitText", L"长度限制:", sf::Vector2f(0, static_cast<float>(40 * InputLine)));
 	Init::addSimpleInput(settings::Input, "SetSizeLimit", gui::InputObject::Int, sf::Vector2f(200, static_cast<float>(40 * InputLine)), sf::Vector2f(halfWindowWidth - 200, 40));
 	InputLine++;	InputLine++;
 }
@@ -1278,6 +1273,30 @@ namespace designer {
 	std::pair<std::string, std::string> getType(const std::string& optionName) {
 		return make_pair(optionName.substr(0, optionName.find(')') + 1), optionName.substr(optionName.find(')') + 1));
 	}
+	//将type_index转换为类型标识字符串，如 "(area)"
+	std::string typeIndexToTypeStr(std::type_index typeIndex) {
+		if (typeIndex == std::type_index(typeid(gui::AreaObject))) return attr::designer::type::area;
+		if (typeIndex == std::type_index(typeid(gui::ButtonObject))) return attr::designer::type::button;
+		if (typeIndex == std::type_index(typeid(gui::ImageObject))) return attr::designer::type::image;
+		if (typeIndex == std::type_index(typeid(gui::InputObject))) return attr::designer::type::input;
+		if (typeIndex == std::type_index(typeid(gui::OptionObject))) return attr::designer::type::option;
+		if (typeIndex == std::type_index(typeid(gui::TextObject))) return attr::designer::type::text;
+		return "";
+	}
+	//将类型标识字符串转换为type_index，如 "(area)" -> typeid(gui::AreaObject)
+	std::type_index typeStrToTypeIndex(const std::string& typeStr) {
+		if (typeStr == attr::designer::type::area) return std::type_index(typeid(gui::AreaObject));
+		if (typeStr == attr::designer::type::button) return std::type_index(typeid(gui::ButtonObject));
+		if (typeStr == attr::designer::type::image) return std::type_index(typeid(gui::ImageObject));
+		if (typeStr == attr::designer::type::input) return std::type_index(typeid(gui::InputObject));
+		if (typeStr == attr::designer::type::option) return std::type_index(typeid(gui::OptionObject));
+		if (typeStr == attr::designer::type::text) return std::type_index(typeid(gui::TextObject));
+		return std::type_index(typeid(void));
+	}
+	//将类型标识字符串中的纯类型提取出来，如 "(area)" -> "area"
+	std::string pureTypeStr(const std::string& typeStr) {
+		return typeStr.substr(1, typeStr.size() - 2);
+	}
 	bool isAvailableName(const sf::String& name) {
 		return (!name.isEmpty()) && !(name[0] >= L'0' && name[0] <= L'9');
 	}
@@ -1304,13 +1323,13 @@ namespace designer {
 	//预览相关的辅助函数
 	namespace Preview {
 		std::string currentWindowName; //当前正在预览的窗口名称
-		std::string lastOpenedFilePath; //最近打开的文件路径
-		std::string lastOpenedFileFormat; //最近打开的文件格式（binary/json）
+		std::string lastFilePath; //最近的文件路径（打开或保存）
+		std::string lastFileFormat; //最近的文件格式（binary/json）
 		//将指定的窗口数据复制到预览窗口（仅在切换窗口时调用）
 		//该参数为名称，用'-'连接
 		void copyWindowToPreview(const std::string& windowName, gui::AreaObject& previewData) {
 			previewData.sub.clear();
-			if (auto* windowPtr = data.sub.find_named<gui::AreaObject>(windowName)) {
+			if (auto* windowPtr = data.sub.find<gui::AreaObject>(windowName)) {
 				auto relPos = windowPtr->getDynamicPosition();
 				previewData.setPositionRelative(
 					{relPos.x.first, relPos.x.second},
@@ -1443,14 +1462,15 @@ namespace designer {
 				std::vector<std::string> toErase;
 				toErase.push_back(subPath);
 				auto* nameListPtr = &designer::nameList;
-				std::cout << "[PREVIEW DEBUG] searching for: " << dataPath << " in nameList" << std::endl;
-				auto iter = nameListPtr->find_order_named<std::string>(dataPath);
+				std::string menuName = designer::toMenuName(dataPath);//将'_'格式转换为'-'格式以匹配nameList
+				std::cout << "[PREVIEW DEBUG] searching for: " << menuName << " in nameList" << std::endl;
+				auto iter = nameListPtr->find_order(menuName);
 				std::cout << "[PREVIEW DEBUG] iter found: " << (iter != nameListPtr->end() ? "yes" : "no") << std::endl;
 				if (iter != nameListPtr->end()) {
 					iter++;
 					while (iter != nameListPtr->end()) {
 						std::string& nextName = *nameListPtr->find<std::string>(iter);
-						if (nextName.find(dataPath) != 0) break;
+						if (nextName.find(menuName) != 0) break;
 						//提取子路径
 						std::string childSubPath = nextName.substr(dashPos + 1);
 						toErase.push_back(childSubPath);
@@ -1459,22 +1479,22 @@ namespace designer {
 				}
 				//从preview中删除
 				for (const auto& name : toErase) {
-					if (auto* ptr = previewData.sub.find_named<gui::OptionObject>(name)) {
+					if (auto* ptr = previewData.sub.find<gui::OptionObject>(name)) {
 						previewData.sub.erase(ptr);
 					}
-					if (auto* ptr = previewData.sub.find_named<gui::ImageObject>(name)) {
+					if (auto* ptr = previewData.sub.find<gui::ImageObject>(name)) {
 						previewData.sub.erase(ptr);
 					}
-					if (auto* ptr = previewData.sub.find_named<gui::ButtonObject>(name)) {
+					if (auto* ptr = previewData.sub.find<gui::ButtonObject>(name)) {
 						previewData.sub.erase(ptr);
 					}
-					if (auto* ptr = previewData.sub.find_named<gui::InputObject>(name)) {
+					if (auto* ptr = previewData.sub.find<gui::InputObject>(name)) {
 						previewData.sub.erase(ptr);
 					}
-					if (auto* ptr = previewData.sub.find_named<gui::TextObject>(name)) {
+					if (auto* ptr = previewData.sub.find<gui::TextObject>(name)) {
 						previewData.sub.erase(ptr);
 					}
-					if (auto* ptr = previewData.sub.find_named<gui::AreaObject>(name)) {
+					if (auto* ptr = previewData.sub.find<gui::AreaObject>(name)) {
 						previewData.sub.erase(ptr);
 					}
 				}
@@ -1503,6 +1523,19 @@ namespace designer {
 		}
 		return { "",name };
 	}
+	//通过data树查找路径对应的类型；参数为名称，用'-'连接
+	std::type_index getTypeFromPath(const std::string& name) {
+		std::string dataPath = toDataPath(name);
+		auto fatherPair = getFatherName(name);
+		std::string fatherName = fatherPair.first;
+		std::string leafName = fatherPair.second;
+		std::string fatherDataPath = toDataPath(fatherName);
+		gui::AreaObject* father = fatherName.empty() ? &data : data.path_find<gui::AreaObject>(fatherDataPath);
+		if (!father) return std::type_index(typeid(void));
+		auto* base = father->sub.find(leafName);
+		if (!base) return std::type_index(typeid(void));
+		return father->sub.find_type_index(base);
+	}
 	//father != child
 	//该参数均为名称，用'-'连接
 	bool isFather(const std::string& fatherName, const std::string& childName) {
@@ -1516,19 +1549,17 @@ namespace designer {
 	}
 	namespace Create {
 		//该参数name为名称，用'-'连接；返回名称，用'-'连接
-		std::string getNextListOptionName(gui::AreaObject& mainList, std::string type, std::string name, bool isSub) {
+		std::string getNextListOptionName(gui::AreaObject& mainList, std::string name, bool isSub) {
 			static int x = 0;
 			if (name == "")return {};
-			std::string optionName = type + name;
-			auto iter = std::next(nameList.find_order_named<std::string>(optionName));
+			auto iter = std::next(nameList.find_order(name));
 			if (!isSub) {
 				while (iter!=nameList.end()) {
-					std::string& nextOptionName = *nameList.find<std::string>(iter);
-					auto [_, nextName] = getType(nextOptionName);
+					std::string& nextName = *nameList.find<std::string>(iter);
 					std::cout << "father = " << name << " child = " << nextName<<" isFather = ";
 					if (!isFather(name, nextName)) {
 						std::cout << 0 << std::endl;
-						return nextOptionName;
+						return nextName;
 					}
 					std::cout << 1 << std::endl;
 					iter++;
@@ -1544,10 +1575,10 @@ namespace designer {
 		}
 		//该参数为名称，用'-'连接
 		void moveDown(const std::string& optionName, const gui::AreaObject& mainList) {
-			auto iter = mainList.sub.find_order_named<gui::ImageObject>(optionName);
+			auto iter = mainList.sub.find_order(optionName + "(icon)");
 			while (iter != mainList.sub.end()) {
 				auto dynPos = (*iter)->getDynamicPosition();
-				(*iter)->setPosition(sf::Vector2f(dynPos.x.first.value, dynPos.y.first.value + 40.f));
+				(*iter)->setPosition(sf::Vector2f(dynPos.x.first.getValue(), dynPos.y.first.getValue() + 40.f));
 				iter++;
 			}
 		}
@@ -1571,15 +1602,15 @@ namespace designer {
 		
 		//该参数为名称，用'-'连接；返回名称列表，用'-'连接
 		std::vector<std::string> collectItemsToMove(const std::string& optionName) {
-			auto [type, path] = designer::getType(optionName);//type为类型标识，path为名称，用'-'连接
+			std::string path = optionName;//该变量为名称，用'-'连接
 			std::vector<std::string> items;
 			items.push_back(optionName);
 			
-			if (type == attr::designer::type::area) {
-				auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+			if (designer::getTypeFromPath(path) == std::type_index(typeid(gui::AreaObject))) {
+				auto iter = std::next(designer::nameList.find_order(optionName));
 				while (iter != designer::nameList.end()) {
 					std::string& nextName = *designer::nameList.find<std::string>(iter);//该变量为名称，用'-'连接
-					auto [_, nextPath] = designer::getType(nextName);//nextPath为名称，用'-'连接
+					std::string nextPath = nextName;
 					if (!designer::isFather(path, nextPath)) break;
 					items.push_back(nextName);
 					iter++;
@@ -1592,10 +1623,10 @@ namespace designer {
 		//该参数items为名称列表，用'-'连接
 		void extractToClip(gui::AreaObject& mainList, const std::vector<std::string>& items, VarianTmap<gui::UIBase>& subClip) {
 			for (const auto& itemName : items) {
-				auto img = mainList.sub.extract_named<gui::ImageObject>(itemName);
-				subClip.emplace_named<gui::ImageObject>(subClip.end(), itemName, std::move(img));
-				auto opt = mainList.sub.extract_named<gui::OptionObject>(itemName);
-				subClip.emplace_named<gui::OptionObject>(subClip.end(), itemName, std::move(opt));
+				auto imgClip = mainList.sub.extract(itemName + "(icon)", 1);
+				subClip.merge(subClip.end(), imgClip);
+				auto optClip = mainList.sub.extract(itemName, 1);
+				subClip.merge(subClip.end(), optClip);
 			}
 		}
 		
@@ -1603,11 +1634,11 @@ namespace designer {
 			float startY = 0.f;
 			for (auto it = mainList.sub.begin(); it != mainList.sub.end(); it++) {
 				if (auto* img = mainList.sub.find<gui::ImageObject>(it)) {
-					float imgX = img->getDynamicPosition().x.first.value;
+					float imgX = img->getDynamicPosition().x.first.getValue();
 					img->setPosition(sf::Vector2f(imgX, startY));
 				}
 				if (auto* opt = mainList.sub.find<gui::OptionObject>(it)) {
-					float optX = opt->getDynamicPosition().x.first.value;
+					float optX = opt->getDynamicPosition().x.first.getValue();
 					opt->setPosition(sf::Vector2f(optX, startY));
 					startY += 40.f;
 				}
@@ -1618,7 +1649,7 @@ namespace designer {
 		void moveUp(const std::string& optionName) {
 			gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 			
-			auto [dataType, dataPath] = designer::getType(optionName);//dataType为类型标识，dataPath为名称，用'-'连接
+			std::string dataPath = optionName;//该变量为名称，用'-'连接
 			auto nameFatherPair = designer::getFatherName(dataPath);//nameFatherPair.first为父名称，nameFatherPair.second为自身名，均用'-'连接
 			std::string nameParentPath = nameFatherPair.first;//该变量为父名称，用'-'连接
 			std::string itemName = nameFatherPair.second;//该变量为自身名，用'-'连接
@@ -1627,54 +1658,17 @@ namespace designer {
 				std::string dataParentPath = designer::toDataPath(nameParentPath);//该变量为父路径，用'_'连接
 				gui::AreaObject& parent = data.path_at<gui::AreaObject>(dataParentPath);
 				
-				if (dataType == attr::designer::type::button) {
-					auto iter = parent.sub.find_order_named<gui::ButtonObject>(itemName);
-					if (iter == parent.sub.begin()) return;
-					auto iterPrev = std::prev(iter);
-					auto dataClip = parent.sub.extract<gui::ButtonObject>(iter);
-					parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::image) {
-					auto iter = parent.sub.find_order_named<gui::ImageObject>(itemName);
-					if (iter == parent.sub.begin()) return;
-					auto iterPrev = std::prev(iter);
-					auto dataClip = parent.sub.extract<gui::ImageObject>(iter);
-					parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::input) {
-					auto iter = parent.sub.find_order_named<gui::InputObject>(itemName);
-					if (iter == parent.sub.begin()) return;
-					auto iterPrev = std::prev(iter);
-					auto dataClip = parent.sub.extract<gui::InputObject>(iter);
-					parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::option) {
-					auto iter = parent.sub.find_order_named<gui::OptionObject>(itemName);
-					if (iter == parent.sub.begin()) return;
-					auto iterPrev = std::prev(iter);
-					auto dataClip = parent.sub.extract<gui::OptionObject>(iter);
-					parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::text) {
-					auto iter = parent.sub.find_order_named<gui::TextObject>(itemName);
-					if (iter == parent.sub.begin()) return;
-					auto iterPrev = std::prev(iter);
-					auto dataClip = parent.sub.extract<gui::TextObject>(iter);
-					parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::area) {
-					auto iter = parent.sub.find_order_named<gui::AreaObject>(itemName);
-					if (iter == parent.sub.begin()) return;
-					auto iterPrev = std::prev(iter);
-					auto dataClip = parent.sub.extract<gui::AreaObject>(iter);
-					parent.sub.insert_named(iterPrev, itemName, std::move(dataClip));
-				}
+				auto iter = parent.sub.find_order(itemName);
+				if (iter == parent.sub.begin()) return;
+				auto iterPrev = std::prev(iter);
+				auto dataClip = parent.sub.extract(itemName, 1);
+				parent.sub.merge(iterPrev, dataClip);
 			}
 			
 			std::vector<std::string> items = collectItemsToMove(optionName);
-			auto [currentType, currentPath] = designer::getType(optionName);//currentType为类型标识，currentPath为名称，用'-'连接
+			std::string currentPath = optionName;//currentPath为名称，用'-'连接
 			
-			auto imgIter = mainList.sub.find_order_named<gui::ImageObject>(items.front());
+			auto imgIter = mainList.sub.find_order(items.front() + "(icon)");
 			if (imgIter == mainList.sub.end() || imgIter == mainList.sub.begin()) {
 				return;
 			}
@@ -1682,11 +1676,11 @@ namespace designer {
 			std::string prevSiblingKey = "";//该变量为名称，用'-'连接
 			auto nameFatherPair2 = designer::getFatherName(currentPath);
 			std::string nameParentPath2 = nameFatherPair2.first;//该变量为父名称，用'-'连接
-			auto nameIter = designer::nameList.find_order_named<std::string>(optionName);
+			auto nameIter = designer::nameList.find_order(optionName);
 			while (nameIter != designer::nameList.begin()) {
 				nameIter = std::prev(nameIter);
 				std::string& checkName = *designer::nameList.find<std::string>(nameIter);
-				auto [checkType, checkPath] = designer::getType(checkName);
+				std::string checkPath = checkName;
 				if (designer::isFather(currentPath, checkPath)) continue;
 				auto checkFather = designer::getFatherName(checkPath);
 				if (checkFather.first == nameParentPath2) {
@@ -1704,16 +1698,16 @@ namespace designer {
 			VarianTmap<gui::UIBase> subClip;
 			
 			for (const auto& itemName : items) {
-				std::string val = designer::nameList.extract_named<std::string>(itemName);
-				nameListClip.push_back_named(itemName, val);
+				auto nameClip = designer::nameList.extract(itemName, 1);
+				nameListClip.merge(nameListClip.end(), nameClip);
 			}
 			
 			extractToClip(mainList, items, subClip);
 			
-			auto targetImgIter = mainList.sub.find_order_named<gui::ImageObject>(prevSiblingKey);
+			auto targetImgIter = mainList.sub.find_order(prevSiblingKey + "(icon)");
 			mainList.sub.merge(targetImgIter, subClip);
 			
-			auto nameListInsertPos = designer::nameList.find_order_named<std::string>(prevSiblingKey);
+			auto nameListInsertPos = designer::nameList.find_order(prevSiblingKey);
 			designer::nameList.merge(nameListInsertPos, nameListClip);
 			
 			repositionItems(mainList);
@@ -1723,7 +1717,7 @@ namespace designer {
 		void moveDown(const std::string& optionName) {
 			gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 			
-			auto [dataType, dataPath] = designer::getType(optionName);
+			std::string dataPath = optionName;
 			auto nameFatherPair = designer::getFatherName(dataPath);
 			std::string nameParentPath = nameFatherPair.first;
 			std::string itemName = nameFatherPair.second;
@@ -1732,70 +1726,28 @@ namespace designer {
 				std::string dataParentPath = designer::toDataPath(nameParentPath);
 				gui::AreaObject& parent = data.path_at<gui::AreaObject>(dataParentPath);
 				
-				if (dataType == attr::designer::type::button) {
-					auto iter = parent.sub.find_order_named<gui::ButtonObject>(itemName);
-					auto endIter = parent.sub.end();
-					if (iter == endIter || std::next(iter) == endIter) return;
-					auto iterNext = std::next(iter, 2);
-					auto dataClip = parent.sub.extract<gui::ButtonObject>(iter);
-					parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::image) {
-					auto iter = parent.sub.find_order_named<gui::ImageObject>(itemName);
-					auto endIter = parent.sub.end();
-					if (iter == endIter || std::next(iter) == endIter) return;
-					auto iterNext = std::next(iter, 2);
-					auto dataClip = parent.sub.extract<gui::ImageObject>(iter);
-					parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::input) {
-					auto iter = parent.sub.find_order_named<gui::InputObject>(itemName);
-					auto endIter = parent.sub.end();
-					if (iter == endIter || std::next(iter) == endIter) return;
-					auto iterNext = std::next(iter, 2);
-					auto dataClip = parent.sub.extract<gui::InputObject>(iter);
-					parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::option) {
-					auto iter = parent.sub.find_order_named<gui::OptionObject>(itemName);
-					auto endIter = parent.sub.end();
-					if (iter == endIter || std::next(iter) == endIter) return;
-					auto iterNext = std::next(iter, 2);
-					auto dataClip = parent.sub.extract<gui::OptionObject>(iter);
-					parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::text) {
-					auto iter = parent.sub.find_order_named<gui::TextObject>(itemName);
-					auto endIter = parent.sub.end();
-					if (iter == endIter || std::next(iter) == endIter) return;
-					auto iterNext = std::next(iter, 2);
-					auto dataClip = parent.sub.extract<gui::TextObject>(iter);
-					parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
-				}
-				else if (dataType == attr::designer::type::area) {
-					auto iter = parent.sub.find_order_named<gui::AreaObject>(itemName);
-					auto endIter = parent.sub.end();
-					if (iter == endIter || std::next(iter) == endIter) return;
-					auto iterNext = std::next(iter, 2);
-					auto dataClip = parent.sub.extract<gui::AreaObject>(iter);
-					parent.sub.insert_named(iterNext, itemName, std::move(dataClip));
-				}
+				auto iter = parent.sub.find_order(itemName);
+				auto endIter = parent.sub.end();
+				if (iter == endIter || std::next(iter) == endIter) return;
+				auto iterNext = std::next(iter, 2);
+				auto dataClip = parent.sub.extract(itemName, 1);
+				parent.sub.merge(iterNext, dataClip);
 			}
 			
 			std::vector<std::string> items = collectItemsToMove(optionName);
-			auto [currentType, currentPath] = designer::getType(optionName);//currentType为类型标识，currentPath为名称，用'-'连接
+			std::string currentPath = optionName;//currentPath为名称，用'-'连接
 			
-			auto optIter = mainList.sub.find_order_named<gui::OptionObject>(items.back());
+			auto optIter = mainList.sub.find_order(items.back());
 			if (optIter == mainList.sub.end()) return;
 			
 			std::string nextSiblingKey = "";//该变量为名称，用'-'连接
 			auto nameFatherPair2 = designer::getFatherName(currentPath);
 			std::string nameParentPath2 = nameFatherPair2.first;//该变量为父名称，用'-'连接
-			auto nameIter = designer::nameList.find_order_named<std::string>(items.back());
+			auto nameIter = designer::nameList.find_order(items.back());
 			nameIter = std::next(nameIter);
 			while (nameIter != designer::nameList.end()) {
 				std::string& checkName = *designer::nameList.find<std::string>(nameIter);
-				auto [checkType, checkPath] = designer::getType(checkName);
+				std::string checkPath = checkName;
 				if (designer::isFather(currentPath, checkPath)) {
 					nameIter = std::next(nameIter);
 					continue;
@@ -1810,13 +1762,13 @@ namespace designer {
 			
 			if (nextSiblingKey == "") return;
 			
-			auto [nextSiblingType, nextSiblingPath] = designer::getType(nextSiblingKey);
+			std::string nextSiblingPath = nextSiblingKey;
 			std::string insertAfterKey = nextSiblingKey;//该变量为名称，用'-'连接
-			if (nextSiblingType == attr::designer::type::area) {
-				auto iter = std::next(designer::nameList.find_order_named<std::string>(nextSiblingKey));
+			if (designer::getTypeFromPath(nextSiblingPath) == std::type_index(typeid(gui::AreaObject))) {
+				auto iter = std::next(designer::nameList.find_order(nextSiblingKey));
 				while (iter != designer::nameList.end()) {
 					std::string& checkName = *designer::nameList.find<std::string>(iter);//该变量为名称，用'-'连接
-					auto [_, checkPath] = designer::getType(checkName);//checkPath为名称，用'-'连接
+					std::string checkPath = checkName;//checkPath为名称，用'-'连接
 					if (!designer::isFather(nextSiblingPath, checkPath)) break;
 					insertAfterKey = checkName;
 					iter++;
@@ -1827,17 +1779,17 @@ namespace designer {
 			VarianTmap<gui::UIBase> subClip;
 			
 			for (const auto& itemName : items) {
-				std::string val = designer::nameList.extract_named<std::string>(itemName);//该变量为名称，用'-'连接
-				nameListClip.push_back_named(itemName, val);
+				auto nameClip = designer::nameList.extract(itemName, 1);
+				nameListClip.merge(nameListClip.end(), nameClip);
 			}
 			
 			extractToClip(mainList, items, subClip);
 			
-			auto targetOptIter = mainList.sub.find_order_named<gui::OptionObject>(insertAfterKey);
+			auto targetOptIter = mainList.sub.find_order(insertAfterKey);
 			auto insertPos = std::next(targetOptIter);
 			mainList.sub.merge(insertPos, subClip);
 			
-			auto nameListOptIter = designer::nameList.find_order_named<std::string>(insertAfterKey);
+			auto nameListOptIter = designer::nameList.find_order(insertAfterKey);
 			auto nameListInsertPos = std::next(nameListOptIter);
 			designer::nameList.merge(nameListInsertPos, nameListClip);
 			
@@ -1845,7 +1797,9 @@ namespace designer {
 		}
 		//该参数为名称，用'-'连接
 		void copyToClipboard(const std::string& optionName) {
-			auto [type, path] = designer::getType(optionName);//type为类型标识，path为名称，用'-'连接
+			std::string path = optionName;//该变量为名称，用'-'连接
+			std::type_index typeIndex = designer::getTypeFromPath(path);
+			std::string type = designer::typeIndexToTypeStr(typeIndex);
 			
 			designer::clipboard.nameListClip.clear();
 			designer::clipboard.dataClip.clear();
@@ -1853,11 +1807,11 @@ namespace designer {
 			std::vector<std::string> items;
 			items.push_back(optionName);
 			
-			if (type == attr::designer::type::area) {
-				auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+			if (typeIndex == std::type_index(typeid(gui::AreaObject))) {
+				auto iter = std::next(designer::nameList.find_order(optionName));
 				while (iter != designer::nameList.end()) {
 					std::string& nextName = *designer::nameList.find<std::string>(iter);//该变量为名称，用'-'连接
-					auto [_, nextPath] = designer::getType(nextName);//nextPath为名称，用'-'连接
+					std::string nextPath = nextName;
 					if (!designer::isFather(path, nextPath)) break;
 					items.push_back(nextName);
 					iter++;
@@ -1867,7 +1821,8 @@ namespace designer {
 			std::string fatherPath = designer::getFatherName(path).first;//该变量为父名称，用'-'连接
 		
 			for (const auto& itemName : items) {
-				auto [itemType, itemPath] = designer::getType(itemName);//itemType为类型标识，itemPath为名称，用'-'连接
+				std::string itemPath = itemName;//itemPath为名称，用'-'连接
+				std::string itemType = designer::typeIndexToTypeStr(designer::getTypeFromPath(itemName));//itemType为类型标识
 				std::string relativeName;//该变量为名称，用'-'连接
 				if (fatherPath.empty()) {
 					relativeName = itemPath;
@@ -1876,44 +1831,45 @@ namespace designer {
 					std::string prefix = fatherPath + '-';//该变量为名称前缀，用'-'连接
 					relativeName = itemPath.substr(prefix.size());
 				}
-				std::string relativeNameWithType = itemType + relativeName;//该变量为名称，用'-'连接
-				designer::clipboard.nameListClip.push_back_named(relativeNameWithType, relativeNameWithType);
+				std::string relativeNameWithType = relativeName;//该变量为名称，用'-'连接
+				designer::clipboard.nameListClip.push_back(relativeNameWithType, relativeNameWithType);
 			}
 			
-			auto [rootType, rootPath] = designer::getType(optionName);//rootType为类型标识，rootPath为名称，用'-'连接
+			std::string rootPath = path;//rootPath为名称，用'-'连接
+			std::string rootType = type;//rootType为类型标识
 			std::string rootName = designer::getFatherName(rootPath).second;//该变量为名称，用'-'连接
 			std::string rootFatherPath = designer::getFatherName(rootPath).first;//该变量为名称，用'-'连接
 			std::string rootDataFatherPath = designer::toDataPath(rootFatherPath);//该变量为路径，用'_'连接
 			gui::AreaObject* rootFather = rootFatherPath.empty() ? &designer::data : &designer::data.path_at<gui::AreaObject>(rootDataFatherPath);
 			
 			if (rootType == attr::designer::type::area) {
-				if (auto* obj = rootFather->sub.find_named<gui::AreaObject>(rootName)) {
-					designer::clipboard.dataClip.emplace_named<gui::AreaObject>(designer::clipboard.dataClip.end(), rootName, *obj);
+				if (auto* obj = rootFather->sub.find<gui::AreaObject>(rootName)) {
+					designer::clipboard.dataClip.emplace<gui::AreaObject>(designer::clipboard.dataClip.end(), rootName, *obj);
 				}
 			}
 			else if (rootType == attr::designer::type::button) {
-				if (auto* obj = rootFather->sub.find_named<gui::ButtonObject>(rootName)) {
-					designer::clipboard.dataClip.emplace_named<gui::ButtonObject>(designer::clipboard.dataClip.end(), rootName, *obj);
+				if (auto* obj = rootFather->sub.find<gui::ButtonObject>(rootName)) {
+					designer::clipboard.dataClip.emplace<gui::ButtonObject>(designer::clipboard.dataClip.end(), rootName, *obj);
 				}
 			}
 			else if (rootType == attr::designer::type::image) {
-				if (auto* obj = rootFather->sub.find_named<gui::ImageObject>(rootName)) {
-					designer::clipboard.dataClip.emplace_named<gui::ImageObject>(designer::clipboard.dataClip.end(), rootName, *obj);
+				if (auto* obj = rootFather->sub.find<gui::ImageObject>(rootName)) {
+					designer::clipboard.dataClip.emplace<gui::ImageObject>(designer::clipboard.dataClip.end(), rootName, *obj);
 				}
 			}
 			else if (rootType == attr::designer::type::input) {
-				if (auto* obj = rootFather->sub.find_named<gui::InputObject>(rootName)) {
-					designer::clipboard.dataClip.emplace_named<gui::InputObject>(designer::clipboard.dataClip.end(), rootName, *obj);
+				if (auto* obj = rootFather->sub.find<gui::InputObject>(rootName)) {
+					designer::clipboard.dataClip.emplace<gui::InputObject>(designer::clipboard.dataClip.end(), rootName, *obj);
 				}
 			}
 			else if (rootType == attr::designer::type::option) {
-				if (auto* obj = rootFather->sub.find_named<gui::OptionObject>(rootName)) {
-					designer::clipboard.dataClip.emplace_named<gui::OptionObject>(designer::clipboard.dataClip.end(), rootName, *obj);
+				if (auto* obj = rootFather->sub.find<gui::OptionObject>(rootName)) {
+					designer::clipboard.dataClip.emplace<gui::OptionObject>(designer::clipboard.dataClip.end(), rootName, *obj);
 				}
 			}
 			else if (rootType == attr::designer::type::text) {
-				if (auto* obj = rootFather->sub.find_named<gui::TextObject>(rootName)) {
-					designer::clipboard.dataClip.emplace_named<gui::TextObject>(designer::clipboard.dataClip.end(), rootName, *obj);
+				if (auto* obj = rootFather->sub.find<gui::TextObject>(rootName)) {
+					designer::clipboard.dataClip.emplace<gui::TextObject>(designer::clipboard.dataClip.end(), rootName, *obj);
 				}
 			}
 			
@@ -1927,12 +1883,12 @@ namespace designer {
 		//计算要删除的元素数量（当前元素 + 所有子元素）
 		//该参数为名称，用'-'连接
 		int countElementsToDelete(const std::string& optionName) {
-			auto [type, path] = designer::getType(optionName);//type为类型标识，path为名称，用'-'连接
+			std::string path = optionName;//该变量为名称，用'-'连接
 			int count = 1; // 当前元素
-			auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+			auto iter = std::next(designer::nameList.find_order(optionName));
 			while (iter != designer::nameList.end()) {
 				std::string& nextOptionName = *designer::nameList.find<std::string>(iter);//该变量为名称，用'-'连接
-				auto [_, nextName] = designer::getType(nextOptionName);//nextName为名称，用'-'连接
+				std::string nextName = nextOptionName;//nextName为名称，用'-'连接
 				if (!designer::isFather(path, nextName)) {
 					break;
 				}
@@ -1944,11 +1900,11 @@ namespace designer {
 		//找到下一个不被删除的元素（即不是当前元素，也不是当前元素的子元素）
 		//该参数为名称，用'-'连接
 		std::string getNextNotDeletedOptionName(const std::string& optionName) {
-			auto [type, path] = designer::getType(optionName);//type为类型标识，path为名称，用'-'连接
-			auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+			std::string path = optionName;//该变量为名称，用'-'连接
+			auto iter = std::next(designer::nameList.find_order(optionName));
 			while (iter != designer::nameList.end()) {
 				std::string& nextOptionName = *designer::nameList.find<std::string>(iter);//该变量为名称，用'-'连接
-				auto [_, nextName] = designer::getType(nextOptionName);//nextName为名称，用'-'连接
+				std::string nextName = nextOptionName;//nextName为名称，用'-'连接
 				if (!designer::isFather(path, nextName)) {
 					return nextOptionName;
 				}
@@ -1967,10 +1923,10 @@ namespace designer {
 				return;
 			}
 			// 从下一个不被删除的元素开始，上移所有元素
-			auto iter = mainList.sub.find_order_named<gui::ImageObject>(nextNotDeleted);
+			auto iter = mainList.sub.find_order(nextNotDeleted + "(icon)");
 			while (iter != mainList.sub.end()) {
 				auto dynPos = (*iter)->getDynamicPosition();
-				(*iter)->setPosition(sf::Vector2f(dynPos.x.first.value, dynPos.y.first.value - 40.f * elementsToDelete));
+				(*iter)->setPosition(sf::Vector2f(dynPos.x.first.getValue(), dynPos.y.first.getValue() - 40.f * elementsToDelete));
 				iter++;
 			}
 		}
@@ -1978,7 +1934,7 @@ namespace designer {
 		//该参数为名称列表，用'-'连接
 		void removeFromNameList(const std::vector<std::string>& toDelete) {
 			for (const auto& deleteName : toDelete) {//该变量为名称，用'-'连接
-				designer::nameList.erase_named<std::string>(deleteName);
+				designer::nameList.erase(deleteName);
 			}
 		}
 		//该参数为名称，用'-'连接
@@ -1989,7 +1945,8 @@ namespace designer {
 			
 			designer::Move::copyToClipboard(optionName);
 			
-			auto [type, path] = designer::getType(optionName);//type为类型标识，path为名称，用'-'连接
+			std::string path = optionName;//该变量为名称，用'-'连接
+			std::string type = designer::typeIndexToTypeStr(designer::getTypeFromPath(path));//type为类型标识
 			
 			std::cout << "[CUT DEBUG] type: " << type << ", path: " << path << std::endl;
 			
@@ -1997,11 +1954,11 @@ namespace designer {
 			
 			std::vector<std::string> items;
 			items.push_back(optionName);
-			if (type == attr::designer::type::area) {
-				auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+			if (designer::getTypeFromPath(path) == std::type_index(typeid(gui::AreaObject))) {
+				auto iter = std::next(designer::nameList.find_order(optionName));
 				while (iter != designer::nameList.end()) {
 					std::string& nextName = *designer::nameList.find<std::string>(iter);//该变量为名称，用'-'连接
-					auto [_, nextPath] = designer::getType(nextName);//nextPath为名称，用'-'连接
+					std::string nextPath = nextName;
 					std::cout << "[CUT DEBUG] checking nextName: " << nextName << ", nextPath: " << nextPath << std::endl;
 					if (!designer::isFather(path, nextPath)) break;
 					items.push_back(nextName);
@@ -2015,57 +1972,31 @@ namespace designer {
 			}
 			
 			for (const auto& itemName : items) {
-				designer::nameList.erase_named<std::string>(itemName);
+				designer::nameList.erase(itemName);
 			}
 			
 			//从mainList中删除对应的img和opt
 			for (const auto& itemName : items) {
-				if (auto* img = mainList.sub.find_named<gui::ImageObject>(itemName)) {
+				if (auto* img = mainList.sub.find<gui::ImageObject>(itemName + "(icon)")) {
 					mainList.sub.erase(img);
 				}
-				if (auto* opt = mainList.sub.find_named<gui::OptionObject>(itemName)) {
+				if (auto* opt = mainList.sub.find<gui::OptionObject>(itemName)) {
 					mainList.sub.erase(opt);
 				}
 			}
 			
 			//只删除顶层元素，子元素会随父元素一起被删除
 			if (!items.empty()) {
-				auto [itemType, itemPath] = designer::getType(items[0]);//itemType为类型标识，itemPath为名称，用'-'连接
+				std::string itemPath = items[0];//itemPath为名称，用'-'连接
 				std::string name = designer::getFatherName(itemPath).second;//该变量为名称，用'-'连接
 				std::string fatherPath = designer::getFatherName(itemPath).first;//该变量为名称，用'-'连接
 				std::string dataFatherPath = designer::toDataPath(fatherPath);//该变量为路径，用'_'连接
 				
 				gui::AreaObject* father = fatherPath.empty() ? &designer::data : &designer::data.path_at<gui::AreaObject>(dataFatherPath);
 				
-				if (itemType == attr::designer::type::area) {
-					if (auto* obj = father->sub.find_named<gui::AreaObject>(name)) {
-						father->sub.erase(obj);
-					}
-				}
-				else if (itemType == attr::designer::type::button) {
-					if (auto* obj = father->sub.find_named<gui::ButtonObject>(name)) {
-						father->sub.erase(obj);
-					}
-				}
-				else if (itemType == attr::designer::type::image) {
-					if (auto* obj = father->sub.find_named<gui::ImageObject>(name)) {
-						father->sub.erase(obj);
-					}
-				}
-				else if (itemType == attr::designer::type::input) {
-					if (auto* obj = father->sub.find_named<gui::InputObject>(name)) {
-						father->sub.erase(obj);
-					}
-				}
-				else if (itemType == attr::designer::type::option) {
-					if (auto* obj = father->sub.find_named<gui::OptionObject>(name)) {
-						father->sub.erase(obj);
-					}
-				}
-				else if (itemType == attr::designer::type::text) {
-					if (auto* obj = father->sub.find_named<gui::TextObject>(name)) {
-						father->sub.erase(obj);
-					}
+				auto* obj = father->sub.find(name);
+				if (obj) {
+					father->sub.erase(obj);
 				}
 			}
 		}
@@ -2076,36 +2007,10 @@ namespace designer {
 		void rebuildNameListFromArea(const std::string& prefix, gui::AreaObject* area) {
 			for (auto& elem : area->sub) {
 				std::string key = area->sub.find_key(elem);//该变量为名称，用'-'连接
-				if (auto* obj = area->sub.find<gui::AreaObject>(elem)) {
-					std::string name = prefix + key;//该变量为名称，用'-'连接
-					std::string optionName = attr::designer::type::area + name;//该变量为名称，用'-'连接
-					designer::nameList.push_back_named(optionName, optionName);
-					rebuildNameListFromArea(name + "-", obj);
-				}
-				else if (auto* obj = area->sub.find<gui::ButtonObject>(elem)) {
-					std::string name = prefix + key;//该变量为名称，用'-'连接
-					std::string optionName = attr::designer::type::button + name;//该变量为名称，用'-'连接
-					designer::nameList.push_back_named(optionName, optionName);
-				}
-				else if (auto* obj = area->sub.find<gui::ImageObject>(elem)) {
-					std::string name = prefix + key;//该变量为名称，用'-'连接
-					std::string optionName = attr::designer::type::image + name;//该变量为名称，用'-'连接
-					designer::nameList.push_back_named(optionName, optionName);
-				}
-				else if (auto* obj = area->sub.find<gui::InputObject>(elem)) {
-					std::string name = prefix + key;//该变量为名称，用'-'连接
-					std::string optionName = attr::designer::type::input + name;//该变量为名称，用'-'连接
-					designer::nameList.push_back_named(optionName, optionName);
-				}
-				else if (auto* obj = area->sub.find<gui::OptionObject>(elem)) {
-					std::string name = prefix + key;//该变量为名称，用'-'连接
-					std::string optionName = attr::designer::type::option + name;//该变量为名称，用'-'连接
-					designer::nameList.push_back_named(optionName, optionName);
-				}
-				else if (auto* obj = area->sub.find<gui::TextObject>(elem)) {
-					std::string name = prefix + key;//该变量为名称，用'-'连接
-					std::string optionName = attr::designer::type::text + name;//该变量为名称，用'-'连接
-					designer::nameList.push_back_named(optionName, optionName);
+				std::string name = prefix + key;//该变量为名称，用'-'连接
+				designer::nameList.push_back(name, name);
+				if (area->sub.find<gui::AreaObject>(elem)) {
+					rebuildNameListFromArea(name + "-", static_cast<gui::AreaObject*>(elem));
 				}
 			}
 		}
@@ -2114,17 +2019,18 @@ namespace designer {
 			mainList.sub.clear();
 			
 			for (auto it = designer::nameList.begin(); it != designer::nameList.end(); it++) {
-				std::string& optionName = *designer::nameList.find<std::string>(it);//该变量为名称，用'-'连接
-				auto [type, path] = designer::getType(optionName);//type为类型标识，path为名称，用'-'连接
-				std::string pureType = type.substr(1, type.size() - 2);
+				std::string& path = *designer::nameList.find<std::string>(it);//该变量为名称，用'-'连接
+				std::type_index typeIndex = designer::getTypeFromPath(path);
+				std::string typeStr = designer::typeIndexToTypeStr(typeIndex);
+				std::string pureType = designer::pureTypeStr(typeStr);
 				std::string name = designer::getFatherName(path).second;//该变量为名称，用'-'连接
 				size_t level = designer::countLevel(path);
 				float linePos = (it == designer::nameList.begin()) ? 0.f : 
-					mainList.sub.find_named<gui::OptionObject>(
+					mainList.sub.find<gui::OptionObject>(
 						*designer::nameList.find<std::string>(std::prev(it))
-					)->getDynamicPosition().y.first.value + 40.f;
+					)->getDynamicPosition().y.first.getValue() + 40.f;
 				
-				auto ptropt = mainList.sub.insert_named(mainList.sub.end(), optionName, gui::OptionObject{});
+				auto ptropt = mainList.sub.insert(mainList.sub.end(), path, gui::OptionObject{});
 				(*ptropt)
 					.setText("    " + name).setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 					.setFont("default")
@@ -2132,7 +2038,7 @@ namespace designer {
 					.setSizeAuto()
 					.setPosition(sf::Vector2f(level * 40.f, linePos));
 				
-				auto ptrimg = mainList.sub.insert_named(ptropt, optionName, gui::ImageObject{});
+				auto ptrimg = mainList.sub.insert(ptropt, path + "(icon)", gui::ImageObject{});
 				(*ptrimg)
 					.setImageId(pureType)
 					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
@@ -2164,7 +2070,7 @@ namespace designer {
 				else if (anchor == 3) anchorOpt = "Width";
 			}
 			
-			auto* ancArea = mainSettings.sub.find_named<gui::AreaObject>(prefix + "Anchor");
+			auto* ancArea = mainSettings.sub.find<gui::AreaObject>(prefix + "Anchor");
 			if (ancArea && !anchorOpt.empty()) ancArea->setOption(anchorOpt);
 			
 			std::string relativeOpt;
@@ -2178,10 +2084,10 @@ namespace designer {
 				else if (relative == 2) relativeOpt = "RightEdge";
 			}
 			
-			auto* relArea = mainSettings.sub.find_named<gui::AreaObject>(prefix + "Relative");
+			auto* relArea = mainSettings.sub.find<gui::AreaObject>(prefix + "Relative");
 			if (relArea && !relativeOpt.empty()) relArea->setOption(relativeOpt);
 			
-			mainSettings.path_get<gui::InputObject>(prefix + "Value").setText(floatToStr(rp.value));
+			mainSettings.path_get<gui::InputObject>(prefix + "Value").setText(floatToStr(rp.getValue()));
 		};
 		
 		fillAnchorPoint("SetX1", relPos.x.first, false);
@@ -2219,8 +2125,8 @@ namespace designer {
 			std::string vOpts[] = { "Top", "Mid", "Bottom" };
 			int jx = static_cast<int>(obj->getAlign().x);
 			int jy = static_cast<int>(obj->getAlign().y);
-			auto* justXArea = mainSettings.sub.find_named<gui::AreaObject>("SetAlignX");
-			auto* justYArea = mainSettings.sub.find_named<gui::AreaObject>("SetAlignY");
+			auto* justXArea = mainSettings.sub.find<gui::AreaObject>("SetAlignX");
+			auto* justYArea = mainSettings.sub.find<gui::AreaObject>("SetAlignY");
 			std::cout << "  fillTextSettings justification: jx=" << hOpts[jx] << " jy=" << vOpts[jy]
 						<< " justXArea=" << (justXArea ? "found" : "NOT_FOUND")
 						<< " justYArea=" << (justYArea ? "found" : "NOT_FOUND") << std::endl;
@@ -2329,8 +2235,8 @@ namespace designer {
 		std::string prefix1 = isY ? "SetY1" : "SetX1";
 		std::string prefix2 = isY ? "SetY2" : "SetX2";
 		
-		auto* anchorArea1 = mainSettings.sub.find_named<gui::AreaObject>(prefix1 + "Anchor");
-		auto* anchorArea2 = mainSettings.sub.find_named<gui::AreaObject>(prefix2 + "Anchor");
+		auto* anchorArea1 = mainSettings.sub.find<gui::AreaObject>(prefix1 + "Anchor");
+		auto* anchorArea2 = mainSettings.sub.find<gui::AreaObject>(prefix2 + "Anchor");
 		
 		if (!anchorArea1 || !anchorArea2) {
 			return;
@@ -2339,7 +2245,7 @@ namespace designer {
 		std::string anchor1 = anchorArea1->getOption();
 		std::string anchor2 = anchorArea2->getOption();
 		
-		auto* optInArea2 = anchorArea2->sub.find_named<gui::OptionObject>(anchor1);
+		auto* optInArea2 = anchorArea2->sub.find<gui::OptionObject>(anchor1);
 		if (optInArea2) {
 			optInArea2->setShow(false);
 		}
@@ -2349,7 +2255,7 @@ namespace designer {
 			}
 		}
 		
-		auto* optInArea1 = anchorArea1->sub.find_named<gui::OptionObject>(anchor2);
+		auto* optInArea1 = anchorArea1->sub.find<gui::OptionObject>(anchor2);
 		if (optInArea1) {
 			optInArea1->setShow(false);
 		}
@@ -2562,8 +2468,8 @@ namespace designer {
 		return { "",path };
 	}
 	//该参数type为类型标识；path为路径，用'_'连接
-	std::pair<gui::AreaObject*,std::pmr::list<gui::UIBase*>::const_iterator> getNextIter(const std::string& type, const std::string& path,bool isSub) {
-		if (type == "") {
+	std::pair<gui::AreaObject*,std::pmr::list<gui::UIBase*>::const_iterator> getNextIter(const std::string& path,bool isSub) {
+		if (path == "") {
 			return { &data, data.sub.end() };
 		}
 		else {
@@ -2580,43 +2486,31 @@ namespace designer {
 				else {
 					father = &data.path_at<gui::AreaObject>(fatherPath);
 				}
-				std::pmr::list<gui::UIBase*>::const_iterator ptr;
-				if (type == attr::designer::type::area)
-					ptr = father->sub.find_order_named<gui::AreaObject>(name);
-				if (type == attr::designer::type::button)
-					ptr = father->sub.find_order_named<gui::ButtonObject>(name);
-				if (type == attr::designer::type::image)
-					ptr = father->sub.find_order_named<gui::ImageObject>(name);
-				if (type == attr::designer::type::input)
-					ptr = father->sub.find_order_named<gui::InputObject>(name);
-				if (type == attr::designer::type::option)
-					ptr = father->sub.find_order_named<gui::OptionObject>(name);
-				if (type == attr::designer::type::text)
-					ptr = father->sub.find_order_named<gui::TextObject>(name);
+				std::pmr::list<gui::UIBase*>::const_iterator ptr = father->sub.find_order(name);
 				return { father,std::next(ptr) };
 			}
 		}
 	}
 	//该参数chosenType为类型标识；chosenPath为路径，用'_'连接；newType为类型标识；newName为单个名称
-	gui::UIBase* insert(const std::string& chosenType, const std::string& chosenPath, bool isSub, const std::string& newType, const std::string& newName) {
-		auto [father, nextDataIter] = getNextIter(chosenType, chosenPath, isSub);
+	gui::UIBase* insert(const std::string& chosenPath, bool isSub, const std::string& newType, const std::string& newName) {
+		auto [father, nextDataIter] = getNextIter(chosenPath, isSub);
 		if (newType == attr::designer::type::area)
-			return father->sub.emplace_named<gui::AreaObject>(nextDataIter,newName);
+			return father->sub.emplace<gui::AreaObject>(nextDataIter,newName);
 		if (newType == attr::designer::type::button)
-			return father->sub.emplace_named<gui::ButtonObject>(nextDataIter, newName);
+			return father->sub.emplace<gui::ButtonObject>(nextDataIter, newName);
 		if (newType == attr::designer::type::image)
-			return father->sub.emplace_named<gui::ImageObject>(nextDataIter, newName);
+			return father->sub.emplace<gui::ImageObject>(nextDataIter, newName);
 		if (newType == attr::designer::type::input)
-			return father->sub.emplace_named<gui::InputObject>(nextDataIter, newName);
+			return father->sub.emplace<gui::InputObject>(nextDataIter, newName);
 		if (newType == attr::designer::type::option)
-			return father->sub.emplace_named<gui::OptionObject>(nextDataIter, newName);
+			return father->sub.emplace<gui::OptionObject>(nextDataIter, newName);
 		if (newType == attr::designer::type::text)
-			return father->sub.emplace_named<gui::TextObject>(nextDataIter, newName);
+			return father->sub.emplace<gui::TextObject>(nextDataIter, newName);
 		return nullptr;
 	}
 	//从data中删除指定路径的对象及其所有子对象
 	//该参数type为类型标识；path为路径，用'_'连接
-	void remove(const std::string& type, const std::string& path) {
+	void remove(const std::string& path) {
 		auto [fatherPath, name] = getFatherPath(path);//fatherPath为父路径，name为自身名，均用'_'连接
 		gui::AreaObject* father = nullptr;
 		if (fatherPath == "") {
@@ -2625,36 +2519,10 @@ namespace designer {
 		else {
 			father = &data.path_at<gui::AreaObject>(fatherPath);
 		}
-		//按类型查找并删除对象
-		if (type == attr::designer::type::area) {
-			if (auto* obj = father->sub.find_named<gui::AreaObject>(name)) {
-				father->sub.erase(obj);
-			}
-		}
-		else if (type == attr::designer::type::button) {
-			if (auto* obj = father->sub.find_named<gui::ButtonObject>(name)) {
-				father->sub.erase(obj);
-			}
-		}
-		else if (type == attr::designer::type::image) {
-			if (auto* obj = father->sub.find_named<gui::ImageObject>(name)) {
-				father->sub.erase(obj);
-			}
-		}
-		else if (type == attr::designer::type::input) {
-			if (auto* obj = father->sub.find_named<gui::InputObject>(name)) {
-				father->sub.erase(obj);
-			}
-		}
-		else if (type == attr::designer::type::option) {
-			if (auto* obj = father->sub.find_named<gui::OptionObject>(name)) {
-				father->sub.erase(obj);
-			}
-		}
-		else if (type == attr::designer::type::text) {
-			if (auto* obj = father->sub.find_named<gui::TextObject>(name)) {
-				father->sub.erase(obj);
-			}
+		//直接按key删除
+		auto* obj = father->sub.find(name);
+		if (obj) {
+			father->sub.erase(obj);
 		}
 	}
 	namespace Save {
@@ -2664,7 +2532,7 @@ namespace designer {
 			int windowToSaveLine = 0;
 			for (auto it = designer::data.sub.begin(); it != designer::data.sub.end(); it++) {
 				std::string key = designer::data.sub.find_key(it);
-				windowToSave.path_get<gui::TextObject>(key)
+				windowToSave.path_get<gui::TextObject>(key + "Text")
 					.setText(L"√")
 					.setFont("default")
 					.setCharacterSize(20)
@@ -2672,7 +2540,7 @@ namespace designer {
 					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToSaveLine) + 20), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 					.setShow(true);
-				windowToSave.path_get<gui::ButtonObject>(key)
+				windowToSave.path_get<gui::ButtonObject>(key + "Button")
 					.setText(L"□"+sf::String(key))
 					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
 					.setFont("default")
@@ -2686,11 +2554,11 @@ namespace designer {
 			windowToSave.setSize(sf::Vector2f(600, static_cast<float>(5 * 40)));
 		}
 		void toggleCheckbox(const std::string& key) {
-			gui::TextObject& check = menuManager.path_at<gui::TextObject>("save_windowToSave_" + key);
+			gui::TextObject& check = menuManager.path_at<gui::TextObject>("save_windowToSave_" + key + "Text");
 			check.toggleShow();
 		}
 		bool isChecked(const std::string& key) {
-			return menuManager.path_at<gui::TextObject>("save_windowToSave_" + key).getShow();
+			return menuManager.path_at<gui::TextObject>("save_windowToSave_" + key + "Text").getShow();
 		}
 	}
 	namespace ExportReflection {
@@ -2700,7 +2568,7 @@ namespace designer {
 			int windowToExportLine = 0;
 			for (auto it = designer::data.sub.begin(); it != designer::data.sub.end(); it++) {
 				std::string key = designer::data.sub.find_key(it);
-				windowToExport.path_get<gui::TextObject>(key)
+				windowToExport.path_get<gui::TextObject>(key + "Text")
 					.setText(L"√")
 					.setFont("default")
 					.setCharacterSize(20)
@@ -2708,7 +2576,7 @@ namespace designer {
 					.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 					.setPosition(sf::Vector2f(20, static_cast<float>(40 * windowToExportLine) + 20), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 					.setShow(true);
-				windowToExport.path_get<gui::ButtonObject>(key)
+				windowToExport.path_get<gui::ButtonObject>(key + "Button")
 					.setText(L"□"+sf::String(key))
 					.setTextStyle(textStyle["stdtn"], textStyle["stdto"], textStyle["stdtf"])
 					.setFont("default")
@@ -2722,11 +2590,11 @@ namespace designer {
 			windowToExport.setSize(sf::Vector2f(600, static_cast<float>(5 * 40)));
 		}
 		void toggleCheckbox(const std::string& key) {
-			gui::TextObject& check = menuManager.path_at<gui::TextObject>("exportReflection_windowToExport_" + key);
+			gui::TextObject& check = menuManager.path_at<gui::TextObject>("exportReflection_windowToExport_" + key + "Text");
 			check.toggleShow();
 		}
 		bool isChecked(const std::string& key) {
-			return menuManager.path_at<gui::TextObject>("exportReflection_windowToExport_" + key).getShow();
+			return menuManager.path_at<gui::TextObject>("exportReflection_windowToExport_" + key + "Text").getShow();
 		}
 	}
 	namespace New {
@@ -2791,7 +2659,7 @@ namespace designer {
 		namespace NameProcessor {
 			//从剪贴板提取根对象的原始名称（不含类型前缀）
 			std::string extractRootName() {
-				auto [rootType, rootPath] = designer::getType(designer::clipboard.copiedItemName);
+				std::string rootPath = designer::clipboard.copiedItemName;
 				return designer::getFatherName(rootPath).second;
 			}
 
@@ -2820,8 +2688,7 @@ namespace designer {
 
 				for (auto it = designer::clipboard.nameListClip.begin();
 					 it != designer::clipboard.nameListClip.end(); ++it) {
-					std::string relPath = designer::clipboard.nameListClip.find_key(it);
-					auto [clipType, clipPath] = designer::getType(relPath);
+					std::string clipPath = designer::clipboard.nameListClip.find_key(it);
 
 					//构建新的相对路径
 					std::string newPath;
@@ -2860,17 +2727,17 @@ namespace designer {
 				for (auto it = designer::clipboard.nameListClip.begin();
 					 it != designer::clipboard.nameListClip.end(); ++it) {
 					std::string clipKey = designer::clipboard.nameListClip.find_key(it);
-					auto [clipType, clipRelPath] = designer::getType(clipKey);
+					std::string clipRelPath = clipKey;
 
 					//获取重命名后的相对路径
 					std::string newRelPath = renameMap.at(clipRelPath);
 
-					//构建完整路径：类型标识 + 父路径 + 新相对路径
+					//构建完整路径：父路径 + 新相对路径
 					std::string newFullName;
 					if (fatherPath.empty()) {
-						newFullName = clipType + newRelPath;
+						newFullName = newRelPath;
 					} else {
-						newFullName = clipType + fatherPath + '-' + newRelPath;
+						newFullName = fatherPath + '-' + newRelPath;
 					}
 
 					result.push_back({clipKey, newFullName});
@@ -2891,23 +2758,22 @@ namespace designer {
 			//获取插入位置信息
 			InsertionPoint getInsertionPoint(
 				gui::AreaObject& mainList,
-				const std::string& chosenType,
 				const std::string& chosenPath,
 				bool isSub
 			) {
 				InsertionPoint point;
 				point.nextOptionName = designer::Create::getNextListOptionName(
-					mainList, chosenType, chosenPath, isSub
+					mainList, chosenPath, isSub
 				);
 
-				gui::OptionObject* nextOptionPtr = mainList.sub.find_named<gui::OptionObject>(
+				gui::OptionObject* nextOptionPtr = mainList.sub.find<gui::OptionObject>(
 					point.nextOptionName
 				);
 
 				if (nextOptionPtr == nullptr) {
 					point.linePos = designer::nameList.size() * 40.f;
 				} else {
-					point.linePos = nextOptionPtr->getDynamicPosition().y.first.value;
+					point.linePos = nextOptionPtr->getDynamicPosition().y.first.getValue();
 				}
 
 				return point;
@@ -2931,27 +2797,31 @@ namespace designer {
 			void insertItem(
 				gui::AreaObject& mainList,
 				const std::string& itemFullName,
+				const std::string& itemOldName,
 				const std::string& nextOptionName,
 				float linePos
 			) {
-				auto [itemType, itemPath] = designer::getType(itemFullName);
+				std::string itemPath = itemFullName;
 				std::string itemName = designer::getFatherName(itemPath).second;
 				size_t level = designer::countLevel(itemPath);
 
 				//插入到 nameList
-				designer::nameList.insert_named(
-					designer::nameList.find_order_named<std::string>(nextOptionName),
+				designer::nameList.insert(
+					designer::nameList.find_order(nextOptionName),
 					itemFullName,
 					itemFullName
 				);
 
-				//提取图标类型
-				std::string imageId = itemType.substr(1, itemType.size() - 2);
+				//从剪贴板获取类型（粘贴时数据尚未插入data树）
+				auto* clipBase = designer::clipboard.dataClip.find(itemOldName);
+				std::type_index typeIndex = clipBase ? designer::clipboard.dataClip.find_type_index(clipBase) : std::type_index(typeid(void));
+				std::string itemType = designer::typeIndexToTypeStr(typeIndex);
+				std::string imageId = designer::pureTypeStr(itemType);
 
 				//插入 OptionObject 和 ImageObject
-				auto nextOptionIter = mainList.sub.find_order_named<gui::ImageObject>(nextOptionName);
-				auto ptropt = mainList.sub.insert_named(nextOptionIter, itemFullName, gui::OptionObject{});
-				auto ptrimg = mainList.sub.insert_named(ptropt, itemFullName, gui::ImageObject{});
+				auto nextOptionIter = mainList.sub.find_order(nextOptionName + "(icon)");
+				auto ptropt = mainList.sub.insert(nextOptionIter, itemFullName, gui::OptionObject{});
+				auto ptrimg = mainList.sub.insert(ptropt, itemFullName + "(icon)", gui::ImageObject{});
 
 				(*ptrimg)
 					.setImageId(imageId)
@@ -2977,7 +2847,7 @@ namespace designer {
 			) {
 				float linePos = startLinePos;
 				for (const auto& [oldName, newName] : items) {
-					insertItem(mainList, newName, nextOptionName, linePos);
+					insertItem(mainList, newName, oldName, nextOptionName, linePos);
 					linePos += 40.f;
 				}
 			}
@@ -2993,8 +2863,8 @@ namespace designer {
 				const std::string& oldName,
 				const std::string& newName
 			) {
-				if (auto* obj = designer::clipboard.dataClip.find_named<T>(oldName)) {
-					father->sub.emplace_named<T>(insertIter, newName, *obj);
+				if (auto* obj = designer::clipboard.dataClip.find<T>(oldName)) {
+					father->sub.emplace<T>(insertIter, newName, *obj);
 				}
 			}
 
@@ -3073,7 +2943,6 @@ namespace designer {
 		//============ 主执行函数 ============
 		void pasteExecute(
 			gui::AreaObject& mainList,
-			const std::string& chosenType,
 			const std::string& chosenPath,
 			bool isSub,
 			const std::string& newRootName  //新增参数：用户指定的根名称
@@ -3092,7 +2961,7 @@ namespace designer {
 			std::string firstNewName = newItems[0].second;
 
 			//步骤4：获取插入位置
-			auto insertPoint = Insertion::getInsertionPoint(mainList, chosenType, chosenPath, isSub);
+			auto insertPoint = Insertion::getInsertionPoint(mainList, chosenPath, isSub);
 
 			//步骤5：腾出空间
 			Insertion::makeSpace(mainList, insertPoint.nextOptionName, newItems.size());
@@ -3107,9 +2976,12 @@ namespace designer {
 
 			//步骤7：插入到data树
 			std::string newDataChosenPath = designer::toDataPath(chosenPath);
-			auto [father, nextDataIter] = designer::getNextIter(chosenType, newDataChosenPath, isSub);
+			auto [father, nextDataIter] = designer::getNextIter(newDataChosenPath, isSub);
 
-			auto [rootType, _] = designer::getType(designer::clipboard.copiedItemName);
+			//从剪贴板获取根对象类型（粘贴时data树中尚未有该数据）
+			auto* clipBase = designer::clipboard.dataClip.find(oldRootName);
+			std::type_index rootTypeIndex = clipBase ? designer::clipboard.dataClip.find_type_index(clipBase) : std::type_index(typeid(void));
+			std::string rootType = designer::typeIndexToTypeStr(rootTypeIndex);
 			DataTreeUpdater::insertRootObject(
 				father,
 				nextDataIter,
@@ -3131,50 +3003,51 @@ namespace designer {
 		//执行重命名：修改 nameList、mainList、data 中的所有相关键
 		//该参数 optionName 为名称，用'-'连接；newLeafName 为新的叶子名（不含父路径）
 		void renameExecute(gui::AreaObject& mainList, const std::string& optionName, const std::string& newLeafName) {
-			auto [type, path] = designer::getType(optionName);//type为类型标识，path为名称，用'-'连接
+			std::string path = optionName;//该变量为名称，用'-'连接
+			std::string type = designer::typeIndexToTypeStr(designer::getTypeFromPath(path));//type为类型标识
 			auto [fatherPath, oldLeafName] = designer::getFatherName(path);//fatherPath父名称，oldLeafName旧叶子名，均用'-'连接
 			if (oldLeafName == newLeafName) return;//名称未变，直接返回
 
 			std::string newPath = fatherPath.empty() ? newLeafName : fatherPath + '-' + newLeafName;//新路径，用'-'连接
-			std::string newOptionName = type + newPath;//新的完整 optionName
+			std::string newOptionName = newPath;//新的完整 optionName
 
 			//检查新名称是否已存在于 nameList
-			if (designer::nameList.find_named<std::string>(newOptionName) != nullptr) return;
+			if (designer::nameList.find<std::string>(newOptionName) != nullptr) return;
 
 			//收集所有需要重命名的条目（当前项 + 所有子项）
 			std::vector<std::pair<std::string, std::string>> renameList;//(old, new) 均为完整 optionName
 			renameList.push_back({ optionName, newOptionName });
-			if (type == attr::designer::type::area) {
-				auto iter = std::next(designer::nameList.find_order_named<std::string>(optionName));
+			if (designer::getTypeFromPath(path) == std::type_index(typeid(gui::AreaObject))) {
+				auto iter = std::next(designer::nameList.find_order(optionName));
 				while (iter != designer::nameList.end()) {
 					std::string& nextOptionName = *designer::nameList.find<std::string>(iter);
-					auto [childType, childPath] = designer::getType(nextOptionName);
+					std::string childPath = nextOptionName;
 					if (!designer::isFather(path, childPath)) break;
 					//替换 childPath 中的 path 前缀为 newPath
 					std::string childSuffix = childPath.substr(path.size());//'-' + remaining
 					std::string newChildPath = newPath + childSuffix;
-					renameList.push_back({ nextOptionName, childType + newChildPath });
+					renameList.push_back({ nextOptionName, newChildPath });
 					iter++;
 				}
 			}
 
 			//1. 重命名 nameList 中的条目（从后往前，避免迭代器失效）
 			for (auto it = renameList.rbegin(); it != renameList.rend(); ++it) {
-				designer::nameList.rename_named<std::string>(it->first, it->second);
-				*designer::nameList.find_named<std::string>(it->second) = it->second;
+				designer::nameList.rename(it->first, it->second);
+				*designer::nameList.find<std::string>(it->second) = it->second;
 			}
 
 			//2. 重命名 mainList 中的 ImageObject 和 OptionObject
 			for (const auto& [oldName, newName] : renameList) {
-				auto [_, childPath] = designer::getType(newName);
+				std::string childPath = newName;
 				std::string displayName = designer::getFatherName(childPath).second;
 				std::cout << "[renameExecute] oldName=" << oldName << " newName=" << newName << " displayName=" << displayName << std::endl;
-				if (auto* img = mainList.sub.find_named<gui::ImageObject>(oldName)) {
-					mainList.sub.rename_named<gui::ImageObject>(oldName, newName);
+				if (auto* img = mainList.sub.find<gui::ImageObject>(oldName + "(icon)")) {
+					mainList.sub.rename(oldName + "(icon)", newName + "(icon)");
 				}
-				if (auto* opt = mainList.sub.find_named<gui::OptionObject>(oldName)) {
-					mainList.sub.rename_named<gui::OptionObject>(oldName, newName);
-					auto* optPtr = mainList.sub.find_named<gui::OptionObject>(newName);
+				if (auto* opt = mainList.sub.find<gui::OptionObject>(oldName)) {
+					mainList.sub.rename(oldName, newName);
+					auto* optPtr = mainList.sub.find<gui::OptionObject>(newName);
 					std::cout << "  before setSizeAuto: text=" << optPtr->getText().toAnsiString() << std::endl;
 					optPtr->setText("    " + displayName).setSizeAuto();
 					std::cout << "  after setSizeAuto: text=" << optPtr->getText().toAnsiString() << std::endl;
@@ -3186,29 +3059,9 @@ namespace designer {
 				std::string dataFatherPath = designer::toDataPath(fatherPath);//父路径，用'_'连接
 				gui::AreaObject* father = fatherPath.empty() ? &designer::data : designer::data.path_find<gui::AreaObject>(dataFatherPath);
 				if (father) {
-					if (type == attr::designer::type::area) {
-						if (father->sub.find_named<gui::AreaObject>(oldLeafName))
-							father->sub.rename_named<gui::AreaObject>(oldLeafName, newLeafName);
-					}
-					else if (type == attr::designer::type::button) {
-						if (father->sub.find_named<gui::ButtonObject>(oldLeafName))
-							father->sub.rename_named<gui::ButtonObject>(oldLeafName, newLeafName);
-					}
-					else if (type == attr::designer::type::image) {
-						if (father->sub.find_named<gui::ImageObject>(oldLeafName))
-							father->sub.rename_named<gui::ImageObject>(oldLeafName, newLeafName);
-					}
-					else if (type == attr::designer::type::input) {
-						if (father->sub.find_named<gui::InputObject>(oldLeafName))
-							father->sub.rename_named<gui::InputObject>(oldLeafName, newLeafName);
-					}
-					else if (type == attr::designer::type::option) {
-						if (father->sub.find_named<gui::OptionObject>(oldLeafName))
-							father->sub.rename_named<gui::OptionObject>(oldLeafName, newLeafName);
-					}
-					else if (type == attr::designer::type::text) {
-						if (father->sub.find_named<gui::TextObject>(oldLeafName))
-							father->sub.rename_named<gui::TextObject>(oldLeafName, newLeafName);
+					auto* obj = father->sub.find(oldLeafName);
+					if (obj) {
+						father->sub.rename(oldLeafName, newLeafName);
 					}
 				}
 			}
@@ -3227,6 +3080,7 @@ namespace designer {
 }
 int main() {
 	fontManager.loadAuto();
+	imageManager.loadAuto();
 
 	init();
 
@@ -3300,7 +3154,8 @@ int main() {
 						bool isSub = menuManager.path_at<gui::TextObject>(attr::gtext::new_isSub).getShow();
 						gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 						std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
+						std::string ChosenPath = ChosenOptionName;//ChosenPath为名称，用'-'连接
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));//ChosenType为类型标识
 						int addType = 0;
 						if (option == "window")
 							addType = 1;
@@ -3322,21 +3177,21 @@ int main() {
 									path = ChosenPath + '-' + name;
 								else path = designer::getFatherName(ChosenPath).first + '-' + name;
 							}
-							std::string OptionName = type + path;//该变量为名称，用'-'连接
-							if (!mainList.sub.find_named<gui::OptionObject>(OptionName)) {
+							std::string OptionName = path;//该变量为名称，用'-'连接
+							if (!mainList.sub.find(OptionName)) {
 								float linePos;
 								std::string nextOptionName;//该变量为名称，用'-'连接
-								nextOptionName = designer::Create::getNextListOptionName(mainList, ChosenType, ChosenPath, isSub);
-								gui::OptionObject* nextOptionPtr = mainList.sub.find_named<gui::OptionObject>(nextOptionName);
+								nextOptionName = designer::Create::getNextListOptionName(mainList, ChosenPath, isSub);
+								gui::OptionObject* nextOptionPtr = mainList.sub.find<gui::OptionObject>(nextOptionName);
 								if (nextOptionPtr == nullptr)
 									linePos = designer::nameList.size() * 40.f;
-								else linePos = nextOptionPtr->getDynamicPosition().y.first.value;
+								else linePos = nextOptionPtr->getDynamicPosition().y.first.getValue();
 								size_t level = designer::countLevel(path);
 								designer::Create::moveDown(nextOptionName,mainList);
-								designer::nameList.insert_named(designer::nameList.find_order_named<std::string>(nextOptionName),OptionName, OptionName);
-								auto nextOptionIter = mainList.sub.find_order_named<gui::ImageObject>(nextOptionName);
-								auto ptropt = mainList.sub.insert_named(nextOptionIter, OptionName, gui::OptionObject{});
-								auto ptrimg = mainList.sub.insert_named(ptropt, OptionName, gui::ImageObject{});
+								designer::nameList.insert(designer::nameList.find_order(nextOptionName),OptionName, OptionName);
+								auto nextOptionIter = mainList.sub.find_order(nextOptionName + "(icon)");
+								auto ptropt = mainList.sub.insert(nextOptionIter, OptionName, gui::OptionObject{});
+								auto ptrimg = mainList.sub.insert(ptropt, OptionName + "(icon)", gui::ImageObject{});
 								(*ptrimg)
 									.setImageId(option)
 									.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
@@ -3348,10 +3203,10 @@ int main() {
 									.setCharacterSize(40)
 									.setSizeAuto()
 									.setPosition(sf::Vector2f(level*40.f, linePos));
-								designer::insert(ChosenType, designer::toDataPath(ChosenPath), isSub, type, name);
+								designer::insert(designer::toDataPath(ChosenPath), isSub, type, name);
 								designer::switchOption(type,path);
-								mainList.setOption(OptionName);
-								ChosenOptionName = OptionName;
+								mainList.setOption(path);
+								ChosenOptionName = path;
 								//同步到preview窗口
 								std::string dataPath = designer::toDataPath(path);//该变量为路径，用'_'连接
 								designer::Preview::currentWindowName = ""; //重置以强制重新拷贝
@@ -3371,7 +3226,8 @@ int main() {
 					menuManager.open("new", New);
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();
-					auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+					std::string ChosenPath = ChosenOptionName;
+					std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));
 					int isSubType = 0;//是需要选择isSub对象
 					if (ChosenType != attr::designer::type::area)
 						isSubType = 1;//是非area对象
@@ -3407,7 +3263,7 @@ int main() {
 							bool hasDuplicateAreaName = false;
 							for (auto it = loadedData.sub.begin(); it != loadedData.sub.end(); it++) {
 								std::string key = loadedData.sub.find_key(it);
-								if (loadedData.sub.find<gui::AreaObject>(it) && designer::data.sub.find_named<gui::AreaObject>(key)) {
+								if (loadedData.sub.find<gui::AreaObject>(it) && designer::data.sub.find<gui::AreaObject>(key)) {
 									std::cout << "Open import canceled: duplicate AreaObject name \"" << key << "\"" << std::endl;
 									hasDuplicateAreaName = true;
 									break;
@@ -3416,27 +3272,7 @@ int main() {
 							if (hasDuplicateAreaName)
 								continue;
 							//导入到当前：追加到data末尾
-							for (auto it = loadedData.sub.begin(); it != loadedData.sub.end(); it++) {
-								std::string key = loadedData.sub.find_key(it);
-								if (auto* ptr = loadedData.sub.find<gui::AreaObject>(it)) {
-									designer::data.sub.emplace_named<gui::AreaObject>(designer::data.sub.end(), key, *ptr);
-								}
-								else if (auto* ptr = loadedData.sub.find<gui::ButtonObject>(it)) {
-									designer::data.sub.emplace_named<gui::ButtonObject>(designer::data.sub.end(), key, *ptr);
-								}
-								else if (auto* ptr = loadedData.sub.find<gui::InputObject>(it)) {
-									designer::data.sub.emplace_named<gui::InputObject>(designer::data.sub.end(), key, *ptr);
-								}
-								else if (auto* ptr = loadedData.sub.find<gui::OptionObject>(it)) {
-									designer::data.sub.emplace_named<gui::OptionObject>(designer::data.sub.end(), key, *ptr);
-								}
-								else if (auto* ptr = loadedData.sub.find<gui::TextObject>(it)) {
-									designer::data.sub.emplace_named<gui::TextObject>(designer::data.sub.end(), key, *ptr);
-								}
-								else if (auto* ptr = loadedData.sub.find<gui::ImageObject>(it)) {
-									designer::data.sub.emplace_named<gui::ImageObject>(designer::data.sub.end(), key, *ptr);
-								}
-							}
+							designer::data.sub.merge(loadedData.sub);
 						}
 						else {
 							//直接打开：替换data
@@ -3458,8 +3294,8 @@ int main() {
 						}
 						//记录打开的文件路径和格式（仅直接打开时记录，导入到当前不记录）
 						if (!importToCurrent) {
-							designer::Preview::lastOpenedFilePath = filepath.string();
-							designer::Preview::lastOpenedFileFormat = format;
+							designer::Preview::lastFilePath = filepath.string();
+							designer::Preview::lastFileFormat = format;
 						}
 						//关闭打开窗口
 						menuManager.close("open");
@@ -3491,7 +3327,7 @@ int main() {
 						//按类别收集所有名称
 						std::map<std::string, std::vector<std::string>> categoryMap;
 						for (const auto& windowName : exportWindows) {
-							auto* windowPtr = designer::data.sub.find_named<gui::AreaObject>(windowName);
+							auto* windowPtr = designer::data.sub.find<gui::AreaObject>(windowName);
 							if (windowPtr) {
 								//保存根目录（窗口本身）
 								categoryMap["garea"].push_back(windowName);
@@ -3499,6 +3335,7 @@ int main() {
 							}
 						}
 						//输出到文件
+						ofs << "// Created with UIdesigner" << std::endl;
 						ofs << "namespace attr {" << std::endl;
 						ofs << "#define def(x) constexpr const char* x=#x;" << std::endl;
 						for (const auto& [category, names] : categoryMap) {
@@ -3527,9 +3364,9 @@ int main() {
 				if (evt->wholePath() == attr::gbutton::main_save || evt->wholePath() == attr::gbutton::main_saveas) {
 					menuManager.open("save", Save);
 					designer::Save::populateCheckboxes();
-					if (!designer::Preview::lastOpenedFilePath.empty()) {
-						menuManager.path_at<gui::InputObject>(attr::ginput::save_filepath).setText(designer::Preview::lastOpenedFilePath);
-						menuManager.path_at<gui::AreaObject>("save").setOption(designer::Preview::lastOpenedFileFormat);
+					if (!designer::Preview::lastFilePath.empty()) {
+						menuManager.path_at<gui::InputObject>(attr::ginput::save_filepath).setText(designer::Preview::lastFilePath);
+						menuManager.path_at<gui::AreaObject>("save").setOption(designer::Preview::lastFileFormat);
 					}
 				}
 				if (evt->wholePath() == attr::gbutton::save_ok) {
@@ -3541,22 +3378,22 @@ int main() {
 							std::string key = designer::data.sub.find_key(it);
 							if (designer::Save::isChecked(key)) {
 								if (auto* ptr = designer::data.sub.find<gui::AreaObject>(it)) {
-									dataToSave.sub.emplace_named<gui::AreaObject>(dataToSave.sub.end(), key, *ptr);
+									dataToSave.sub.emplace<gui::AreaObject>(dataToSave.sub.end(), key, *ptr);
 								}
 								else if (auto* ptr = designer::data.sub.find<gui::ButtonObject>(it)) {
-									dataToSave.sub.emplace_named<gui::ButtonObject>(dataToSave.sub.end(), key, *ptr);
+									dataToSave.sub.emplace<gui::ButtonObject>(dataToSave.sub.end(), key, *ptr);
 								}
 								else if (auto* ptr = designer::data.sub.find<gui::InputObject>(it)) {
-									dataToSave.sub.emplace_named<gui::InputObject>(dataToSave.sub.end(), key, *ptr);
+									dataToSave.sub.emplace<gui::InputObject>(dataToSave.sub.end(), key, *ptr);
 								}
 								else if (auto* ptr = designer::data.sub.find<gui::OptionObject>(it)) {
-									dataToSave.sub.emplace_named<gui::OptionObject>(dataToSave.sub.end(), key, *ptr);
+									dataToSave.sub.emplace<gui::OptionObject>(dataToSave.sub.end(), key, *ptr);
 								}
 								else if (auto* ptr = designer::data.sub.find<gui::TextObject>(it)) {
-									dataToSave.sub.emplace_named<gui::TextObject>(dataToSave.sub.end(), key, *ptr);
+									dataToSave.sub.emplace<gui::TextObject>(dataToSave.sub.end(), key, *ptr);
 								}
 								else if (auto* ptr = designer::data.sub.find<gui::ImageObject>(it)) {
-									dataToSave.sub.emplace_named<gui::ImageObject>(dataToSave.sub.end(), key, *ptr);
+									dataToSave.sub.emplace<gui::ImageObject>(dataToSave.sub.end(), key, *ptr);
 								}
 							}
 						}
@@ -3572,6 +3409,9 @@ int main() {
 							ofs << j.dump(1,'\t');
 							ofs.close();
 						}
+						//记录保存的文件路径
+						designer::Preview::lastFilePath = filepath.string();
+						designer::Preview::lastFileFormat = format;
 						menuManager.close("save");
 					}
 				}
@@ -3598,11 +3438,12 @@ int main() {
 						}
 
 						std::string newRootName = newNameInput.toAnsiString();
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
+						std::string ChosenPath = ChosenOptionName;//ChosenPath为名称，用'-'连接
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));//ChosenType为类型标识
 						bool isSub = menuManager.path_at<gui::TextObject>(attr::gtext::paste_isSub).getShow();
 
 						//执行粘贴（传递新名称）
-						designer::Paste::pasteExecute(mainList, ChosenType, ChosenPath, isSub, newRootName);
+						designer::Paste::pasteExecute(mainList, ChosenPath, isSub, newRootName);
 					}
 				}
 			if (evt->wholePath() == attr::gbutton::paste_cancel) {
@@ -3632,7 +3473,8 @@ int main() {
 					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
 					std::string ChosenOptionName = mainList.getOption();
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						std::string ChosenPath = ChosenOptionName;
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));
 						std::string dataPath = designer::toDataPath(ChosenPath);
 						designer::applySettings(ChosenType, dataPath, mainSettings);
 
@@ -3673,7 +3515,8 @@ int main() {
 					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
 					std::string ChosenOptionName = mainList.getOption();
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						std::string ChosenPath = ChosenOptionName;
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));
 						if (ChosenType == attr::designer::type::image) {
 							std::string dataPath = designer::toDataPath(ChosenPath);
 							designer::applySettings(ChosenType, dataPath, mainSettings);
@@ -3691,7 +3534,8 @@ int main() {
 					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
 					std::string ChosenOptionName = mainList.getOption();
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						std::string ChosenPath = ChosenOptionName;
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));
 						if (ChosenType == attr::designer::type::image) {
 							std::string dataPath = designer::toDataPath(ChosenPath);
 							designer::applySettings(ChosenType, dataPath, mainSettings);
@@ -3711,18 +3555,19 @@ int main() {
 					std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
 					//检查是否有选中项
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
+						std::string ChosenPath = ChosenOptionName;//ChosenPath为名称，用'-'连接
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));//ChosenType为类型标识
 						//上移被删除元素后方的所有元素（在删除之前调用）
 						designer::Remove::moveUp(ChosenOptionName, mainList);
 						
 						// 收集所有要删除的元素名称（当前元素 + 所有子元素）
 						std::vector<std::string> toDelete;
 						toDelete.push_back(ChosenOptionName);
-						auto iter = designer::nameList.find_order_named<std::string>(ChosenOptionName);
+						auto iter = designer::nameList.find_order(ChosenOptionName);
 						iter++; // 跳过第一个元素
 						while (iter != designer::nameList.end()) {
 							std::string& nextOptionName = *designer::nameList.find<std::string>(iter);//该变量为名称，用'-'连接
-							auto [_, nextName] = designer::getType(nextOptionName);//nextName为名称，用'-'连接
+							std::string nextName = nextOptionName;//nextName为名称，用'-'连接
 							if (!designer::isFather(ChosenPath, nextName)) {
 								break;
 							}
@@ -3732,10 +3577,10 @@ int main() {
 						
 						//从mainList中删除所有OptionObject和ImageObject
 						for (const auto& optionName : toDelete) {
-							if (auto* ptr = mainList.sub.find_named<gui::OptionObject>(optionName)) {
+							if (auto* ptr = mainList.sub.find<gui::OptionObject>(optionName)) {
 								mainList.sub.erase(ptr);
 							}
-							if (auto* ptr = mainList.sub.find_named<gui::ImageObject>(optionName)) {
+							if (auto* ptr = mainList.sub.find<gui::ImageObject>(optionName + "(icon)")) {
 								mainList.sub.erase(ptr);
 							}
 						}
@@ -3743,7 +3588,7 @@ int main() {
 						//从nameList中删除所有对应的条目
 						designer::Remove::removeFromNameList(toDelete);
 						//从data中删除对应的UI对象及其所有子对象
-					designer::remove(ChosenType, designer::toDataPath(ChosenPath));
+					designer::remove(designer::toDataPath(ChosenPath));
 						//同步删除preview窗口
 						designer::Preview::removeFromPreview(ChosenPath);
 						//清空settings面板
@@ -3757,7 +3602,8 @@ int main() {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
+						std::string ChosenPath = ChosenOptionName;//ChosenPath为名称，用'-'连接
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));//ChosenType为类型标识
 						designer::Move::moveUp(ChosenOptionName);
 						//重新选中原来的项
 						mainList.setOption(ChosenOptionName);
@@ -3774,7 +3620,8 @@ int main() {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
+						std::string ChosenPath = ChosenOptionName;//ChosenPath为名称，用'-'连接
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));//ChosenType为类型标识
 						designer::Move::moveDown(ChosenOptionName);
 						//重新选中原来的项
 						mainList.setOption(ChosenOptionName);
@@ -3792,7 +3639,8 @@ int main() {
 					gui::AreaObject& mainSettings = menuManager.path_at<gui::AreaObject>(attr::garea::main_settings);
 					std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
+						std::string ChosenPath = ChosenOptionName;//ChosenPath为名称，用'-'连接
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));//ChosenType为类型标识
 						
 						designer::Remove::cut(ChosenOptionName);
 						designer::Preview::removeFromPreview(ChosenPath);
@@ -3815,7 +3663,8 @@ int main() {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
+						std::string ChosenPath = ChosenOptionName;//ChosenPath为名称，用'-'连接
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));//ChosenType为类型标识
 						menuManager.open("rename", ::Rename);
 						std::string leafName = designer::getFatherName(ChosenPath).second;
 						menuManager.path_at<gui::InputObject>(attr::ginput::rename_name).setText(leafName);
@@ -3829,7 +3678,8 @@ int main() {
 						gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 						std::string ChosenOptionName = mainList.getOption();//该变量为名称，用'-'连接
 						std::cout << "[PASTE DEBUG] ChosenOptionName: " << ChosenOptionName << std::endl;
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);//ChosenType为类型标识，ChosenPath为名称，用'-'连接
+						std::string ChosenPath = ChosenOptionName;//ChosenPath为名称，用'-'连接
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));//ChosenType为类型标识
 
 						//计算isSubType（保持不变）
 						int isSubType = 0;
@@ -3862,7 +3712,8 @@ int main() {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						std::string ChosenPath = ChosenOptionName;
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));
 						designer::applySettings(ChosenType, designer::toDataPath(ChosenPath), menuManager.path_at<gui::AreaObject>(attr::garea::main_settings));
 					}
 				}
@@ -3876,7 +3727,8 @@ int main() {
 					designer::New::isSubSetStatu(designer::New::isSubType);
 				}
 				if (evt->path == attr::garea::main_list) {
-					auto [type, name] = designer::getType(evt->name);
+					std::string name = evt->name;
+					std::string type = designer::typeIndexToTypeStr(designer::getTypeFromPath(name));
 					designer::switchOption(type, name);
 					designer::printDataDebug();
 					designer::printNameListDebug();
@@ -3897,11 +3749,12 @@ int main() {
 					gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 					std::string ChosenOptionName = mainList.getOption();
 					if (!ChosenOptionName.empty()) {
-						auto [ChosenType, ChosenPath] = designer::getType(ChosenOptionName);
+						std::string ChosenPath = ChosenOptionName;
+						std::string ChosenType = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));
 						designer::applySettings(ChosenType, designer::toDataPath(ChosenPath), mainSettings);
 						//同步preview窗口
 						std::string windowName = designer::getWindowName(ChosenPath);
-						auto* windowPtr = designer::data.sub.find_named<gui::AreaObject>(windowName);
+						auto* windowPtr = designer::data.sub.find<gui::AreaObject>(windowName);
 						if (windowPtr) {
 							designer::Preview::copyWindowToPreview(windowName, previewManager.window("preview"));
 						}
@@ -3919,7 +3772,8 @@ int main() {
 		gui::AreaObject& mainList = menuManager.path_at<gui::AreaObject>(attr::garea::main_list);
 		std::string ChosenOptionName = mainList.getOption();
 		if (!ChosenOptionName.empty()) {
-			auto [type, fullPath] = designer::getType(ChosenOptionName);
+			std::string fullPath = ChosenOptionName;
+			std::string type = designer::typeIndexToTypeStr(designer::getTypeFromPath(ChosenOptionName));
 			std::string windowName = designer::getWindowName(fullPath);
 			//只在切换窗口时才拷贝
 			if (windowName != designer::Preview::currentWindowName) {

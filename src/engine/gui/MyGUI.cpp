@@ -19,9 +19,13 @@ namespace gui {
 			return;
 		UIBase::draw(r, displayArea, windowManager);
 		if (posRect.findIntersection(displayArea)) {
-			sf::Sprite imageRender(UIimageManager[imageId]);
-			imageRender.setPosition(posRect.position + ((posRect.size - static_cast<sf::Vector2f>(UIimageManager[imageId].getSize()).componentWiseMul(scale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayArea.position);
-			imageRender.setScale(scale);
+			sf::Vector2f imgSize = static_cast<sf::Vector2f>(imageManager[imageId].getSize());
+			sf::Vector2f realScale = scale;
+			if (realScale.x < 0) realScale.x = posRect.size.x / imgSize.x;
+			if (realScale.y < 0) realScale.y = posRect.size.y / imgSize.y;
+			sf::Sprite imageRender(imageManager[imageId]);
+			imageRender.setPosition(posRect.position + ((posRect.size - imgSize.componentWiseMul(realScale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayArea.position);
+			imageRender.setScale(realScale);
 			imageRender.setColor(imageColors[currentStatu]);
 			r.draw(imageRender);
 		}

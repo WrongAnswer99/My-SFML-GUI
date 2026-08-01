@@ -81,7 +81,7 @@ private:
 	}
 
 	template<typename T, typename...Args>
-	inline void readStructHelper(int index, int indexRead, T&& x, Args&& ...args) {
+	[[deprecated("Use read() instead")]] inline void readStructHelper(int index, int indexRead, T&& x, Args&& ...args) {
 		if (indexRead == 0)
 			this->read(indexRead);
 		if (indexRead == 0)
@@ -97,7 +97,7 @@ private:
 	}
 
 	template<typename T>
-	inline void readStructHelper(int index, int indexRead, T&& x) {
+	[[deprecated("Use read() instead")]] inline void readStructHelper(int index, int indexRead, T&& x) {
 		if (indexRead == 0)
 			this->read(indexRead);
 		if (indexRead == 0)
@@ -114,13 +114,13 @@ private:
 	}
 
 	template<typename T, typename...Args>
-	inline void writeStructHelper(int index, T&& x, Args&& ...args) {
+	[[deprecated("Use write() instead")]] inline void writeStructHelper(int index, T&& x, Args&& ...args) {
 		this->write(index,std::forward<T>(x));
 		writeStructHelper(index + 1, std::forward<Args>(args)...);
 	}
 
 	template<typename T>
-	inline void writeStructHelper(int index, T&& x) {
+	[[deprecated("Use write() instead")]] inline void writeStructHelper(int index, T&& x) {
 		this->write(index,std::forward<T>(x),0);
 		//0是占位符,表示当前struct结束,用于嵌套struct
 	}
@@ -240,12 +240,12 @@ public:
 	}
 
 	template <typename ...Args>
-	inline void readStruct(Args&&...args) {
+	[[deprecated("Use read() instead")]] inline void readStruct(Args&&...args) {
 		readStructHelper(1, 0, std::forward<Args>(args)...);
 	}
 
 	template <typename ...Args>
-	inline void writeStruct(Args&&...args) {
+	[[deprecated("Use write() instead")]] inline void writeStruct(Args&&...args) {
 		writeStructHelper(1, std::forward<Args>(args)...);
 	}
 
@@ -300,6 +300,7 @@ inline void read(BinaryFileStream& bf, std::map<T, U>& x) {
 	size_t size;
 	bf.read(size);
 	x.clear();
+	x.reserve(size);
 	T t{};
 	U u{};
 	for (size_t i = 0; i < size; ++i) {
@@ -391,7 +392,6 @@ inline void read(BinaryFileStream& bf, sf::Image& x) {
 	std::string s;
 	bf.read(s);
 	if (!x.loadFromMemory(s.data(), s.size())) {
-		std::cerr << "[BinaryFileStream] Image Read Failed" << std::endl;
 		throw std::runtime_error("[BinaryFileStream] Image Read Failed");
 	}
 }
@@ -402,7 +402,6 @@ inline void read(BinaryFileStream& bf, sf::Texture& x) {
 	std::string s;
 	bf.read(s);
 	if (!x.loadFromImage(sf::Image(s.data(), s.size()))) {
-		std::cerr << "[BinaryFileStream] Texture Read Failed" << std::endl;
 		throw std::runtime_error("[BinaryFileStream] Texture Read Failed");
 	}
 }
@@ -414,13 +413,13 @@ inline void write(BinaryFileStream& bf, const sf::Texture& x) {
 #include "engine/data/VarianTmap.hpp"
 
 template<typename Base,typename ...T>
-class VarianTmapSerializerWrapper {
+class VarianTmapBinarySerializerWrapper {
 	VarianTmap<Base>* data;
 public:
-	VarianTmapSerializerWrapper(VarianTmap<Base>& data) : data(&data) {}
-	VarianTmapSerializerWrapper(const VarianTmap<Base>& data) : data(const_cast<VarianTmap<Base>*>(&data)) {}
+	VarianTmapBinarySerializerWrapper(VarianTmap<Base>& data) : data(&data) {}
+	VarianTmapBinarySerializerWrapper(const VarianTmap<Base>& data) : data(const_cast<VarianTmap<Base>*>(&data)) {}
 
-	friend void read(BinaryFileStream& bf, VarianTmapSerializerWrapper<Base,T...> x) {
+	friend void read(BinaryFileStream& bf, VarianTmapBinarySerializerWrapper<Base,T...> x) {
 		if constexpr (sizeof...(T) == 0)return;
 		x.data->clear();
 		size_t TypeOrderIndex = 0;
@@ -430,7 +429,7 @@ public:
 		((readHelper[std::type_index(typeid(T))] = [&](auto& bf) {
 			std::string key;
 			bf.read(key);
-			T* pointer=x.data->template push_back_named<T>(key,T{});
+			T* pointer=x.data->template push_back<T>(key,T{});
 			bf.read(*pointer);
 		}),...);
 		size_t size;
@@ -441,7 +440,7 @@ public:
 			readHelper[TypeOrderIndexMap.at(TypeIndex)](bf);
 		}
 	}
-	friend void write(BinaryFileStream& bf, const VarianTmapSerializerWrapper<Base,T...>& x) {
+	friend void write(BinaryFileStream& bf, const VarianTmapBinarySerializerWrapper<Base,T...>& x) {
 		if constexpr (sizeof...(T) == 0)return;
 		size_t TypeOrderIndex = 0;
 		std::unordered_map<std::type_index, size_t> TypeOrderIndexMap;
@@ -462,3 +461,171 @@ public:
 		}
 	}
 };
+#include "engine/gui/MyGUI.hpp"
+
+namespace gui {
+
+// 类型别名，避免重复书写长类型
+using GUIvarianTmapBinarySerializer = VarianTmapBinarySerializerWrapper<UIBase, AreaObject, ImageObject, TextObject, InputObject, ButtonObject, OptionObject>;
+
+// Style（公开成员直接访问）
+inline void read(BinaryFileStream& bf, Style& x) {
+	bf.read(x.backgroundColor, x.outlineColor, x.outlineThickness);
+}
+inline void write(BinaryFileStream& bf, const Style& x) {
+	bf.write(x.backgroundColor, x.outlineColor, x.outlineThickness);
+}
+
+// DynamicPosition（getAnchor/getRelative 组装成 char type 后序列化）
+inline void read(BinaryFileStream& bf, UIBase::DynamicPosition& x) {
+	char type;
+	float value;
+	bf.read(type, value);
+	int anchor = type >> 2;
+	int relative = type & 0b000011;
+	x.setAnchor(static_cast<UIBase::Anchor>(anchor));
+	x.setRelative(static_cast<UIBase::Relative>(relative));
+	x.setValue(value);
+}
+inline void write(BinaryFileStream& bf, const UIBase::DynamicPosition& x) {
+	char type = static_cast<char>((x.getAnchor() << 2) | x.getRelative());
+	bf.write(type, x.getValue());
+}
+
+// UIBase（protected 成员，使用 getter/setter）
+inline void read(BinaryFileStream& bf, UIBase& x) {
+	sf::Vector2<std::pair<UIBase::DynamicPosition, UIBase::DynamicPosition>> pos;
+	Style styles[3];
+	bool isShow;
+	bf.read(pos, styles, isShow);
+	x.setPositionRelative({pos.x.first, pos.x.second}, {pos.y.first, pos.y.second});
+	x.setStyle(styles[0], styles[1], styles[2]);
+	x.setShow(isShow);
+}
+inline void write(BinaryFileStream& bf, const UIBase& x) {
+	bf.write(x.getDynamicPosition(), x.getStyle(0), x.getStyle(1), x.getStyle(2), x.getShow());
+}
+
+// ImageObject（protected 成员，使用 getter/setter）
+inline void read(BinaryFileStream& bf, ImageObject& x) {
+	read(bf, static_cast<UIBase&>(x));
+	std::string imageId;
+	sf::Vector2f scale;
+	sf::Vector2i align;
+	sf::Color imageColors[3];
+	bf.read(imageId, scale, align, imageColors);
+	x.setImageId(imageId);
+	x.setScale(scale);
+	x.setAlign(static_cast<UIBase::Align>(align.x), static_cast<UIBase::Align>(align.y));
+	x.setImageColor(imageColors[0], imageColors[1], imageColors[2]);
+}
+inline void write(BinaryFileStream& bf, const ImageObject& x) {
+	write(bf, static_cast<const UIBase&>(x));
+	bf.write(x.getImageId(), x.getScale(), static_cast<sf::Vector2i>(x.getAlign()),
+		x.getImageColor(0), x.getImageColor(1), x.getImageColor(2));
+}
+
+// TextStyle（公开成员直接访问）
+inline void read(BinaryFileStream& bf, TextStyle& x) {
+	bf.read(x.fillColor, x.outlineColor);
+}
+inline void write(BinaryFileStream& bf, const TextStyle& x) {
+	bf.write(x.fillColor, x.outlineColor);
+}
+
+// TextObject（protected 成员，使用 getter/setter）
+inline void read(BinaryFileStream& bf, TextObject& x) {
+	read(bf, static_cast<UIBase&>(x));
+	TextStyle textStyles[3];
+	std::string font;
+	unsigned int characterSize;
+	sf::Vector2i align;
+	float letterSpacing, lineSpacing;
+	sf::String text;
+	bf.read(textStyles, font, characterSize, align, letterSpacing, lineSpacing, text);
+	x.setTextStyle(textStyles[0], textStyles[1], textStyles[2]);
+	x.setFont(font);
+	x.setCharacterSize(characterSize);
+	x.setAlign(static_cast<UIBase::Align>(align.x), static_cast<UIBase::Align>(align.y));
+	x.setSpacing(letterSpacing, lineSpacing);
+	x.setText(text);
+}
+inline void write(BinaryFileStream& bf, const TextObject& x) {
+	write(bf, static_cast<const UIBase&>(x));
+	bf.write(x.getTextStyle(0), x.getTextStyle(1), x.getTextStyle(2), x.getFont(),
+		x.getCharacterSize(), x.getAlign(), x.getLetterSpacing(), x.getLineSpacing(), x.getText());
+}
+
+// InputLimit（private 成员，使用 getter）
+inline void read(BinaryFileStream& bf, InputObject::InputLimit& x) {
+	bool isAllowList;
+	std::vector<char32_t> single;
+	std::vector<std::pair<char32_t, char32_t>> range;
+	bf.read(isAllowList, single, range);
+	x.setIsAllowList(isAllowList);
+	x.setSingle(single);
+	x.setRange(range);
+}
+inline void write(BinaryFileStream& bf, const InputObject::InputLimit& x) {
+	bf.write(x.getIsAllowList(), x.getSingle(), x.getRange());
+}
+
+// InputObject
+// 序列化逻辑：inputLimit 仅当 typeLimit == String 时才写入/读取
+// 写入时：先写 sizeLimit 和 typeLimit，若 typeLimit == String 则额外写 inputLimit
+// 读取时：先读 sizeLimit 和 typeLimit，若 typeLimit == String 则额外读 inputLimit 并通过 setStringTypeLimit 设置
+inline void read(BinaryFileStream& bf, InputObject& x) {
+	read(bf, static_cast<TextObject&>(x));
+	size_t sizeLimit;
+	int typeLimit;
+	bf.read(sizeLimit, typeLimit);
+	x.setSizeLimit(sizeLimit);
+	x.setTypeLimit(static_cast<InputObject::InputType>(typeLimit));
+	if (typeLimit == InputObject::String) {
+		InputObject::InputLimit inputLimit;
+		bf.read(inputLimit);
+		x.setStringTypeLimit(inputLimit.getIsAllowList(), inputLimit.getSingle(), inputLimit.getRange());
+	}
+	x.setText(x.getText());
+}
+inline void write(BinaryFileStream& bf, const InputObject& x) {
+	write(bf, static_cast<const TextObject&>(x));
+	bf.write(x.getSizeLimit(), x.getTypeLimit());
+	if (x.getTypeLimit() == InputObject::String) {
+		bf.write(*x.getStringTypeLimit());
+	}
+}
+
+// AreaObject（protected 成员使用 getter/setter，sub 公开）
+inline void read(BinaryFileStream& bf, AreaObject& x) {
+	read(bf, static_cast<UIBase&>(x));
+	GUIvarianTmapBinarySerializer subWrapper{x.sub};
+	sf::Vector2i mouseDragScrollable, mouseWheelScrollable;
+	std::string option;
+	bf.read(subWrapper, mouseDragScrollable, mouseWheelScrollable, option);
+	x.setScrollable(mouseDragScrollable, mouseWheelScrollable);
+	x.setOption(option);
+}
+inline void write(BinaryFileStream& bf, const AreaObject& x) {
+	write(bf, static_cast<const UIBase&>(x));
+	bf.write(GUIvarianTmapBinarySerializer{const_cast<VarianTmap<UIBase>&>(x.sub)},
+		x.getMouseDragScrollable(), x.getMouseWheelScrollable(), x.getOption());
+}
+
+// ButtonObject（无新增成员，委托给 TextObject）
+inline void read(BinaryFileStream& bf, ButtonObject& x) {
+	read(bf, static_cast<TextObject&>(x));
+}
+inline void write(BinaryFileStream& bf, const ButtonObject& x) {
+	write(bf, static_cast<const TextObject&>(x));
+}
+
+// OptionObject（无新增成员，委托给 ButtonObject）
+inline void read(BinaryFileStream& bf, OptionObject& x) {
+	read(bf, static_cast<ButtonObject&>(x));
+}
+inline void write(BinaryFileStream& bf, const OptionObject& x) {
+	write(bf, static_cast<const ButtonObject&>(x));
+}
+
+} // namespace gui

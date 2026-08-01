@@ -33,7 +33,10 @@ Makefile
 *.ilk
 
 # Resources (fonts, etc.)
-*.ttf
+resources/fonts/*
+
+# Test outputs
+tools/testOutputs/*
 
 # OS files
 .DS_Store
