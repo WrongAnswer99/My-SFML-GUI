@@ -278,11 +278,21 @@ int main() {
 			else if (auto* resized = sfEvt->getIf<sf::Event::Resized>()) {
 				window.setView(sf::View(sf::FloatRect({0.f,0.f},static_cast<sf::Vector2f>(resized->size))));
 			}
-			else {
-				windowManager.update(sfEvt);
-			}
+			else windowManager.update(sfEvt);
 		}
 		while (const auto evt=windowManager.pollEvent()) {
+			if (auto ptr = evt->getIf<gui::Events::KeyPressed>()) {
+				std::cout << "Key pressed  : topWindow=" << ptr->topWindow << " focusAreaPath=" << ptr->focusAreaPath << " code=" << static_cast<int>(ptr->code) << std::endl;
+				if (ptr->focusAreaPath == "main_area") {
+					if (ptr->code == sf::Keyboard::Key::W)
+						windowManager.simulateSetPrevOption("main_area");
+					else if (ptr->code == sf::Keyboard::Key::S)
+						windowManager.simulateSetNextOption("main_area");
+				}
+			}
+			if (auto ptr = evt->getIf<gui::Events::KeyReleased>()) {
+				std::cout << "Key released : topWindow=" << ptr->topWindow << " focusAreaPath=" << ptr->focusAreaPath << " code=" << static_cast<int>(ptr->code) << std::endl;
+			}
 			if (auto ptr=evt->getIf<gui::Events::ButtonPressed>()) {
 				std::cout << "Button pressed : " << ptr->wholePath() << std::endl;
 			}

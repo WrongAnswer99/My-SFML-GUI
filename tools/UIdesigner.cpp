@@ -3145,6 +3145,28 @@ int main() {
 			previewManager.update(sfEvt);
 		}
 		while (auto evtptr = menuManager.pollEvent()) {
+			if (auto evt = evtptr->getIf<gui::Events::KeyPressed>()) {
+				if (evt->topWindow != "main") {
+					if (evt->code == sf::Keyboard::Key::Enter) {
+						menuManager.simulatePress(evt->topWindow + ".ok");
+					}
+					else if (evt->code == sf::Keyboard::Key::Escape) {
+						std::string btnName = (evt->topWindow == "about") ? "ok" : "cancel";
+						menuManager.simulatePress(evt->topWindow + "." + btnName);
+					}
+				}
+			}
+			if (auto evt = evtptr->getIf<gui::Events::KeyReleased>()) {
+				if (evt->topWindow != "main") {
+					if (evt->code == sf::Keyboard::Key::Enter) {
+						menuManager.simulateRelease(evt->topWindow + ".ok");
+					}
+					else if (evt->code == sf::Keyboard::Key::Escape) {
+						std::string btnName = (evt->topWindow == "about") ? "ok" : "cancel";
+						menuManager.simulateRelease(evt->topWindow + "." + btnName);
+					}
+				}
+			}
 			if (auto evt = evtptr->getIf<gui::Events::ButtonPressed>()) {
 				std::cout << "Button pressed : " << evt->wholePath() << std::endl;
 				if (evt->wholePath() == attr::gbutton::new_ok) {

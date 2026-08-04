@@ -3,22 +3,32 @@
 #include "engine/event/Event.hpp"
 #include "engine/resource/Resources.hpp"
 #include "engine/data/VarianTmap.hpp"
-//if exist then check condition
-#define ensure(existCondition,condition) (!(existCondition)||((existCondition)&&(condition)))
+
 namespace gui {
 	namespace Events{
-		struct UIEventBase : public EventBase {
+		struct UIEventBase : public EventBase {};
+		struct SingleObjectEvent : public UIEventBase {
 			std::string path;
 			std::string name;
 			const std::string wholePath() const {
 				return path + '_' + name;
 			}
 		};
-		struct ButtonPressed : public UIEventBase {};
-		struct OptionDeselected : public UIEventBase {};
-		struct OptionSelected : public UIEventBase {};
-		struct InputSelected : public UIEventBase {};
-		struct InputDeselected : public UIEventBase {};
+		struct ButtonPressed : public SingleObjectEvent {};
+		struct OptionDeselected : public SingleObjectEvent {};
+		struct OptionSelected : public SingleObjectEvent {};
+		struct InputSelected : public SingleObjectEvent {};
+		struct InputDeselected : public SingleObjectEvent {};
+		struct ForwardEvent : public UIEventBase {
+			std::string topWindow;
+			std::string focusAreaPath;
+		};
+		struct KeyPressed : public ForwardEvent {
+			sf::Keyboard::Key code;
+		};
+		struct KeyReleased : public ForwardEvent {
+			sf::Keyboard::Key code;
+		};
 	}
 	//快速绘制简图
 	namespace _builtinGUIdraw {
@@ -62,6 +72,7 @@ namespace gui {
 			outlineThickness = _outlineThickness;
 		}
 	};
+	class AreaObject;
 	class UIBase {
 		friend class AreaObject;
 		friend class WindowManager;
@@ -116,6 +127,9 @@ namespace gui {
 			}
 			float getValue () const{
 				return value;
+			}
+			char getType () const{
+				return type;
 			}
 		};
 	protected:
@@ -254,6 +268,18 @@ namespace gui {
 				currentStatu = statu;
 			}
 		}
+	public:
+		virtual void onFocusLose(EventQueue&, const std::string&, const std::string&, AreaObject&, bool) { setStatu(Normal, true); }
+		virtual void onFocusGain(EventQueue&, const std::string&, const std::string&, const sf::Vector2f&, AreaObject&, bool) { setStatu(Focus); }
+		virtual void onRelease(bool, bool, EventQueue&, const std::string&, const std::string&, AreaObject&) {}
+		virtual void onDragUpdate(bool, bool) {}
+		virtual void onTick(WindowManager& wm);
+		virtual void onTextEntered(char32_t) {}
+		virtual void onKeyPressed(sf::Keyboard::Key) {}
+		virtual bool isDragScrollImmediate() { return true; }
+		virtual bool isTextEnterable() { return false; }
+		virtual bool shouldForwardKey(sf::Keyboard::Key) { return false; }
+		virtual void onInertialScrollStart(sf::Vector2f) {}
 	};
 	class ImageObject :public UIBase {
 		friend class WindowManager;
@@ -416,9 +442,23 @@ namespace gui {
 			styles[gui::UIBase::Over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
 			styles[gui::UIBase::Focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
 		}
+		void onRelease(bool isOver, bool isDragScrolling, EventQueue& event, const std::string& path, const std::string& name, AreaObject&) override {
+			if (isOver && !isDragScrolling)
+				event.push(gui::Events::ButtonPressed{ {.path = path,.name = name} });
+			setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
+		}
+		bool isDragScrollImmediate() override { return false; }
+		void onDragUpdate(bool isOver, bool isDragScrolling) override {
+			if (isDragScrolling)
+				setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
+			else
+				setStatu(isOver ? gui::UIBase::Focus : gui::UIBase::Over, true);
+		}
 	};
 	class OptionObject :public ButtonObject {
 		friend class WindowManager;
+		void onRelease(bool isOver, bool isDragScrolling, EventQueue& event, const std::string& path, const std::string& name, AreaObject& parent) override;
+		void onDragUpdate(bool isOver, bool isDragScrolling) override;
 	};
 	class InputObject :public TextObject {
 		friend class WindowManager;
@@ -490,16 +530,16 @@ namespace gui {
 		inline void insert(char32_t ch) {
 			if (text.getSize() >= sizeLimit)return;
 			if (typeLimit == gui::InputObject::Int) {
-				if ((ch == '-' && cursor == 0 && ensure(text.getSize() > 0, text[0] != '-')) ||
-					(ch >= '0' && ch <= '9' && ensure(text.getSize() > 0, ensure(text[0] == '-', cursor != 0)))) {
+				if ((ch == '-' && cursor == 0 && (text.getSize() == 0 || text[0] != '-')) ||
+					(ch >= '0' && ch <= '9' && (text.getSize() == 0 || text[0] != '-' || cursor != 0))) {
 					text.insert(cursor, ch);
 					cursor++;
 				}
 			}
 			else if (typeLimit == gui::InputObject::Float) {
-				if ((ch == '-' && cursor == 0 && ensure(text.getSize() > 0, text[0] != '-')) ||
-					(ch >= '0' && ch <= '9' && ensure(text.getSize() > 0, ensure(text[0] == '-', cursor != 0))) ||
-					(ch == '.' && ensure(text.getSize() > 0, ensure(text[0] == '-', cursor != 0)) && text.find('.') == sf::String::InvalidPos)) {
+				if ((ch == '-' && cursor == 0 && (text.getSize() == 0 || text[0] != '-')) ||
+					(ch >= '0' && ch <= '9' && (text.getSize() == 0 || text[0] != '-' || cursor != 0)) ||
+					(ch == '.' && (text.getSize() == 0 || text[0] != '-' || cursor != 0) && text.find('.') == sf::String::InvalidPos)) {
 					text.insert(cursor, ch);
 					cursor++;
 				}
@@ -599,9 +639,89 @@ namespace gui {
 			cursor = text.getSize();
 			return *this;
 		}
+		void onFocusLose(EventQueue& event, const std::string& path, const std::string& name, AreaObject&, bool focusChanged) override;
+		void onFocusGain(EventQueue& event, const std::string& path, const std::string& name,
+						 const sf::Vector2f& mousePos, AreaObject& parent, bool focusChanged) override;
+		void onTextEntered(char32_t ch) override {
+			if (ch == 8) erase(true);
+			else if (ch == 9) insert('\t');
+			else if (ch == 13) insert('\n');
+			else if (ch == 22) insert(sf::Clipboard::getString());
+			else if (ch >= 32) insert(ch);
+		}
+		void onKeyPressed(sf::Keyboard::Key key) override {
+			if (key == sf::Keyboard::Key::Left) moveCursor(true);
+			else if (key == sf::Keyboard::Key::Right) moveCursor(false);
+			else if (key == sf::Keyboard::Key::Delete) erase(false);
+			else if (key == sf::Keyboard::Key::Home) {
+				auto pos = sf::String::InvalidPos;
+				for (auto i = cursor; i > 0; i--)
+					if (text[i - 1] == L'\n') { pos = i; break; }
+				cursor = (pos == sf::String::InvalidPos) ? 0 : pos;
+			}
+			else if (key == sf::Keyboard::Key::End) {
+				auto pos = text.find(L'\n', cursor);
+				cursor = (pos == sf::String::InvalidPos) ? text.getSize() : pos;
+			}
+			else if (key == sf::Keyboard::Key::Up) {
+				if (cursor == 0) return;
+				float currentY = textRender.findCharacterPos(cursor).y;
+				// find the previous line's y
+				float prevLineY = currentY;
+				for (auto i = cursor; i > 0; i--) {
+					float y = textRender.findCharacterPos(i - 1).y;
+					if (y < currentY) { prevLineY = y; break; }
+				}
+				if (prevLineY == currentY) { cursor = 0; return; }
+				// find closest x on the previous line
+				float targetX = textRender.findCharacterPos(cursor).x + textRenderOffsetFix.x;
+				float minDist = std::numeric_limits<float>::max();
+				size_t bestCursor = 0;
+				for (auto i = 0u; i <= text.getSize(); i++) {
+					if (textRender.findCharacterPos(i).y == prevLineY) {
+						float dist = std::abs((textRender.findCharacterPos(i).x + textRenderOffsetFix.x) - targetX);
+						if (dist < minDist) {
+							minDist = dist;
+							bestCursor = i;
+						}
+					}
+				}
+				cursor = bestCursor;
+			}
+			else if (key == sf::Keyboard::Key::Down) {
+				if (cursor == text.getSize()) return;
+				float currentY = textRender.findCharacterPos(cursor).y;
+				// find the next line's y
+				float nextLineY = currentY;
+				for (auto i = cursor; i <= text.getSize(); i++) {
+					float y = textRender.findCharacterPos(i).y;
+					if (y > currentY) { nextLineY = y; break; }
+				}
+				if (nextLineY == currentY) { cursor = text.getSize(); return; }
+				// find closest x on the next line
+				float targetX = textRender.findCharacterPos(cursor).x + textRenderOffsetFix.x;
+				float minDist = std::numeric_limits<float>::max();
+				size_t bestCursor = text.getSize();
+				for (auto i = 0u; i <= text.getSize(); i++) {
+					if (textRender.findCharacterPos(i).y == nextLineY) {
+						float dist = std::abs((textRender.findCharacterPos(i).x + textRenderOffsetFix.x) - targetX);
+						if (dist < minDist) {
+							minDist = dist;
+							bestCursor = i;
+						}
+					}
+				}
+				cursor = bestCursor;
+			}
+		}
+		void onTick(WindowManager& wm) override;
+		bool isTextEnterable() override { return true; }
+		bool shouldForwardKey(sf::Keyboard::Key key) override;
 	};
 	class AreaObject :public UIBase {
 		friend class WindowManager;
+		friend class OptionObject;
+		friend class InputObject;
 	protected:
 		sf::Vector2f scroll;
 		sf::Vector2i mouseDragScrollable, mouseWheelScrollable;
@@ -702,6 +822,9 @@ namespace gui {
 		void updateScroll(WindowManager& windowManager);
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
 	public:
+		void onDragScroll(sf::Vector2f delta) { scroll += delta; }
+		void onInertialScrollStart(sf::Vector2f velocity) override { scrollVelocity = velocity; }
+		void onInertialScrollStop() { scrollVelocity = sf::Vector2f(); }
 		template<typename T>
 		T& path_get(const std::string& path) {
 			AreaObject* areaPtr = this;
@@ -751,7 +874,41 @@ namespace gui {
 			return const_cast<T*>(std::as_const(*this).path_find<T>(path));
 		}
 	};
+	inline void OptionObject::onRelease(bool isOver, bool isDragScrolling, EventQueue& event, const std::string& path, const std::string& name, AreaObject& parent) {
+		if (isOver && !isDragScrolling) {
+			if (name != parent.option) {
+				if (parent.option != "") {
+					parent.sub.at<OptionObject>(parent.option).setStatu(gui::UIBase::Normal, true);
+					event.push(gui::Events::OptionDeselected{ {.path = path,.name = parent.option} });
+				}
+				parent.option = name;
+				event.push(gui::Events::OptionSelected{ {.path = path,.name = name} });
+			}
+		}
+		setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
+		parent.updateOption();
+	}
+	inline void OptionObject::onDragUpdate(bool isOver, bool isDragScrolling) {
+		if (isDragScrolling)
+			setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
+		else
+			setStatu(isOver ? gui::UIBase::Focus : gui::UIBase::Over, true);
+	}
+	inline void InputObject::onFocusLose(EventQueue& event, const std::string& path, const std::string& name, AreaObject&, bool focusChanged) {
+		setStatu(gui::UIBase::Normal, true);
+		if (focusChanged)
+			event.push(gui::Events::InputDeselected{ {.path = path,.name = name} });
+	}
+	inline void InputObject::onFocusGain(EventQueue& event, const std::string& path, const std::string& name,
+										 const sf::Vector2f& mousePos, AreaObject& parent, bool focusChanged) {
+		setStatu(gui::UIBase::Focus);
+		if (focusChanged)
+			event.push(gui::Events::InputSelected{ {.path = path,.name = name} });
+		sf::Vector2f mouseInLocal = mousePos - parent.posRect.position - parent.scroll - posRect.position;
+		updateCursorByMousePos(mouseInLocal);
+	}
 	class WindowManager {
+		friend class UIBase;
 		friend class InputObject;
 		friend class AreaObject;
 	public:
@@ -759,11 +916,117 @@ namespace gui {
 		//noncopyable
 		WindowManager(const WindowManager&) = delete;
 		WindowManager& operator=(const WindowManager&) = delete;
+		size_t getCursorBlinkRate() const { return cursorBlinkRate; }
+		WindowManager& setCursorBlinkRate(size_t rate) { cursorBlinkRate = rate; return *this; }
+		float getScrollResistance() const { return scrollResistance; }
+		WindowManager& setScrollResistance(float resistance) { scrollResistance = resistance; return *this; }
+		float getMouseWheelScrollRate() const { return mouseWheelScrollRate; }
+		WindowManager& setMouseWheelScrollRate(float rate) { mouseWheelScrollRate = rate; return *this; }
+		void simulatePress(const std::string& path) {
+			size_t lastSep = path.find_last_of("._");
+			if (lastSep == std::string::npos) return;
+			std::string areaPath = path.substr(0, lastSep);
+			std::string objectName = path.substr(lastSep + 1);
+			AreaObject* areaPtr = path_find<AreaObject>(areaPath);
+			if (!areaPtr) return;
+			// 查找目标对象并确定类型
+			UIBase* targetObj = areaPtr->sub.find(objectName);
+			if (!targetObj) return;
+			ObjectPath target;
+			target.path = areaPath;
+			target.name = objectName;
+			target.setType(areaPtr->sub.find_type_index(targetObj));
+			// 处理焦点变更（复用 update 的 Press 逻辑）
+			auto* curAreaPtr = focus.type.has_value() ? path_find<AreaObject>(focus.path) : nullptr;
+			if (focus.type.has_value() && focus.path == target.path && focus.name == target.name) {
+				if (auto* obj = objectPathVisit(focus, curAreaPtr)) {
+					obj->onFocusLose(event, focus.path, focus.name, *curAreaPtr, false);
+					curAreaPtr->updateOption();
+					obj->onFocusGain(event, focus.path, focus.name, sf::Vector2f(), *curAreaPtr, false);
+				}
+			}
+			else {
+				if (auto* oldFocus = objectPathVisit(focus, curAreaPtr)) {
+					oldFocus->onFocusLose(event, focus.path, focus.name, *curAreaPtr, true);
+					if (curAreaPtr) curAreaPtr->updateOption();
+				}
+				targetObj->onFocusGain(event, areaPath, objectName, sf::Vector2f(), *areaPtr, true);
+				areaPtr->updateOption();
+			}
+			focus = target;
+		}
+		void simulateRelease(const std::string&) {
+			over = focus;
+			auto* areaFocusPtr = focus.type.has_value() ? path_find<AreaObject>(focus.path) : nullptr;
+			if (areaFocusPtr) {
+				if (auto* obj = objectPathVisit(focus, areaFocusPtr))
+					obj->onRelease(true, false, event, focus.path, focus.name, *areaFocusPtr);
+			}
+		}
+		void simulateSetPrevOption(const std::string& areaPath) {
+			auto& area = path_at<AreaObject>(areaPath);
+			std::string curOption = area.getOption();
+			std::vector<std::pair<sf::Vector2f, std::string>> entries;
+			for (auto& elem : area.sub.iterate()) {
+				if (area.sub.find_type_index(elem) == std::type_index(typeid(OptionObject))) {
+					auto* obj = static_cast<OptionObject*>(elem);
+					entries.push_back({ obj->posRect.position, area.sub.find_key(elem) });
+				}
+			}
+			if (entries.empty()) return;
+			std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+				return a.first.x < b.first.x || (a.first.x == b.first.x && a.first.y < b.first.y);
+			});
+			for (size_t i = 0; i < entries.size(); i++) {
+				if (entries[i].second == curOption) {
+					if (i > 0) {
+						std::string btnPath = areaPath + "." + entries[i - 1].second;
+						simulatePress(btnPath);
+						simulateRelease(btnPath);
+					}
+					return;
+				}
+			}
+			std::string btnPath = areaPath + "." + entries[0].second;
+			simulatePress(btnPath);
+			simulateRelease(btnPath);
+		}
+		void simulateSetNextOption(const std::string& areaPath) {
+			auto& area = path_at<AreaObject>(areaPath);
+			std::string curOption = area.getOption();
+			std::vector<std::pair<sf::Vector2f, std::string>> entries;
+			for (auto& elem : area.sub.iterate()) {
+				if (area.sub.find_type_index(elem) == std::type_index(typeid(OptionObject))) {
+					auto* obj = static_cast<OptionObject*>(elem);
+					entries.push_back({ obj->posRect.position, area.sub.find_key(elem) });
+				}
+			}
+			if (entries.empty()) return;
+			std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+				return a.first.x < b.first.x || (a.first.x == b.first.x && a.first.y < b.first.y);
+			});
+			for (size_t i = 0; i < entries.size(); i++) {
+				if (entries[i].second == curOption) {
+					if (i + 1 < entries.size()) {
+						std::string btnPath = areaPath + "." + entries[i + 1].second;
+						simulatePress(btnPath);
+						simulateRelease(btnPath);
+					}
+					return;
+				}
+			}
+			std::string btnPath = areaPath + "." + entries[0].second;
+			simulatePress(btnPath);
+			simulateRelease(btnPath);
+		}
+		std::string getTopWindowId() const {
+			return layer.find_key(std::prev(layer.end()));
+		}
 	private:
 		//窗口管理
 
 		//cursorBlinkRate : how many ticks the cursor blinks
-		unsigned int cursorBlinkRate = 30;
+		size_t cursorBlinkRate = 30;
 		float scrollResistance = 3.f;
 		//scroll sensitivity = 6 tick = 0.1 s (60 FPS)
 		static constexpr int scrollSensitivity = 6;
@@ -1019,34 +1282,25 @@ namespace gui {
 			return areaPtr;
 		}
 		inline void updateSimpleMove(AreaObject* areaFocusPtr, AreaObject* areaOverPtr) {
-			//update scroll
 			if (areaFocusPtr != nullptr && mousePressed) {
-				if (areaFocusPtr->mouseDragScrollable != sf::Vector2i()) {
-					if (ensure(focus.is<ButtonObject>() || focus.is<OptionObject>(), (mouseLastPressPos - mousePos.back()).lengthSquared() >= scrollThreshold * scrollThreshold))
-						isDragScrolling = true;
-					if ((focus.is<ButtonObject>() || focus.is<OptionObject>()) && isDragScrolling) {
-						if (over == focus)
-							objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Over, true);
-						else objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Normal, true);
-						if (focus.is<OptionObject>())
+				if (auto* obj = objectPathVisit(focus, areaFocusPtr)) {
+					if (areaFocusPtr->mouseDragScrollable != sf::Vector2i()) {
+						if (obj->isDragScrollImmediate() || (mouseLastPressPos - mousePos.back()).lengthSquared() >= scrollThreshold * scrollThreshold)
+							isDragScrolling = true;
+						if (isDragScrolling) {
+							obj->onDragUpdate(over == focus, true);
 							areaFocusPtr->updateOption();
+						}
 					}
-				}
-				else {
-					if (areaFocusPtr != nullptr && (focus.is<ButtonObject>() || focus.is<OptionObject>())) {
-						if (over == focus)
-							objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Focus);
-						else objectPathVisit(focus, areaFocusPtr)->setStatu(gui::UIBase::Over, true);
-						if (focus.is<OptionObject>())
-							areaFocusPtr->updateOption();
+					else {
+						obj->onDragUpdate(over == focus, false);
+						areaFocusPtr->updateOption();
 					}
 				}
 			}
-			//update over
-			//after updating over ,varible 'focus' will not be changed
 			else {
-				if (objectPathVisit(over, areaOverPtr) != nullptr)
-					objectPathVisit(over, areaOverPtr)->setStatu(gui::UIBase::Over);
+				if (auto* obj = objectPathVisit(over, areaOverPtr))
+					obj->setStatu(gui::UIBase::Over);
 			}
 		}
 	public:
@@ -1074,21 +1328,18 @@ namespace gui {
 				//update inertial scroll stop
 				areaOverPtr = updateOver(true);
 
-				if (focus.is<InputObject>() && over != focus)
-					event.push(gui::Events::InputDeselected{ {.path = focus.path,.name = focus.name} });
-				if (over.is<InputObject>() && over != focus)
-					event.push(gui::Events::InputSelected{ {.path = over.path,.name = over.name} });
-
-				if (auto ptr = objectPathVisit(focus, areaFocusPtr))
-					ptr->setStatu(gui::UIBase::Normal, true);
-				if (areaFocusPtr != nullptr)
+				if (over != focus) {
+					if (auto* oldFocus = objectPathVisit(focus, areaFocusPtr)) {
+						oldFocus->onFocusLose(event, focus.path, focus.name, *areaFocusPtr, true);
+						areaFocusPtr->updateOption();
+					}
+					if (auto* newFocus = objectPathVisit(over, areaOverPtr))
+						newFocus->onFocusGain(event, over.path, over.name, mousePos.back(), *areaOverPtr, true);
+				}
+				else if (auto* sameFocus = objectPathVisit(focus, areaFocusPtr)) {
+					sameFocus->onFocusLose(event, focus.path, focus.name, *areaFocusPtr, false);
 					areaFocusPtr->updateOption();
-				if (auto ptr = objectPathVisit(over, areaOverPtr))
-					ptr->setStatu(gui::UIBase::Focus);
-				if (over.is<InputObject>()) {
-					InputObject& input = areaOverPtr->sub.at<InputObject>(over.name);
-					sf::Vector2f mouseInLocal = mousePos.back() - areaOverPtr->posRect.position - areaOverPtr->scroll - input.posRect.position;
-					input.updateCursorByMousePos(mouseInLocal);
+					sameFocus->onFocusGain(event, focus.path, focus.name, mousePos.back(), *areaFocusPtr, false);
 				}
 
 				focus = over;
@@ -1099,10 +1350,8 @@ namespace gui {
 				sf::Vector2f mousePosDelta = sf::Vector2f(ptr->position) - mousePos.back();
 				mousePos.back() = sf::Vector2f(ptr->position);//update mousePos
 				areaOverPtr = updateOver();
-				if (areaFocusPtr != nullptr && mousePressed && areaFocusPtr->mouseDragScrollable != sf::Vector2i() && isDragScrolling) {
-					//consider the case of two continuous sf::Event::MouseMoved event
-					areaFocusPtr->scroll += mousePosDelta.componentWiseMul(static_cast<sf::Vector2f>(areaFocusPtr->mouseDragScrollable));
-				}
+				if (areaFocusPtr != nullptr && mousePressed && areaFocusPtr->mouseDragScrollable != sf::Vector2i() && isDragScrolling)
+					areaFocusPtr->onDragScroll(mousePosDelta.componentWiseMul(static_cast<sf::Vector2f>(areaFocusPtr->mouseDragScrollable)));
 				updateSimpleMove(areaFocusPtr, areaOverPtr);
 				return true;
 			}
@@ -1113,80 +1362,49 @@ namespace gui {
 				mousePos.back() = sf::Vector2f(ptr->position);//update mousePos
 				areaOverPtr = updateOver();
 
-				if (areaFocusPtr != nullptr && focus.is<ButtonObject>()) {
-					if (over == focus) {
-						if (!isDragScrolling)
-							event.push(gui::Events::ButtonPressed{ {.path = focus.path,.name = focus.name} });
-						areaFocusPtr->sub.at<ButtonObject>(focus.name).setStatu(gui::UIBase::Over, true);
-					}
-					else areaFocusPtr->sub.at<ButtonObject>(focus.name).setStatu(gui::UIBase::Normal, true);
-				}
-				if (areaFocusPtr != nullptr && focus.is<OptionObject>()) {
-					if (over == focus) {
-						if (!isDragScrolling) {
-							if (focus.name != areaFocusPtr->option) {
-								if (areaFocusPtr->option != "") {
-									areaFocusPtr->sub.at<OptionObject>(areaFocusPtr->option).setStatu(gui::UIBase::Normal, true);
-									event.push(gui::Events::OptionDeselected{ {.path = focus.path,.name = areaFocusPtr->option} });
-								}
-								areaFocusPtr->option = focus.name;
-								event.push(gui::Events::OptionSelected{ {.path = focus.path,.name = focus.name} });
-							}
-						}
-					}
-					else areaFocusPtr->sub.at<OptionObject>(focus.name).setStatu(gui::UIBase::Normal, true);
-					areaFocusPtr->updateOption();
-				}
+				if (areaFocusPtr != nullptr)
+					objectPathVisit(focus, areaFocusPtr)->onRelease(over == focus, isDragScrolling, event, focus.path, focus.name, *areaFocusPtr);
 				isDragScrolling = false;
 
 				//update inertial scroll start
-				if (areaFocusPtr != nullptr && focus.is<AreaObject>()) {
-					if (areaFocusPtr->mouseDragScrollable != sf::Vector2i())
-						areaFocusPtr->scrollVelocity = mouseVelocity()
+				if (areaFocusPtr != nullptr && areaFocusPtr->mouseDragScrollable != sf::Vector2i())
+					objectPathVisit(focus, areaFocusPtr)->onInertialScrollStart(mouseVelocity()
 						.componentWiseMul(static_cast<sf::Vector2f>(areaFocusPtr->mouseDragScrollable))
-						.componentWiseDiv(sf::Vector2f(scrollSensitivity, scrollSensitivity));
-				}
+						.componentWiseDiv(sf::Vector2f(scrollSensitivity, scrollSensitivity)));
 				return true;
 			}
 			if (auto ptr = sfEvent->getIf<sf::Event::TextEntered>()) {
-				if (areaFocusPtr != nullptr && focus.is<InputObject>()) {
-					char32_t ch = ptr->unicode;
-					InputObject& InputTar = areaFocusPtr->sub.at<InputObject>(focus.name);
-					if (ch == 8)//backspace key
-						InputTar.erase(true);
-					else if (ch == 13)//enter key
-						InputTar.insert('\n');
-					else if (ch == 22)//ctrl+v
-						InputTar.insert(sf::Clipboard::getString());
-					else InputTar.insert(ch);//other keys
+				if (auto* obj = objectPathVisit(focus, areaFocusPtr)) {
+					obj->onTextEntered(ptr->unicode);
 					cursorBlinkTick = 0;
 				}
 				return true;
 			}
 			if (auto ptr = sfEvent->getIf<sf::Event::KeyPressed>()) {
-				if (areaFocusPtr != nullptr && focus.is<InputObject>()) {
-					InputObject& InputTar = areaFocusPtr->sub.at<InputObject>(focus.name);
-					if (ptr->code == sf::Keyboard::Key::Left)//left arrow
-						InputTar.moveCursor(true);
-					if (ptr->code == sf::Keyboard::Key::Right)//right arrow
-						InputTar.moveCursor(false);
-					if (ptr->code == sf::Keyboard::Key::Delete)//delete key
-						InputTar.erase(false);
+				if (auto* obj = objectPathVisit(focus, areaFocusPtr)) {
+					obj->onKeyPressed(ptr->code);
 					cursorBlinkTick = 0;
 				}
+				if (!focus.type.has_value() || !objectPathVisit(focus)->isTextEnterable() || objectPathVisit(focus)->shouldForwardKey(ptr->code))
+					event.push(gui::Events::KeyPressed{ {.topWindow = getTopWindowId(), .focusAreaPath = focus.path}, ptr->code });
+				return true;
+			}
+			if (auto ptr = sfEvent->getIf<sf::Event::KeyReleased>()) {
+				if (!focus.type.has_value() || !objectPathVisit(focus)->isTextEnterable() || objectPathVisit(focus)->shouldForwardKey(ptr->code))
+					event.push(gui::Events::KeyReleased{ {.topWindow = getTopWindowId(), .focusAreaPath = focus.path}, ptr->code });
 				return true;
 			}
 			if (auto ptr = sfEvent->getIf<sf::Event::MouseWheelScrolled>()) {
 				areaOverPtr = updateOver();
 				float delta = ptr->delta;
 				if (areaOverPtr->mouseWheelScrollable == sf::Vector2i(1, 0))
-					areaOverPtr->scrollVelocity = sf::Vector2f(delta * mouseWheelScrollRate, 0);
+					areaOverPtr->onInertialScrollStart(sf::Vector2f(delta * mouseWheelScrollRate, 0));
 				if (areaOverPtr->mouseWheelScrollable == sf::Vector2i(0, 1))
-					areaOverPtr->scrollVelocity = sf::Vector2f(0, delta * mouseWheelScrollRate);
+					areaOverPtr->onInertialScrollStart(sf::Vector2f(0, delta * mouseWheelScrollRate));
 				if (areaOverPtr->mouseWheelScrollable == sf::Vector2i(1, 1)) {
 					if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LShift) || sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::RShift))
-						areaOverPtr->scrollVelocity = sf::Vector2f(delta * mouseWheelScrollRate, 0);
-					else areaOverPtr->scrollVelocity = sf::Vector2f(0, delta * mouseWheelScrollRate);
+						areaOverPtr->onInertialScrollStart(sf::Vector2f(delta * mouseWheelScrollRate, 0));
+					else areaOverPtr->onInertialScrollStart(sf::Vector2f(0, delta * mouseWheelScrollRate));
 				}
 				updateSimpleMove(areaFocusPtr, areaOverPtr);
 				return true;
@@ -1206,11 +1424,8 @@ namespace gui {
 			for (auto& elem : layer.iterate()) {
 				elem->updatePosRect(static_cast<sf::Vector2f>(drawTarget.getSize()));
 			}
-			if (focus.is<InputObject>()) {
-				cursorBlinkTick++;
-				cursorBlinkTick %= cursorBlinkRate;
-			}
-			else cursorBlinkTick = 0;
+			if (auto* obj = objectPathVisit(focus))
+				obj->onTick(*this);
 			mousePos.copy_back();//update mousePos
 			for (auto& elem : layer) {
 				elem->updateScroll(*this);
@@ -1218,4 +1433,42 @@ namespace gui {
 			}
 		}
 	};
+	inline void UIBase::onTick(WindowManager& wm) {
+		wm.cursorBlinkTick = 0;
+	}
+	inline void InputObject::onTick(WindowManager& wm) {
+		wm.cursorBlinkTick++;
+		wm.cursorBlinkTick %= wm.cursorBlinkRate;
+	}
+	inline bool InputObject::shouldForwardKey(sf::Keyboard::Key key) {
+		switch (key) {
+			case sf::Keyboard::Key::Escape:
+			case sf::Keyboard::Key::LControl: case sf::Keyboard::Key::LShift:
+			case sf::Keyboard::Key::LAlt: case sf::Keyboard::Key::LSystem:
+			case sf::Keyboard::Key::RControl: case sf::Keyboard::Key::RShift:
+			case sf::Keyboard::Key::RAlt: case sf::Keyboard::Key::RSystem:
+			case sf::Keyboard::Key::Menu:
+			case sf::Keyboard::Key::F1: case sf::Keyboard::Key::F2: case sf::Keyboard::Key::F3:
+			case sf::Keyboard::Key::F4: case sf::Keyboard::Key::F5: case sf::Keyboard::Key::F6:
+			case sf::Keyboard::Key::F7: case sf::Keyboard::Key::F8: case sf::Keyboard::Key::F9:
+			case sf::Keyboard::Key::F10: case sf::Keyboard::Key::F11: case sf::Keyboard::Key::F12:
+			case sf::Keyboard::Key::F13: case sf::Keyboard::Key::F14: case sf::Keyboard::Key::F15:
+			case sf::Keyboard::Key::Pause:
+				return true;
+			case sf::Keyboard::Key::Tab:
+				if (typeLimit == Int || typeLimit == Float)
+					return true;
+				if (typeLimit == String && !inputLimit.isLegal('\t'))
+					return true;
+				return false;
+			case sf::Keyboard::Key::Enter:
+				if (typeLimit == Int || typeLimit == Float)
+					return true;
+				if (typeLimit == String && !inputLimit.isLegal('\n'))
+					return true;
+				return false;
+			default:
+				return false;
+		}
+	}
 }
