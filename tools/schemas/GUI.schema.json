@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "f:/projects/My-Game-Demo/tools/schemas/GUIAreaObject.schema.json",
+  "title": "MyGUI AreaObject",
+  "description": "MyGUI 框架的 AreaObject JSON 序列化格式",
+  "type": "object",
+  "properties": {
+    "UIBase": { "$ref": "#/$defs/UIBase" },
+    "sub": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/SubEntry" }
+    },
+    "mouseDragScrollable": { "$ref": "#/$defs/Vector2i" },
+    "mouseWheelScrollable": { "$ref": "#/$defs/Vector2i" },
+    "option": { "type": "string" }
+  },
+  "required": ["UIBase", "sub", "mouseDragScrollable", "mouseWheelScrollable", "option"],
+  "$defs": {
+    "Color": {
+      "type": "object",
+      "properties": {
+        "r": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "g": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "b": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "a": { "type": "integer", "minimum": 0, "maximum": 255 }
+      },
+      "required": ["r", "g", "b", "a"]
+    },
+    "Vector2i": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" }
+      },
+      "required": ["x", "y"]
+    },
+    "Vector2f": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "required": ["x", "y"]
+    },
+    "Align": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "integer", "enum": [0, 1, 2], "description": "0=Left, 1=Mid, 2=Right" },
+        "y": { "type": "integer", "enum": [0, 1, 2], "description": "0=Top, 1=Mid, 2=Bottom" }
+      },
+      "required": ["x", "y"]
+    },
+    "DynamicPosition": {
+      "type": "object",
+      "properties": {
+        "anchor": { "type": "integer", "minimum": 0, "maximum": 3, "description": "0=Left/Top, 1=Mid/Mid, 2=Right/Bottom, 3=Size" },
+        "relative": { "type": "integer", "minimum": 0, "maximum": 2, "description": "0=LeftEdge/TopEdge, 1=MidLine, 2=RightEdge/BottomEdge" },
+        "value": { "type": "number" }
+      },
+      "required": ["anchor", "relative", "value"]
+    },
+    "Position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/DynamicPosition" }
+        },
+        "y": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/DynamicPosition" }
+        }
+      },
+      "required": ["x", "y"]
+    },
+    "Style": {
+      "type": "object",
+      "properties": {
+        "backgroundColor": { "$ref": "#/$defs/Color" },
+        "outlineColor": { "$ref": "#/$defs/Color" },
+        "outlineThickness": { "type": "number" }
+      },
+      "required": ["backgroundColor", "outlineColor", "outlineThickness"]
+    },
+    "TextStyle": {
+      "type": "object",
+      "properties": {
+        "fillColor": { "$ref": "#/$defs/Color" },
+        "outlineColor": { "$ref": "#/$defs/Color" }
+      },
+      "required": ["fillColor", "outlineColor"]
+    },
+    "UIBase": {
+      "type": "object",
+      "properties": {
+        "isShow": { "type": "boolean" },
+        "position": { "$ref": "#/$defs/Position" },
+        "styles": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "[Normal, Over, Focus]",
+          "items": { "$ref": "#/$defs/Style" }
+        }
+      },
+      "required": ["isShow", "position", "styles"]
+    },
+    "TextObjectBase": {
+      "type": "object",
+      "properties": {
+        "UIBase": { "$ref": "#/$defs/UIBase" },
+        "align": { "$ref": "#/$defs/Align" },
+        "characterSize": { "type": "integer", "minimum": 0 },
+        "font": { "type": "string" },
+        "letterSpacing": { "type": "number" },
+        "lineSpacing": { "type": "number" },
+        "text": { "type": "string" },
+        "textStyles": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "[Normal, Over, Focus]",
+          "items": { "$ref": "#/$defs/TextStyle" }
+        }
+      },
+      "required": ["UIBase", "align", "characterSize", "font", "letterSpacing", "lineSpacing", "text", "textStyles"]
+    },
+    "ImageValue": {
+      "type": "object",
+      "properties": {
+        "UIBase": { "$ref": "#/$defs/UIBase" },
+        "align": { "$ref": "#/$defs/Align" },
+        "imageColors": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "[Normal, Over, Focus]",
+          "items": { "$ref": "#/$defs/Color" }
+        },
+        "imageId": { "type": "string" },
+        "scale": { "$ref": "#/$defs/Vector2f" }
+      },
+      "required": ["UIBase", "align", "imageColors", "imageId", "scale"]
+    },
+    "InputValue": {
+      "type": "object",
+      "properties": {
+        "TextObject": { "$ref": "#/$defs/TextObjectBase" },
+        "sizeLimit": { "type": "integer", "minimum": 0 },
+        "typeLimit": { "type": "integer", "enum": [0, 1, 2], "description": "0=String, 1=Int, 2=Float" },
+        "inputLimit": {
+          "type": "object",
+          "properties": {
+            "isAllowList": { "type": "boolean" },
+            "single": {
+              "type": "array",
+              "items": { "type": "integer" }
+            },
+            "range": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": { "type": "integer" }
+              }
+            }
+          },
+          "required": ["isAllowList", "single", "range"]
+        }
+      },
+      "required": ["TextObject", "sizeLimit", "typeLimit", "inputLimit"]
+    },
+    "AreaValue": {
+      "type": "object",
+      "properties": {
+        "UIBase": { "$ref": "#/$defs/UIBase" },
+        "sub": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SubEntry" }
+        },
+        "mouseDragScrollable": { "$ref": "#/$defs/Vector2i" },
+        "mouseWheelScrollable": { "$ref": "#/$defs/Vector2i" },
+        "option": { "type": "string" }
+      },
+      "required": ["UIBase", "sub", "mouseDragScrollable", "mouseWheelScrollable", "option"]
+    },
+    "SubEntry": {
+      "type": "object",
+      "properties": {
+        "!type_name": {
+          "type": "string",
+          "description": "C++ mangled type name"
+        },
+        "key": { "type": "string" },
+        "type_index": {
+          "type": "integer",
+          "enum": [0, 1, 2, 3, 4, 5],
+          "description": "0=AreaObject, 1=ImageObject, 2=TextObject, 3=InputObject, 4=ButtonObject, 5=OptionObject"
+        },
+        "value": {}
+      },
+      "required": ["!type_name", "key", "type_index", "value"],
+      "allOf": [
+        {
+          "if": { "properties": { "type_index": { "const": 0 } } },
+          "then": { "properties": { "value": { "$ref": "#/$defs/AreaValue" } } }
+        },
+        {
+          "if": { "properties": { "type_index": { "const": 1 } } },
+          "then": { "properties": { "value": { "$ref": "#/$defs/ImageValue" } } }
+        },
+        {
+          "if": { "properties": { "type_index": { "const": 2 } } },
+          "then": { "properties": { "value": { "$ref": "#/$defs/TextObjectBase" } } }
+        },
+        {
+          "if": { "properties": { "type_index": { "const": 3 } } },
+          "then": { "properties": { "value": { "$ref": "#/$defs/InputValue" } } }
+        },
+        {
+          "if": { "properties": { "type_index": { "const": 4 } } },
+          "then": { "properties": { "value": { "$ref": "#/$defs/TextObjectBase" } } }
+        },
+        {
+          "if": { "properties": { "type_index": { "const": 5 } } },
+          "then": { "properties": { "value": { "$ref": "#/$defs/TextObjectBase" } } }
+        }
+      ]
+    }
+  }
+}

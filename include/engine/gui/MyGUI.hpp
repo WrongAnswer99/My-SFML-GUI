@@ -7,27 +7,47 @@
 namespace gui {
 	namespace Events{
 		struct UIEventBase : public EventBase {};
-		struct SingleObjectEvent : public UIEventBase {
+		struct UIobjectEvent : public UIEventBase {
 			std::string path;
 			std::string name;
 			const std::string wholePath() const {
 				return path + '_' + name;
 			}
 		};
-		struct ButtonPressed : public SingleObjectEvent {};
-		struct OptionDeselected : public SingleObjectEvent {};
-		struct OptionSelected : public SingleObjectEvent {};
-		struct InputSelected : public SingleObjectEvent {};
-		struct InputDeselected : public SingleObjectEvent {};
+		struct ButtonPressed : public UIobjectEvent {};
+		struct OptionDeselected : public UIobjectEvent {};
+		struct OptionSelected : public UIobjectEvent {};
+		struct InputSelected : public UIobjectEvent {};
+		struct InputDeselected : public UIobjectEvent {};
+		//Forward Events
 		struct ForwardEvent : public UIEventBase {
-			std::string topWindow;
-			std::string focusAreaPath;
+			bool isFocusUI;
 		};
 		struct KeyPressed : public ForwardEvent {
+			std::string focusWindow;
+			std::string focusAreaPath;
 			sf::Keyboard::Key code;
 		};
 		struct KeyReleased : public ForwardEvent {
+			std::string focusWindow;
+			std::string focusAreaPath;
 			sf::Keyboard::Key code;
+		};
+		struct MousePressed : public ForwardEvent {
+			sf::Mouse::Button button;
+			sf::Vector2i position;
+		};
+		struct MouseReleased : public ForwardEvent {
+			sf::Mouse::Button button;
+			sf::Vector2i position;
+		};
+		struct MouseMoved : public ForwardEvent {
+			sf::Vector2i position;
+		};
+		struct MouseWheelScrolled : public ForwardEvent {
+			sf::Mouse::Wheel wheel;
+			float delta;
+			sf::Vector2i position;
 		};
 	}
 	//快速绘制简图
@@ -61,7 +81,7 @@ namespace gui {
 			r.draw(circle);
 		}
 	}
-	class WindowManager;
+	class UIwindowManager;
 	class Style {
 	public:
 		sf::Color backgroundColor = sf::Color(0, 0, 0, 0), outlineColor = sf::Color(0, 0, 0, 0);
@@ -75,7 +95,7 @@ namespace gui {
 	class AreaObject;
 	class UIBase {
 		friend class AreaObject;
-		friend class WindowManager;
+		friend class UIwindowManager;
 	public:
 		enum class Anchor {
 			Left = 0, Right = 2, Width = 3,
@@ -141,7 +161,7 @@ namespace gui {
 		Style styles[3];
 		int currentStatu = gui::UIBase::Normal;
 		bool isShow = true;
-		virtual void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
+		virtual void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
 		//std::set<std::string> linkList;
 	public:
 		enum Statu { Normal = 0, Over = 1, Focus = 2 };
@@ -273,7 +293,7 @@ namespace gui {
 		virtual void onFocusGain(EventQueue&, const std::string&, const std::string&, const sf::Vector2f&, AreaObject&, bool) { setStatu(Focus); }
 		virtual void onRelease(bool, bool, EventQueue&, const std::string&, const std::string&, AreaObject&) {}
 		virtual void onDragUpdate(bool, bool) {}
-		virtual void onTick(WindowManager& wm);
+		virtual void onTick(UIwindowManager& wm);
 		virtual void onTextEntered(char32_t) {}
 		virtual void onKeyPressed(sf::Keyboard::Key) {}
 		virtual bool isDragScrollImmediate() { return true; }
@@ -282,7 +302,7 @@ namespace gui {
 		virtual void onInertialScrollStart(sf::Vector2f) {}
 	};
 	class ImageObject :public UIBase {
-		friend class WindowManager;
+		friend class UIwindowManager;
 	public:
 		ImageObject() {}
 		//use this setter
@@ -296,7 +316,7 @@ namespace gui {
 		sf::Vector2i align = { static_cast<int>(gui::UIBase::Align::Mid), static_cast<int>(gui::UIBase::Align::Mid) };
 		sf::Vector2f scale = sf::Vector2f(1, 1);
 		sf::Color imageColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
-		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
+		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
 	public:
 		ImageObject& setImageColor(const sf::Color& _normalColor, const sf::Color& _overColor, const sf::Color& _focusColor) {
 			imageColors[gui::UIBase::Normal] = _normalColor;
@@ -347,7 +367,7 @@ namespace gui {
 		}
 	};
 	class TextObject :public UIBase {
-		friend class WindowManager;
+		friend class UIwindowManager;
 	public:
 		TextObject() {
 			textStyles[gui::UIBase::Normal].set(sf::Color::Black, sf::Color::Black);
@@ -397,7 +417,7 @@ namespace gui {
 		sf::Vector2f textRenderOffsetFix;
 		sf::Vector2i align = { static_cast<int>(gui::UIBase::Align::Mid), static_cast<int>(gui::UIBase::Align::Mid) };
 		TextStyle textStyles[3];
-		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
+		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
 	public:
 		TextObject& setFont(const std::string& _font) {
 			font = _font;
@@ -435,7 +455,7 @@ namespace gui {
 		sf::Vector2i getAlign() const { return align; }
 	};
 	class ButtonObject :public TextObject {
-		friend class WindowManager;
+		friend class UIwindowManager;
 	public:
 		ButtonObject() {
 			styles[gui::UIBase::Normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
@@ -456,12 +476,12 @@ namespace gui {
 		}
 	};
 	class OptionObject :public ButtonObject {
-		friend class WindowManager;
+		friend class UIwindowManager;
 		void onRelease(bool isOver, bool isDragScrolling, EventQueue& event, const std::string& path, const std::string& name, AreaObject& parent) override;
 		void onDragUpdate(bool isOver, bool isDragScrolling) override;
 	};
 	class InputObject :public TextObject {
-		friend class WindowManager;
+		friend class UIwindowManager;
 	public:
 		InputObject() {
 			styles[gui::UIBase::Normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
@@ -526,7 +546,7 @@ namespace gui {
 		
 		size_t cursor = 0;
 		sf::Vector2f scroll;
-		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
+		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
 		inline void insert(char32_t ch) {
 			if (text.getSize() >= sizeLimit)return;
 			if (typeLimit == gui::InputObject::Int) {
@@ -714,12 +734,12 @@ namespace gui {
 				cursor = bestCursor;
 			}
 		}
-		void onTick(WindowManager& wm) override;
+		void onTick(UIwindowManager& wm) override;
 		bool isTextEnterable() override { return true; }
 		bool shouldForwardKey(sf::Keyboard::Key key) override;
 	};
 	class AreaObject :public UIBase {
-		friend class WindowManager;
+		friend class UIwindowManager;
 		friend class OptionObject;
 		friend class InputObject;
 	protected:
@@ -819,8 +839,8 @@ namespace gui {
 				scroll.y = -(scrollLimit.position.y + scrollLimit.size.y);
 			}
 		}
-		void updateScroll(WindowManager& windowManager);
-		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager);
+		void updateScroll(UIwindowManager& windowManager);
+		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
 	public:
 		void onDragScroll(sf::Vector2f delta) { scroll += delta; }
 		void onInertialScrollStart(sf::Vector2f velocity) override { scrollVelocity = velocity; }
@@ -907,21 +927,21 @@ namespace gui {
 		sf::Vector2f mouseInLocal = mousePos - parent.posRect.position - parent.scroll - posRect.position;
 		updateCursorByMousePos(mouseInLocal);
 	}
-	class WindowManager {
+	class UIwindowManager {
 		friend class UIBase;
 		friend class InputObject;
 		friend class AreaObject;
 	public:
-		WindowManager() {}
+		UIwindowManager() {}
 		//noncopyable
-		WindowManager(const WindowManager&) = delete;
-		WindowManager& operator=(const WindowManager&) = delete;
+		UIwindowManager(const UIwindowManager&) = delete;
+		UIwindowManager& operator=(const UIwindowManager&) = delete;
 		size_t getCursorBlinkRate() const { return cursorBlinkRate; }
-		WindowManager& setCursorBlinkRate(size_t rate) { cursorBlinkRate = rate; return *this; }
+		UIwindowManager& setCursorBlinkRate(size_t rate) { cursorBlinkRate = rate; return *this; }
 		float getScrollResistance() const { return scrollResistance; }
-		WindowManager& setScrollResistance(float resistance) { scrollResistance = resistance; return *this; }
+		UIwindowManager& setScrollResistance(float resistance) { scrollResistance = resistance; return *this; }
 		float getMouseWheelScrollRate() const { return mouseWheelScrollRate; }
-		WindowManager& setMouseWheelScrollRate(float rate) { mouseWheelScrollRate = rate; return *this; }
+		UIwindowManager& setMouseWheelScrollRate(float rate) { mouseWheelScrollRate = rate; return *this; }
 		void simulatePress(const std::string& path) {
 			size_t lastSep = path.find_last_of("._");
 			if (lastSep == std::string::npos) return;
@@ -1058,6 +1078,8 @@ namespace gui {
 		}focus, over;
 		bool isDragScrolling = false;
 		bool mousePressed = false;
+		bool isPressInsideUI = false;
+		bool isFocusUI = false;
 		unsigned int cursorBlinkTick = 0;
 		template<typename T, int capacity>
 		class RollArray {
@@ -1109,20 +1131,20 @@ namespace gui {
 		}
 		void open(const std::string& id) {
 			if (layer.find(id)) {
-				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
+				throw std::runtime_error("[UIwindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
 			layer.emplace<AreaObject>(layer.end(),id);
 		}
 		void open(const std::string& id,const AreaObject& Window) {
 			if (layer.find(id)) {
-				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
+				throw std::runtime_error("[UIwindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
 			auto ptr=layer.push_back<AreaObject>(id, Window);
 			ptr->updateOption();
 		}
 		void open(const std::string& id, AreaObject&& Window) {
 			if (layer.find(id)) {
-				throw std::runtime_error("[WindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
+				throw std::runtime_error("[UIwindowManager::open] Window ID already exists 窗口ID重复\n  id: " + id + "\n");
 			}
 			auto ptr = layer.push_back<AreaObject>(id, Window);
 			ptr->updateOption();
@@ -1150,7 +1172,7 @@ namespace gui {
 			if (auto ptr = layer.find(id))
 				return *ptr;
 			else {
-				throw std::runtime_error("[WindowManager::window] Window ID not found 未找到指定的窗口ID\n  id: " + id + "\n");
+				throw std::runtime_error("[UIwindowManager::window] Window ID not found 未找到指定的窗口ID\n  id: " + id + "\n");
 			}
 		}
 		template<typename T>
@@ -1175,7 +1197,7 @@ namespace gui {
 				if (areaPtr != nullptr)
 					return areaPtr->sub.get<T>(temp);
 				else {
-					throw std::runtime_error("[WindowManager::path_get] Path error. 路径错误\n  path: " + path + "\n");
+					throw std::runtime_error("[UIwindowManager::path_get] Path error. 路径错误\n  path: " + path + "\n");
 				}
 			}
 		}
@@ -1201,7 +1223,7 @@ namespace gui {
 				if (areaPtr != nullptr)
 					return areaPtr->sub.at<T>(temp);
 				else {
-					throw std::runtime_error("[WindowManager::path_at] Path error. 路径错误\n  path: " + path + "\n");
+					throw std::runtime_error("[UIwindowManager::path_at] Path error. 路径错误\n  path: " + path + "\n");
 				}
 			}
 		}
@@ -1230,6 +1252,9 @@ namespace gui {
 			return event.pollEvent();
 		}
 	private:
+		inline bool isOutsideUIwindow(sf::Vector2i pos) const {
+			return !(*std::prev(layer.end()))->posRect.contains(static_cast<sf::Vector2f>(pos));
+		}
 		inline UIBase* objectPathVisit(ObjectPath& obj, AreaObject* areaPtr = nullptr) {
 			if (!obj.type.has_value())return nullptr;
 			if (areaPtr == nullptr) {
@@ -1324,8 +1349,16 @@ namespace gui {
 			//after updating focus ,varible 'focus' & 'over' must have a value
 			if (auto ptr = sfEvent->getIf<sf::Event::MouseButtonPressed>()) {
 				mousePos.back() = sf::Vector2f(ptr->position);//update mousePos
+				if (isOutsideUIwindow(ptr->position)) {
+					isPressInsideUI = false;
+					isFocusUI = false;
+					event.push(gui::Events::MousePressed{ {.isFocusUI = false}, ptr->button, ptr->position });
+					return true;
+				}
 
 				//update inertial scroll stop
+				isPressInsideUI = true;
+				isFocusUI = true;
 				areaOverPtr = updateOver(true);
 
 				if (over != focus) {
@@ -1349,6 +1382,10 @@ namespace gui {
 			if (auto ptr = sfEvent->getIf<sf::Event::MouseMoved>()) {
 				sf::Vector2f mousePosDelta = sf::Vector2f(ptr->position) - mousePos.back();
 				mousePos.back() = sf::Vector2f(ptr->position);//update mousePos
+				if (mousePressed && !isPressInsideUI) {
+					event.push(gui::Events::MouseMoved{ {.isFocusUI = false}, ptr->position });
+					return true;
+				}
 				areaOverPtr = updateOver();
 				if (areaFocusPtr != nullptr && mousePressed && areaFocusPtr->mouseDragScrollable != sf::Vector2i() && isDragScrolling)
 					areaFocusPtr->onDragScroll(mousePosDelta.componentWiseMul(static_cast<sf::Vector2f>(areaFocusPtr->mouseDragScrollable)));
@@ -1360,11 +1397,16 @@ namespace gui {
 			//after updating release ,varible 'focus' will not be changed
 			if (auto ptr = sfEvent->getIf<sf::Event::MouseButtonReleased>()) {
 				mousePos.back() = sf::Vector2f(ptr->position);//update mousePos
+				if (!isPressInsideUI) {
+					event.push(gui::Events::MouseReleased{ {.isFocusUI = false}, ptr->button, ptr->position });
+					return true;
+				}
 				areaOverPtr = updateOver();
 
 				if (areaFocusPtr != nullptr)
 					objectPathVisit(focus, areaFocusPtr)->onRelease(over == focus, isDragScrolling, event, focus.path, focus.name, *areaFocusPtr);
 				isDragScrolling = false;
+				isPressInsideUI = false;
 
 				//update inertial scroll start
 				if (areaFocusPtr != nullptr && areaFocusPtr->mouseDragScrollable != sf::Vector2i())
@@ -1386,15 +1428,19 @@ namespace gui {
 					cursorBlinkTick = 0;
 				}
 				if (!focus.type.has_value() || !objectPathVisit(focus)->isTextEnterable() || objectPathVisit(focus)->shouldForwardKey(ptr->code))
-					event.push(gui::Events::KeyPressed{ {.topWindow = getTopWindowId(), .focusAreaPath = focus.path}, ptr->code });
+					event.push(gui::Events::KeyPressed{ {.isFocusUI = isFocusUI}, getTopWindowId(), focus.path, ptr->code });
 				return true;
 			}
 			if (auto ptr = sfEvent->getIf<sf::Event::KeyReleased>()) {
 				if (!focus.type.has_value() || !objectPathVisit(focus)->isTextEnterable() || objectPathVisit(focus)->shouldForwardKey(ptr->code))
-					event.push(gui::Events::KeyReleased{ {.topWindow = getTopWindowId(), .focusAreaPath = focus.path}, ptr->code });
+					event.push(gui::Events::KeyReleased{ {.isFocusUI = isFocusUI}, getTopWindowId(), focus.path, ptr->code });
 				return true;
 			}
 			if (auto ptr = sfEvent->getIf<sf::Event::MouseWheelScrolled>()) {
+				if (isOutsideUIwindow(ptr->position)) {
+					event.push(gui::Events::MouseWheelScrolled{ {.isFocusUI = false}, ptr->wheel, ptr->delta, ptr->position });
+					return true;
+				}
 				areaOverPtr = updateOver();
 				float delta = ptr->delta;
 				if (areaOverPtr->mouseWheelScrollable == sf::Vector2i(1, 0))
@@ -1418,7 +1464,8 @@ namespace gui {
 			if (layer.size() >= 1) {
 				if (objectPathVisit(focus) == nullptr)
 					focus.clear();
-				updateSimpleMove(focus.type.has_value() ? path_find<AreaObject>(focus.path) : nullptr, updateOver());
+				if (!(mousePressed && !isPressInsideUI))
+					updateSimpleMove(focus.type.has_value() ? path_find<AreaObject>(focus.path) : nullptr, updateOver());
 			}
 			//更新所有子对象的位置
 			for (auto& elem : layer.iterate()) {
@@ -1433,10 +1480,10 @@ namespace gui {
 			}
 		}
 	};
-	inline void UIBase::onTick(WindowManager& wm) {
+	inline void UIBase::onTick(UIwindowManager& wm) {
 		wm.cursorBlinkTick = 0;
 	}
-	inline void InputObject::onTick(WindowManager& wm) {
+	inline void InputObject::onTick(UIwindowManager& wm) {
 		wm.cursorBlinkTick++;
 		wm.cursorBlinkTick %= wm.cursorBlinkRate;
 	}

@@ -5,8 +5,8 @@
 #include "engine/serialization/JsonExtensions.hpp"
 #include <fstream>
 std::unordered_map<std::string, gui::Style>style;
-int windowWidth = 800, windowHeight = 600;
-gui::WindowManager windowManager;
+int windowWidth = 1270, windowHeight = 720;
+gui::UIwindowManager windowManager;
 sf::RenderWindow window;
 gui::AreaObject Main;
 static void init() {
@@ -18,7 +18,7 @@ static void init() {
 
 	Main.setStyle(style["stda1"], style["stda1"], style["stda1"])
 		.setPositionRelative(
-			{{gui::UIBase::Anchor::Left,gui::UIBase::Relative::LeftEdge,0.f},{gui::UIBase::Anchor::Right,gui::UIBase::Relative::RightEdge,0.f}},
+			{{gui::UIBase::Anchor::Left,gui::UIBase::Relative::LeftEdge,0.f},{gui::UIBase::Anchor::Right,gui::UIBase::Relative::RightEdge,-100.f}},
 			{{gui::UIBase::Anchor::Top,gui::UIBase::Relative::TopEdge,0.f},{gui::UIBase::Anchor::Bottom,gui::UIBase::Relative::BottomEdge,0.f}}
 		);
 
@@ -72,7 +72,7 @@ static void init() {
 		.setPosition(sf::Vector2f(350, 100), {gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	
 	Main.path_get<gui::InputObject>("area.input")
-		.setText(L"这是一个文本框")
+		.setText(L"按下'/'键切换至此文本框")
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
 		.setFont("ht")
 		.setCharacterSize(50)
@@ -282,16 +282,45 @@ int main() {
 		}
 		while (const auto evt=windowManager.pollEvent()) {
 			if (auto ptr = evt->getIf<gui::Events::KeyPressed>()) {
-				std::cout << "Key pressed  : topWindow=" << ptr->topWindow << " focusAreaPath=" << ptr->focusAreaPath << " code=" << static_cast<int>(ptr->code) << std::endl;
-				if (ptr->focusAreaPath == "main_area") {
-					if (ptr->code == sf::Keyboard::Key::W)
-						windowManager.simulateSetPrevOption("main_area");
-					else if (ptr->code == sf::Keyboard::Key::S)
-						windowManager.simulateSetNextOption("main_area");
+				std::cout << "Key pressed  : isFocusUI=" << ptr->isFocusUI << " focusWindow=" << ptr->focusWindow << " focusAreaPath=" << ptr->focusAreaPath << " code=" << static_cast<int>(ptr->code) << std::endl;
+				if (ptr->isFocusUI && ptr->focusWindow == "main") {
+					if (ptr->code == sf::Keyboard::Key::Slash) {
+						windowManager.simulatePress("main_area_input");
+					}
+					else if (ptr->focusAreaPath == "main_area") {
+						if (ptr->code == sf::Keyboard::Key::W)
+							windowManager.simulateSetPrevOption("main_area");
+						else if (ptr->code == sf::Keyboard::Key::S)
+							windowManager.simulateSetNextOption("main_area");
+						else if (ptr->code == sf::Keyboard::Key::Escape)
+							windowManager.path_at<gui::AreaObject>("main_area").setOption();
+						else if (ptr->code == sf::Keyboard::Key::Enter)
+							windowManager.simulatePress("main_area_button");
+					}
+					else if (ptr->code == sf::Keyboard::Key::Enter)
+						windowManager.simulatePress("main_button");
 				}
 			}
 			if (auto ptr = evt->getIf<gui::Events::KeyReleased>()) {
-				std::cout << "Key released : topWindow=" << ptr->topWindow << " focusAreaPath=" << ptr->focusAreaPath << " code=" << static_cast<int>(ptr->code) << std::endl;
+				std::cout << "Key released : isFocusUI=" << ptr->isFocusUI << " focusWindow=" << ptr->focusWindow << " focusAreaPath=" << ptr->focusAreaPath << " code=" << static_cast<int>(ptr->code) << std::endl;
+				if (ptr->isFocusUI && ptr->focusWindow == "main" && ptr->code == sf::Keyboard::Key::Enter) {
+					if (ptr->focusAreaPath == "main_area")
+						windowManager.simulateRelease("main_area_button");
+					else
+						windowManager.simulateRelease("main_button");
+				}
+			}
+			if (auto ptr = evt->getIf<gui::Events::MousePressed>()) {
+				std::cout << "Mouse pressed : isFocusUI=" << ptr->isFocusUI << " button=" << static_cast<int>(ptr->button) << " pos=" << ptr->position.x << "," << ptr->position.y << std::endl;
+			}
+			if (auto ptr = evt->getIf<gui::Events::MouseReleased>()) {
+				std::cout << "Mouse released: isFocusUI=" << ptr->isFocusUI << " button=" << static_cast<int>(ptr->button) << " pos=" << ptr->position.x << "," << ptr->position.y << std::endl;
+			}
+			if (auto ptr = evt->getIf<gui::Events::MouseMoved>()) {
+				std::cout << "Mouse moved   : isFocusUI=" << ptr->isFocusUI << " pos=" << ptr->position.x << "," << ptr->position.y << std::endl;
+			}
+			if (auto ptr = evt->getIf<gui::Events::MouseWheelScrolled>()) {
+				std::cout << "Mouse wheel   : isFocusUI=" << ptr->isFocusUI << " wheel=" << static_cast<int>(ptr->wheel) << " delta=" << ptr->delta << " pos=" << ptr->position.x << "," << ptr->position.y << std::endl;
 			}
 			if (auto ptr=evt->getIf<gui::Events::ButtonPressed>()) {
 				std::cout << "Button pressed : " << ptr->wholePath() << std::endl;

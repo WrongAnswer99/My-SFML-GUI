@@ -1,6 +1,6 @@
 #include "engine/gui/MyGUI.hpp"
 namespace gui {
-	void UIBase::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+	void UIBase::draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager) {
 		if (!isShow)
 			return;
 		if (posRect.findIntersection(displayArea)) {
@@ -14,7 +14,7 @@ namespace gui {
 			);
 		}
 	}
-	void ImageObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+	void ImageObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager) {
 		if (!isShow)
 			return;
 		UIBase::draw(r, displayArea, windowManager);
@@ -30,7 +30,7 @@ namespace gui {
 			r.draw(imageRender);
 		}
 	}
-	void TextObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+	void TextObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager) {
 		if (!isShow)
 			return;
 		UIBase::draw(r, displayArea, windowManager);
@@ -69,7 +69,7 @@ namespace gui {
 			r.draw(textRender);
 		}
 	}
-	void InputObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+	void InputObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager) {
 		if (!isShow)
 			return;
 		if (posRect.findIntersection(displayArea)) {
@@ -154,7 +154,7 @@ namespace gui {
 			r.draw(s);
 		}
 	}
-	void AreaObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, WindowManager& windowManager) {
+	void AreaObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager) {
 		if (!isShow)
 			return;
 		if (!posRect.findIntersection(displayArea))
@@ -176,7 +176,7 @@ namespace gui {
 		s.setPosition(posRect.position - displayArea.position);
 		r.draw(s);
 	}
-	void AreaObject::updateScroll(WindowManager& windowManager) {
+	void AreaObject::updateScroll(UIwindowManager& windowManager) {
 		if (scrollVelocity != sf::Vector2f()) {
 			if (scrollVelocity.lengthSquared() < windowManager.scrollResistance * windowManager.scrollResistance) {
 				scrollVelocity = sf::Vector2f();

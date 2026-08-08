@@ -265,7 +265,7 @@ namespace attr {
 #undef def
 }
 int windowWidth = 1600, windowHeight = 900;
-gui::WindowManager menuManager,previewManager;
+gui::UIwindowManager menuManager,previewManager;
 sf::RenderWindow menu, preview;
 gui::AreaObject Main, New, Open, Save, Paste, Rename, About, ExportReflection;
 bool previewRelativeMode = false;
@@ -3146,24 +3146,24 @@ int main() {
 		}
 		while (auto evtptr = menuManager.pollEvent()) {
 			if (auto evt = evtptr->getIf<gui::Events::KeyPressed>()) {
-				if (evt->topWindow != "main") {
+				if (evt->focusWindow != "main") {
 					if (evt->code == sf::Keyboard::Key::Enter) {
-						menuManager.simulatePress(evt->topWindow + ".ok");
+						menuManager.simulatePress(evt->focusWindow + ".ok");
 					}
 					else if (evt->code == sf::Keyboard::Key::Escape) {
-						std::string btnName = (evt->topWindow == "about") ? "ok" : "cancel";
-						menuManager.simulatePress(evt->topWindow + "." + btnName);
+						std::string btnName = (evt->focusWindow == "about") ? "ok" : "cancel";
+						menuManager.simulatePress(evt->focusWindow + "." + btnName);
 					}
 				}
 			}
 			if (auto evt = evtptr->getIf<gui::Events::KeyReleased>()) {
-				if (evt->topWindow != "main") {
+				if (evt->focusWindow != "main") {
 					if (evt->code == sf::Keyboard::Key::Enter) {
-						menuManager.simulateRelease(evt->topWindow + ".ok");
+						menuManager.simulateRelease(evt->focusWindow + ".ok");
 					}
 					else if (evt->code == sf::Keyboard::Key::Escape) {
-						std::string btnName = (evt->topWindow == "about") ? "ok" : "cancel";
-						menuManager.simulateRelease(evt->topWindow + "." + btnName);
+						std::string btnName = (evt->focusWindow == "about") ? "ok" : "cancel";
+						menuManager.simulateRelease(evt->focusWindow + "." + btnName);
 					}
 				}
 			}
