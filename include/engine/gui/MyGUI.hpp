@@ -301,6 +301,7 @@ namespace gui {
 		virtual bool isTextEnterable() { return false; }
 		virtual bool shouldForwardKey(sf::Keyboard::Key) { return false; }
 		virtual void onInertialScrollStart(sf::Vector2f) {}
+		virtual bool isInteractive() { return false; }
 	};
 	class ImageObject :public UIBase {
 		friend class UIwindowManager;
@@ -469,6 +470,7 @@ namespace gui {
 			setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
 		}
 		bool isDragScrollImmediate() override { return false; }
+		bool isInteractive() override { return true; }
 		void onDragUpdate(bool isOver, bool isDragScrolling) override {
 			if (isDragScrolling)
 				setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
@@ -478,6 +480,7 @@ namespace gui {
 	};
 	class OptionObject :public ButtonObject {
 		friend class UIwindowManager;
+		bool isInteractive() override { return true; }
 		void onRelease(bool isOver, bool isDragScrolling, EventQueue& event, const std::string& path, const std::string& name, AreaObject& parent) override;
 		void onDragUpdate(bool isOver, bool isDragScrolling) override;
 	};
@@ -664,7 +667,7 @@ namespace gui {
 		}
 		void onFocusLose(EventQueue& event, const std::string& path, const std::string& name, AreaObject&, bool focusChanged) override;
 		void onFocusGain(EventQueue& event, const std::string& path, const std::string& name,
-						 const sf::Vector2f& mousePos, AreaObject& parent, bool focusChanged) override;
+						 const sf::Vector2f& mouseInLocal, AreaObject& parent, bool focusChanged) override;
 		void onTextEntered(char32_t ch) override {
 			if (ch == 8) erase(true);
 			else if (ch == 9) insert('\t');
@@ -739,6 +742,7 @@ namespace gui {
 		}
 		void onTick(UIwindowManager& wm) override;
 		bool isTextEnterable() override { return true; }
+		bool isInteractive() override { return true; }
 		bool shouldForwardKey(sf::Keyboard::Key key) override;
 	};
 	class AreaObject :public UIBase {
@@ -938,11 +942,10 @@ namespace gui {
 			event.push(gui::Events::InputDeselected{ {.path = path,.name = name} });
 	}
 	inline void InputObject::onFocusGain(EventQueue& event, const std::string& path, const std::string& name,
-										 const sf::Vector2f& mousePos, AreaObject& parent, bool focusChanged) {
+										 const sf::Vector2f& mouseInLocal, AreaObject& parent, bool focusChanged) {
 		setStatu(gui::UIBase::Focus);
 		if (focusChanged)
 			event.push(gui::Events::InputSelected{ {.path = path,.name = name} });
-		sf::Vector2f mouseInLocal = mousePos - parent.posRect.position - parent.scroll - posRect.position;
 		updateCursorByMousePos(mouseInLocal);
 	}
 	class UIwindowManager {
@@ -969,18 +972,19 @@ namespace gui {
 			if (!areaPtr) return;
 			// 查找目标对象并确定类型
 			UIBase* targetObj = areaPtr->sub.find(objectName);
-			if (!targetObj) return;
+			if (!targetObj || !targetObj->isInteractive()) return;
 			ObjectPath target;
 			target.path = areaPath;
 			target.name = objectName;
-			target.setType(areaPtr->sub.find_type_index(targetObj));
+			target.setType<UIBase>();
 			// 处理焦点变更（复用 update 的 Press 逻辑）
 			auto* curAreaPtr = focus.type.has_value() ? path_find<AreaObject>(focus.path) : nullptr;
 			if (focus.type.has_value() && focus.path == target.path && focus.name == target.name) {
 				if (auto* obj = objectPathVisit(focus, curAreaPtr)) {
 					obj->onFocusLose(event, focus.path, focus.name, *curAreaPtr, false);
 					curAreaPtr->updateOption();
-					obj->onFocusGain(event, focus.path, focus.name, sf::Vector2f(), *curAreaPtr, false);
+					obj->onFocusGain(event, focus.path, focus.name, sf::Vector2f(),
+					                 *curAreaPtr, false);
 				}
 			}
 			else {
@@ -988,7 +992,8 @@ namespace gui {
 					oldFocus->onFocusLose(event, focus.path, focus.name, *curAreaPtr, true);
 					if (curAreaPtr) curAreaPtr->updateOption();
 				}
-				targetObj->onFocusGain(event, areaPath, objectName, sf::Vector2f(), *areaPtr, true);
+				targetObj->onFocusGain(event, areaPath, objectName,
+				                       sf::Vector2f(), *areaPtr, true);
 				areaPtr->updateOption();
 			}
 			focus = target;
@@ -1094,6 +1099,7 @@ namespace gui {
 			}
 			bool operator==(const ObjectPath& other) const = default;
 		}focus, over;
+		sf::Vector2f mouseInOverObject;
 		bool isDragScrolling = false;
 		bool mousePressed = false;
 		bool isPressInsideUI = false;
@@ -1279,50 +1285,57 @@ namespace gui {
 				areaPtr = path_find<gui::AreaObject>(obj.path);
 				if (areaPtr == nullptr) return nullptr;
 			}
-			if (obj.is<gui::ButtonObject>() || obj.is<gui::OptionObject>() || obj.is<gui::InputObject>())
-				return areaPtr->sub.find(obj.name);
-			else if (obj.is<gui::AreaObject>())
+			if (auto* interactive = areaPtr->sub.find(obj.name);
+				interactive && interactive->isInteractive())
+				return interactive;
+			if (obj.is<gui::AreaObject>())
 				return areaPtr;
-			else return nullptr;
+			return nullptr;
 		}
+		inline AreaObject* updateOverInArea(AreaObject* areaPtr,
+		                                      sf::Vector2f mouseInLocal,
+		                                      const std::string& path,
+		                                      bool stopScroll) {
+			if (stopScroll)
+				areaPtr->scrollVelocity = sf::Vector2f();
+
+			// Each AreaObject converts its own local position into content-space
+			// coordinates, then passes coordinates local to the child downwards.
+			const sf::Vector2f mouseInContent = mouseInLocal - areaPtr->scroll;
+			for (auto& elem : areaPtr->sub.riterate()) {
+				if (!elem->isShow || !elem->posRect.contains(mouseInContent))
+					continue;
+
+				const sf::Vector2f mouseInChild = mouseInContent - elem->posRect.position;
+				if (auto* childArea = areaPtr->sub.find<AreaObject>(elem)) {
+					return updateOverInArea(childArea, mouseInChild,
+					                        path + '_' + areaPtr->sub.find_key(elem),
+					                        stopScroll);
+				}
+
+				if (elem->isInteractive()) {
+					over.path = path;
+					over.setType<UIBase>();
+					over.name = areaPtr->sub.find_key(elem);
+					mouseInOverObject = mouseInChild;
+					return areaPtr;
+				}
+			}
+
+			over.setType<AreaObject>();
+			over.path = path;
+			mouseInOverObject = mouseInLocal;
+			return areaPtr;
+		}
+
 		inline AreaObject* updateOver(bool stopScroll = false) {
 			if (objectPathVisit(over) != nullptr)
 				objectPathVisit(over)->setStatu(gui::UIBase::Normal);
-			AreaObject* areaPtr = *std::prev(layer.end());
-			sf::Vector2f origin = areaPtr->posRect.position;
+			AreaObject* root = *std::prev(layer.end());
 			over.clear();
-			std::string path = layer.find_key(areaPtr);
-			while (true) {
-				if (stopScroll)
-					areaPtr->scrollVelocity = sf::Vector2f();
-				for (auto& elem : areaPtr->sub.riterate()) {
-					if (elem->isShow && elem->posRect.contains(mousePos.back() - areaPtr->scroll - origin)) {
-						if (auto ptr = areaPtr->sub.find<AreaObject>(elem)) {
-							origin += elem->posRect.position + areaPtr->scroll;
-							path = path + '_' + areaPtr->sub.find_key(elem);
-							areaPtr = ptr;
-							goto searchcontinue;
-						}
-						else {
-							if (areaPtr == nullptr)
-								return nullptr;
-							over.path = path;
-							auto typeIdx = areaPtr->sub.find_type_index(elem);
-							if (typeIdx == std::type_index(typeid(ButtonObject)) || typeIdx == std::type_index(typeid(OptionObject)) || typeIdx == std::type_index(typeid(InputObject))) {
-								over.setType(typeIdx);
-								over.name = areaPtr->sub.find_key(elem);
-								return areaPtr;
-							}
-							over.setType<AreaObject>();
-						}
-					}
-				}
-				break;
-			searchcontinue:;
-			}
-			over.setType<AreaObject>();
-			over.path = path;
-			return areaPtr;
+			mouseInOverObject = sf::Vector2f();
+			return updateOverInArea(root, mousePos.back() - root->posRect.position,
+			                        layer.find_key(root), stopScroll);
 		}
 		inline void updateSimpleMove(AreaObject* areaFocusPtr, AreaObject* areaOverPtr) {
 			if (areaFocusPtr != nullptr && mousePressed) {
@@ -1385,12 +1398,14 @@ namespace gui {
 						areaFocusPtr->updateOption();
 					}
 					if (auto* newFocus = objectPathVisit(over, areaOverPtr))
-						newFocus->onFocusGain(event, over.path, over.name, mousePos.back(), *areaOverPtr, true);
+						newFocus->onFocusGain(event, over.path, over.name, mouseInOverObject,
+						                      *areaOverPtr, true);
 				}
 				else if (auto* sameFocus = objectPathVisit(focus, areaFocusPtr)) {
 					sameFocus->onFocusLose(event, focus.path, focus.name, *areaFocusPtr, false);
 					areaFocusPtr->updateOption();
-					sameFocus->onFocusGain(event, focus.path, focus.name, mousePos.back(), *areaFocusPtr, false);
+					sameFocus->onFocusGain(event, focus.path, focus.name, mouseInOverObject,
+					                       *areaFocusPtr, false);
 				}
 
 				focus = over;
