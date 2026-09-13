@@ -69,17 +69,7 @@ namespace gui {
 			r.draw(textRender);
 		}
 	}
-	void InputObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager) {
-		if (!isShow)
-			return;
-		if (posRect.findIntersection(displayArea)) {
-			UIBase::draw(r, displayArea, windowManager);
-			sf::FloatRect displayAreaCur(-scroll, posRect.size);
-			sf::RenderTexture rCur(static_cast<sf::Vector2u>(posRect.size));
-			rCur.clear(sf::Color::Transparent);
-			//draw text
-
-			//render text
+	sf::Vector2f InputObject::updateTextLayout() {
 			textRender.setString("_");
 			textRender.setCharacterSize(characterSize);
 			textRender.setLineSpacing(lineSpacing);
@@ -97,10 +87,16 @@ namespace gui {
 					textRect.size.x = textRender.findCharacterPos(i).x;
 			}
 			textRect.size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
+			const sf::FloatRect displayAreaCur(-scroll, posRect.size);
 			textRender.setPosition(-textRenderOffsetFix + ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)) - displayAreaCur.position);
 			textRect.position = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));
 			sf::Vector2f cursorPos = textRender.findCharacterPos(cursor);
 			cursorPos += textRenderOffsetFix;
+			return cursorPos;
+	}
+
+	void InputObject::ensureCursorVisible() {
+			sf::Vector2f cursorPos = updateTextLayout();
 			if (textRect.size.x > posRect.size.x) {
 				if (cursorPos.x < 0)
 					scroll.x += 0 - cursorPos.x;
@@ -128,6 +124,17 @@ namespace gui {
 					scroll.y += 0 - (textRect.position.y + scroll.y);
 			}
 			else scroll.y = 0;
+	}
+
+	void InputObject::draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager) {
+		if (!isShow)
+			return;
+		if (posRect.findIntersection(displayArea)) {
+			UIBase::draw(r, displayArea, windowManager);
+			const sf::FloatRect displayAreaCur(-scroll, posRect.size);
+			sf::RenderTexture rCur(static_cast<sf::Vector2u>(posRect.size));
+			rCur.clear(sf::Color::Transparent);
+			const sf::Vector2f cursorPos = updateTextLayout();
 			//debug
 			/*_builtinGUIdraw::Rect(
 				rCur,

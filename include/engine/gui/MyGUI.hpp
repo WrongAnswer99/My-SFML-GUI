@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/tick/Tick.hpp"
 #include <set>
 #include "engine/event/Event.hpp"
 #include "engine/resource/Resources.hpp"
@@ -546,6 +547,8 @@ namespace gui {
 		
 		size_t cursor = 0;
 		sf::Vector2f scroll;
+		sf::Vector2f updateTextLayout();
+		void ensureCursorVisible();
 		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
 		inline void insert(char32_t ch) {
 			if (text.getSize() >= sizeLimit)return;
@@ -1045,11 +1048,11 @@ namespace gui {
 	private:
 		//窗口管理
 
-		//cursorBlinkRate : how many ticks the cursor blinks
-		size_t cursorBlinkRate = 30;
+		// One full cursor blink cycle (0.5 seconds).
+		size_t cursorBlinkRate = TickManager::ticksPerSecond / 2;
 		float scrollResistance = 3.f;
-		//scroll sensitivity = 6 tick = 0.1 s (60 FPS)
-		static constexpr int scrollSensitivity = 6;
+		// Retain 0.1 seconds of mouse history.
+		static constexpr int scrollSensitivity = static_cast<int>(TickManager::ticksPerSecond / 10);
 		float mouseWheelScrollRate = 50.f;
 		float scrollThreshold = 20;
 
@@ -1084,7 +1087,7 @@ namespace gui {
 		template<typename T, int capacity>
 		class RollArray {
 		private:
-			T array[capacity];
+			T array[capacity]{};
 			size_t realSize = 0;
 			size_t backPosition = 0;
 		public:
@@ -1457,25 +1460,27 @@ namespace gui {
 			}
 			return false;
 		}
-		//draw all objects to drawTarget
-		//update cursor tick
-		//update inertial scroll
-		void draw(sf::RenderTarget& drawTarget) {
+		// Advances all time-based UI state by exactly one game tick.
+		void update() {
 			if (layer.size() >= 1) {
 				if (objectPathVisit(focus) == nullptr)
 					focus.clear();
 				if (!(mousePressed && !isPressInsideUI))
 					updateSimpleMove(focus.type.has_value() ? path_find<AreaObject>(focus.path) : nullptr, updateOver());
 			}
+			if (auto* obj = objectPathVisit(focus))
+				obj->onTick(*this);
+			mousePos.copy_back();
+			for (auto& elem : layer)
+				elem->updateScroll(*this);
+		}
+		// Draws current UI state without advancing time-based behavior.
+		void draw(sf::RenderTarget& drawTarget) {
 			//更新所有子对象的位置
 			for (auto& elem : layer.iterate()) {
 				elem->updatePosRect(static_cast<sf::Vector2f>(drawTarget.getSize()));
 			}
-			if (auto* obj = objectPathVisit(focus))
-				obj->onTick(*this);
-			mousePos.copy_back();//update mousePos
 			for (auto& elem : layer) {
-				elem->updateScroll(*this);
 				elem->draw(drawTarget, sf::FloatRect(sf::Vector2f(), static_cast<sf::Vector2f>(drawTarget.getSize())), *this);
 			}
 		}
@@ -1486,6 +1491,7 @@ namespace gui {
 	inline void InputObject::onTick(UIwindowManager& wm) {
 		wm.cursorBlinkTick++;
 		wm.cursorBlinkTick %= wm.cursorBlinkRate;
+		ensureCursorVisible();
 	}
 	inline bool InputObject::shouldForwardKey(sf::Keyboard::Key key) {
 		switch (key) {

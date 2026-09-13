@@ -46,6 +46,7 @@ set(GUI_SOURCES
 )
 
 set(HEADERS
+	include/engine/tick/Tick.hpp
     include/engine/gui/MyGUI.hpp
     include/engine/event/Event.hpp
     include/engine/serialization/BinaryFileStream.hpp

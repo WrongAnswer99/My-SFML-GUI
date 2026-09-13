@@ -1,24 +1,27 @@
 //Author : WrongAnswer99
 
+#include "engine/tick/Tick.hpp"
 #include "engine/gui/MyGUI.hpp"
 #include "engine/serialization/BinaryFileStream.hpp"
 #include "engine/serialization/JsonExtensions.hpp"
 #include <fstream>
-std::unordered_map<std::string, gui::Style>style;
+gui::Style panelStyle;
+gui::Style optionNormalStyle;
+gui::Style optionOverStyle;
+gui::Style optionSelectedStyle;
 int windowWidth = 1270, windowHeight = 720;
 gui::UIwindowManager windowManager;
 sf::RenderWindow window;
 gui::AreaObject Main;
 static void init() {
-	style["stda1"].set(sf::Color::White, sf::Color(200, 200, 200), 2);
-	style["stda2"].set(sf::Color(240,240,240), sf::Color(200, 200, 200), 2);
-	style["stdbn"].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
-	style["stdbo"].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
-	style["stdbf"].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
+	panelStyle.set(sf::Color(240, 240, 240), sf::Color(160, 160, 160), 2.f);
+	optionNormalStyle.set(sf::Color(250, 250, 250), sf::Color(180, 180, 180), 2.f);
+	optionOverStyle.set(sf::Color(225, 235, 245), sf::Color(120, 150, 180), 2.f);
+	optionSelectedStyle.set(sf::Color(160, 205, 245), sf::Color(70, 130, 190), 2.f);
 
-	Main.setStyle(style["stda1"], style["stda1"], style["stda1"])
+	Main.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPositionRelative(
-			{{gui::UIBase::Anchor::Left,gui::UIBase::Relative::LeftEdge,0.f},{gui::UIBase::Anchor::Right,gui::UIBase::Relative::RightEdge,-100.f}},
+			{{gui::UIBase::Anchor::Left,gui::UIBase::Relative::LeftEdge,0.f},{gui::UIBase::Anchor::Right,gui::UIBase::Relative::RightEdge,0.f}},
 			{{gui::UIBase::Anchor::Top,gui::UIBase::Relative::TopEdge,0.f},{gui::UIBase::Anchor::Bottom,gui::UIBase::Relative::BottomEdge,0.f}}
 		);
 
@@ -44,7 +47,7 @@ static void init() {
 
 	Main.path_get<gui::AreaObject>("area")
 		.setScrollable(sf::Vector2i(1, 1), sf::Vector2i(1, 1))
-		.setStyle(style["stda2"], style["stda2"], style["stda2"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPositionRelative(
 			{{gui::UIBase::Anchor::Left,gui::UIBase::Relative::LeftEdge,50.f},{gui::UIBase::Anchor::Right,gui::UIBase::Relative::RightEdge,-50.f}},
 			{{gui::UIBase::Anchor::Top,gui::UIBase::Relative::TopEdge,50.f},{gui::UIBase::Anchor::Bottom,gui::UIBase::Relative::BottomEdge,-50.f}}
@@ -107,30 +110,35 @@ static void init() {
 		.setText(L"选项1")
 		.setFont("ht")
 		.setCharacterSize(50)
+		.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 		.setPosition(sf::Vector2f(350, 750),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::OptionObject>("area.option2")
 		.setText(L"选项2")
 		.setFont("ht")
 		.setCharacterSize(50)
+		.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 		.setPosition(sf::Vector2f(350, 800),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::OptionObject>("area.option3")
 		.setText(L"选项3")
 		.setFont("ht")
 		.setCharacterSize(50)
+		.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 		.setPosition(sf::Vector2f(350, 850),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::OptionObject>("area.option4")
 		.setText(L"选项4")
 		.setFont("ht")
 		.setCharacterSize(50)
+		.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 		.setPosition(sf::Vector2f(350, 900),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(150, 50));
 	Main.path_get<gui::OptionObject>("area.option5")
 		.setText(L"选项5")
 		.setFont("ht")
 		.setCharacterSize(50)
+		.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 		.setPosition(sf::Vector2f(350, 950),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(150, 50));
 
@@ -209,7 +217,7 @@ static void init() {
 		//.setScaleTo(sf::Vector2f(200, 200))
 		//.setSizeAuto()
 		.setSize(sf::Vector2f(200, 200))
-		.setStyle(style["stdbn"], style["stdbn"], style["stdbn"])
+		.setStyle(optionNormalStyle, optionNormalStyle, optionNormalStyle)
 		.setPosition(sf::Vector2f(600, 250));
 		
 	Main.path_get<gui::ImageObject>("area.image1")
@@ -219,7 +227,7 @@ static void init() {
 		//.setScale(sf::Vector2f(1, 1))
 		//.setScaleTo(sf::Vector2f(200, 200))
 		//.setSizeAuto()
-		.setStyle(style["stdbn"], style["stdbn"], style["stdbn"])
+		.setStyle(optionNormalStyle, optionNormalStyle, optionNormalStyle)
 		.setPosition(sf::Vector2f(600, 450));
 }
 int main() {
@@ -269,8 +277,10 @@ int main() {
 
 	windowManager.open("main",Main);
 	window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"测试", sf::Style::Close | sf::Style::Resize, sf::State::Windowed);
-	window.setFramerateLimit(60);
+	window.setFramerateLimit(144);
+	TickManager tickManager;
 	while (true) {
+		for (TickManager::TickCount ticks = tickManager.getCurrentTick(); ticks > 0; --ticks) {
 		while (const std::optional sfEvt=window.pollEvent()) {
 			if (sfEvt->is<sf::Event::Closed>()) {
 				exit(0);
@@ -338,6 +348,8 @@ int main() {
 			if (auto ptr = evt->getIf<gui::Events::InputDeselected>()) {
 				std::cout << "Input deselected : " << ptr->wholePath() << std::endl;
 			}
+		}
+			windowManager.update();
 		}
 		window.clear();
 		windowManager.draw(window);

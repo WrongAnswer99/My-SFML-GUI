@@ -6,6 +6,11 @@
 #include <iostream>
 #include "SFML/Graphics.hpp"
 
+// 统一工具程序的文件路径基准：绝对路径保持不变，相对路径以当前工作根目录为基准。
+inline std::filesystem::path resolvePathFromRoot(const std::filesystem::path& path) {
+	return path.is_absolute() ? path : std::filesystem::current_path() / path;
+}
+
 // 安全遍历文件夹中的所有文件，返回相对于 dir 的相对路径
 inline std::vector<std::filesystem::path> listFiles(const std::filesystem::path& dir, int depth = 3){
 	std::vector<std::filesystem::path> result;

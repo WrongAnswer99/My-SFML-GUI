@@ -1,10 +1,16 @@
+#include "engine/tick/Tick.hpp"
 #include "engine/gui/MyGUI.hpp"
+#include "engine/resource/Resources.hpp"
 #include "engine/serialization/BinaryFileStream.hpp"
 #include "engine/serialization/JsonExtensions.hpp"
 #include <fstream>
 #include <functional>
 
-std::unordered_map<std::string, gui::Style>style;
+gui::Style panelStyle;
+gui::Style transparentStyle;
+gui::Style optionNormalStyle;
+gui::Style optionOverStyle;
+gui::Style optionSelectedStyle;
 std::unordered_map<std::string, gui::TextStyle>textStyle;
 namespace attr {
 #define def(x) constexpr const char* x=#x;
@@ -353,6 +359,7 @@ namespace Init {
 			.setFont("default")
 			.setCharacterSize(40)
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
+			.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 			.setPosition(pos)
 			.setSize(size);
 		return area.path_get<gui::OptionObject>(name);
@@ -364,13 +371,14 @@ namespace Init {
 			.setCharacterSize(40)
 			.setSizeAuto()
 			.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
+			.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 			.setPosition(pos);
 		return area.path_get<gui::OptionObject>(name);
 	}
 	gui::AreaObject& addSimpleArea(gui::AreaObject& area, const std::string& name, sf::Vector2f pos, sf::Vector2f size, sf::Vector2i drag = {0,0}, sf::Vector2i wheel = {0,0}) {
 		area.path_get<gui::AreaObject>(name)
 			.setScrollable(drag, wheel)
-			.setStyle(style["stda2"], style["stda2"], style["stda2"])
+			.setStyle(panelStyle, panelStyle, panelStyle)
 			.setPosition(pos)
 			.setSize(size);
 		return area.path_get<gui::AreaObject>(name);
@@ -386,7 +394,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(name)
 			.setOption(defaultOption)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(pos)
 			.setSize(size);
 		return area.path_get<gui::AreaObject>(name);
@@ -399,7 +407,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(prefix + "Anchor")
 			.setOption(anchorOptions[0])
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(pos)
 			.setSize(size);
 
@@ -410,7 +418,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(prefix + "Relative")
 			.setOption(relativeOptions[0])
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(sf::Vector2f(pos.x, pos.y + size.y))
 			.setSize(size);
 
@@ -450,7 +458,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(prefix + "Anchor")
 			.setOption(anchorDefault)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(sf::Vector2f(labelWidth, pos.y))
 			.setSize(sf::Vector2f(controlWidth, size.y));
 
@@ -463,7 +471,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(prefix + "Relative")
 			.setOption(relativeDefault)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(sf::Vector2f(labelWidth, pos.y + size.y))
 			.setSize(sf::Vector2f(controlWidth, size.y));
 
@@ -481,7 +489,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(name + "X")
 			.setOption(defaultX)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(pos)
 			.setSize(sf::Vector2f(size.x / 2, size.y));
 		addSimpleOption(area, name + "Y.Top", L"上", sf::Vector2f(eachWidth * 0, 0), sf::Vector2f(eachWidth, size.y));
@@ -490,7 +498,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(name + "Y")
 			.setOption(defaultY)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(sf::Vector2f(pos.x + size.x / 2, pos.y))
 			.setSize(sf::Vector2f(size.x / 2, size.y));
 		return area.path_get<gui::AreaObject>(name + "X");
@@ -502,7 +510,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(name + "X")
 			.setOption(defaultX)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(pos)
 			.setSize(sf::Vector2f(size.x / 2, size.y));
 		addSimpleOption(area, name + "Y.Top", L"上", sf::Vector2f(eachWidth * 0, 0), sf::Vector2f(eachWidth, size.y));
@@ -510,7 +518,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(name + "Y")
 			.setOption(defaultY)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(sf::Vector2f(pos.x + size.x / 2, pos.y))
 			.setSize(sf::Vector2f(size.x / 2, size.y));
 		return area.path_get<gui::AreaObject>(name + "X");
@@ -523,7 +531,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(name + "X")
 			.setOption(defaultX)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(pos)
 			.setSize(sf::Vector2f(size.x / 2, size.y));
 		addSimpleOption(area, name + "Y.Top", L"上", sf::Vector2f(eachWidth * 0, 0), sf::Vector2f(eachWidth, size.y));
@@ -532,7 +540,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(name + "Y")
 			.setOption(defaultY)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(sf::Vector2f(pos.x + size.x / 2, pos.y))
 			.setSize(sf::Vector2f(size.x / 2, size.y));
 		return area.path_get<gui::AreaObject>(name + "X");
@@ -592,7 +600,7 @@ namespace Init {
 		area.path_get<gui::AreaObject>(name)
 			.setOption(defaultOption)
 			.setScrollable(sf::Vector2i(false, false), sf::Vector2i(false, false))
-			.setStyle(style["null"], style["null"], style["null"])
+			.setStyle(transparentStyle, transparentStyle, transparentStyle)
 			.setPosition(pos)
 			.setSize(size);
 	}
@@ -608,18 +616,17 @@ namespace Init {
 	}
 }
 static void init() {
-	style["stda1"].set(sf::Color::White, sf::Color(200, 200, 200), 2);
-	style["stda2"].set(sf::Color(240, 240, 240), sf::Color(200, 200, 200), 2);
-	style["stdbn"].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
-	style["stdbo"].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
-	style["stdbf"].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
+	panelStyle.set(sf::Color(240, 240, 240), sf::Color(160, 160, 160), 2.f);
+	transparentStyle.set(sf::Color::Transparent, sf::Color::Transparent, 0.f);
+	optionNormalStyle.set(sf::Color(250, 250, 250), sf::Color(180, 180, 180), 2.f);
+	optionOverStyle.set(sf::Color(225, 235, 245), sf::Color(120, 150, 180), 2.f);
+	optionSelectedStyle.set(sf::Color(160, 205, 245), sf::Color(70, 130, 190), 2.f);
 	textStyle["stdtn"].set(sf::Color(0, 0, 0), sf::Color::Transparent);
 	textStyle["stdto"].set(sf::Color(160, 160, 160), sf::Color::Transparent);
 	textStyle["stdtf"].set(sf::Color(100, 100, 100), sf::Color::Transparent);
-	style["null"];
 
 	Main
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(0, 0))
 		.setSize(sf::Vector2f(static_cast<float>(windowWidth), static_cast<float>(windowHeight)));
 
@@ -699,7 +706,7 @@ static void init() {
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
-		.setStyle(style["null"], style["null"], style["null"])
+		.setStyle(transparentStyle, transparentStyle, transparentStyle)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * NewLine)));
 	New.path_get<gui::TextObject>("isSub")
 		.setText(L"√")
@@ -734,7 +741,7 @@ static void init() {
 	NewLine++;
 	New
 		.setOption()
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * NewLine)));
 
@@ -761,7 +768,7 @@ static void init() {
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
-		.setStyle(style["null"], style["null"], style["null"])
+		.setStyle(transparentStyle, transparentStyle, transparentStyle)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * OpenLine)));
 	Open.path_get<gui::TextObject>("importToCurrent")
 		.setText(L"√")
@@ -769,7 +776,7 @@ static void init() {
 		.setCharacterSize(20)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid)
-		.setStyle(style["null"], style["null"], style["null"])
+		.setStyle(transparentStyle, transparentStyle, transparentStyle)
 		.setPosition(sf::Vector2f(0 + 20, static_cast<float>(40 * OpenLine) + 20),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid});
 	Open.path_get<gui::TextObject>("importToCurrent").setShow(false);
 	OpenLine++;
@@ -779,7 +786,7 @@ static void init() {
 	OpenLine++;
 	Open
 		.setOption()
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * OpenLine)));
 
@@ -804,7 +811,7 @@ static void init() {
 
 	Save.path_get<gui::AreaObject>("windowToSave")
 		.setScrollable(sf::Vector2i(0, 1), sf::Vector2i(0, 1))
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * SaveLine)))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * 5)));
 	SaveLine += 5;
@@ -813,7 +820,7 @@ static void init() {
 	SaveLine++;
 	Save
 		.setOption()
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * SaveLine)));
 
@@ -833,7 +840,7 @@ static void init() {
 
 	ExportReflection.path_get<gui::AreaObject>("windowToExport")
 		.setScrollable(sf::Vector2i(0, 1), sf::Vector2i(0, 1))
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * 5)));
 	ExportReflectionLine += 5;
@@ -842,7 +849,7 @@ static void init() {
 	ExportReflectionLine++;
 	ExportReflection
 		.setOption()
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * ExportReflectionLine)));
 
@@ -859,7 +866,7 @@ static void init() {
 		.setCharacterSize(40)
 		.setSizeAuto()
 		.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
-		.setStyle(style["null"], style["null"], style["null"])
+		.setStyle(transparentStyle, transparentStyle, transparentStyle)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * PasteLine)));
 	Paste.path_get<gui::TextObject>("isSub")
 		.setText(L"√")
@@ -895,7 +902,7 @@ static void init() {
 	PasteLine++;
 	Paste
 		.setOption()
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * PasteLine)));
 
@@ -922,7 +929,7 @@ static void init() {
 	RenameLine++;
 	Rename
 		.setOption()
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * RenameLine)));
 
@@ -934,7 +941,7 @@ static void init() {
 
 	About.path_get<gui::AreaObject>("content")
 		.setScrollable(sf::Vector2i(1, 1), sf::Vector2i(1, 1))
-		.setStyle(style["stda2"], style["stda2"], style["stda2"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(0, static_cast<float>(40 * AboutLine)))
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * 3)));
 	About.path_get<gui::TextObject>("content.text1")
@@ -950,7 +957,7 @@ static void init() {
 	AboutLine++;
 	About
 		.setOption()
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition(sf::Vector2f(static_cast<float>(windowWidth) / 2, static_cast<float>(windowHeight) / 2),{gui::UIBase::Anchor::Mid, gui::UIBase::Anchor::Mid})
 		.setSize(sf::Vector2f(600, static_cast<float>(40 * AboutLine)));
 
@@ -2036,6 +2043,7 @@ namespace designer {
 					.setFont("default")
 					.setCharacterSize(40)
 					.setSizeAuto()
+					.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 					.setPosition(sf::Vector2f(level * 40.f, linePos));
 				
 				auto ptrimg = mainList.sub.insert(ptropt, path + "(icon)", gui::ImageObject{});
@@ -2547,7 +2555,7 @@ namespace designer {
 					.setCharacterSize(40)
 					.setSizeAuto()
 					.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
-					.setStyle(style["null"], style["null"], style["null"])
+					.setStyle(transparentStyle, transparentStyle, transparentStyle)
 					.setPosition(sf::Vector2f(0, static_cast<float>(40 * windowToSaveLine)));
 				windowToSaveLine++;
 			}
@@ -2583,7 +2591,7 @@ namespace designer {
 					.setCharacterSize(40)
 					.setSizeAuto()
 					.setAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid)
-					.setStyle(style["null"], style["null"], style["null"])
+					.setStyle(transparentStyle, transparentStyle, transparentStyle)
 					.setPosition(sf::Vector2f(0, static_cast<float>(40 * windowToExportLine)));
 				windowToExportLine++;
 			}
@@ -2835,6 +2843,7 @@ namespace designer {
 					.setFont("default")
 					.setCharacterSize(40)
 					.setSizeAuto()
+					.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 					.setPosition(sf::Vector2f(level * 40.f, linePos));
 			}
 
@@ -3097,18 +3106,20 @@ int main() {
 	//初始化预览窗口
 	gui::AreaObject PreviewWindow;
 	PreviewWindow
-		.setStyle(style["stda1"], style["stda1"], style["stda1"])
+		.setStyle(panelStyle, panelStyle, panelStyle)
 		.setPosition({0,0})
 		.setSize({0,0});
 	previewManager.open("preview", PreviewWindow);
 	preview.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"Preview", sf::Style::Close | sf::Style::Resize, sf::State::Windowed);
-	preview.setFramerateLimit(60);
+	preview.setFramerateLimit(144);
 	
 	menuManager.open("main",Main);
 	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close, sf::State::Windowed);
-	menu.setFramerateLimit(60);
+	menu.setFramerateLimit(144);
 	
+	TickManager tickManager;
 	while (true) {
+		for (TickManager::TickCount ticks = tickManager.getCurrentTick(); ticks > 0; --ticks) {
 		
 		//处理菜单窗口事件
 		while (const std::optional sfEvt = menu.pollEvent()) {
@@ -3224,6 +3235,7 @@ int main() {
 									.setFont("default")
 									.setCharacterSize(40)
 									.setSizeAuto()
+									.setStyle(optionNormalStyle, optionOverStyle, optionSelectedStyle)
 									.setPosition(sf::Vector2f(level*40.f, linePos));
 								designer::insert(designer::toDataPath(ChosenPath), isSub, type, name);
 								designer::switchOption(type,path);
@@ -3265,17 +3277,18 @@ int main() {
 				}
 				if (evt->wholePath() == attr::gbutton::open_ok) {
 					std::filesystem::path filepath = menuManager.path_at<gui::InputObject>(attr::ginput::open_filepath).getText().toWideString();
+					std::filesystem::path resolvedFilepath = resolvePathFromRoot(filepath);
 					std::string format = menuManager.path_at<gui::AreaObject>("open").getOption();
 					bool importToCurrent = menuManager.path_at<gui::TextObject>(attr::gtext::open_importToCurrent).getShow();
 					if (!filepath.empty() && !format.empty()) {
 						gui::AreaObject loadedData;
 						if (format == "binary") {
-							BinaryFileStream bf(filepath);
+							BinaryFileStream bf(resolvedFilepath);
 							bf.read(loadedData);
 							bf.close();
 						}
 						else if (format == "json") {
-							std::ifstream ifs(filepath);
+							std::ifstream ifs(resolvedFilepath);
 							nlohmann::json j;
 							ifs >> j;
 							ifs.close();
@@ -3336,7 +3349,7 @@ int main() {
 			if (evt->wholePath() == attr::gbutton::exportReflection_ok) {
 				std::filesystem::path filepath = menuManager.path_at<gui::InputObject>("exportReflection_filepath").getText().toWideString();
 				if (!filepath.empty()) {
-					std::ofstream ofs(filepath);
+					std::ofstream ofs(resolvePathFromRoot(filepath));
 					if (ofs.is_open()) {
 						//收集所有需要导出的窗口名称
 						std::vector<std::string> exportWindows;
@@ -3393,6 +3406,7 @@ int main() {
 				}
 				if (evt->wholePath() == attr::gbutton::save_ok) {
 					std::filesystem::path filepath = menuManager.path_at<gui::InputObject>(attr::ginput::save_filepath).getText().toWideString();
+					std::filesystem::path resolvedFilepath = resolvePathFromRoot(filepath);
 					std::string format = menuManager.path_at<gui::AreaObject>("save").getOption();
 					if (!filepath.empty() && !format.empty()) {
 						gui::AreaObject dataToSave;
@@ -3420,14 +3434,14 @@ int main() {
 							}
 						}
 						if (format == "binary") {
-							BinaryFileStream bf(filepath);
+							BinaryFileStream bf(resolvedFilepath);
 							bf.clear();
 							bf.write(dataToSave);
 							bf.close();
 						}
 						else if (format == "json") {
 							nlohmann::json j = dataToSave;
-							std::ofstream ofs(filepath);
+							std::ofstream ofs(resolvedFilepath);
 							ofs << j.dump(1,'\t');
 							ofs.close();
 						}
@@ -3815,6 +3829,9 @@ int main() {
 			menuManager.path_at<gui::TextObject>("main.mouseCoordY").setText(L"y:" + std::to_wstring(mousePos.y)).setSizeAuto();
 		}
 		
+			menuManager.update();
+			previewManager.update();
+		}
 		menu.clear();
 		menuManager.draw(menu);
 		menu.display();
