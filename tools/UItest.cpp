@@ -278,6 +278,7 @@ int main() {
 	windowManager.open("main",Main);
 	window.create(sf::VideoMode(sf::Vector2u(windowWidth,windowHeight)), L"测试", sf::Style::Close | sf::Style::Resize, sf::State::Windowed);
 	window.setFramerateLimit(144);
+	windowManager.update(static_cast<sf::Vector2f>(window.getSize()));
 	TickManager tickManager;
 	while (true) {
 		for (TickManager::TickCount ticks = tickManager.getCurrentTick(); ticks > 0; --ticks) {
@@ -349,7 +350,7 @@ int main() {
 				std::cout << "Input deselected : " << ptr->wholePath() << std::endl;
 			}
 		}
-			windowManager.update();
+			windowManager.update(static_cast<sf::Vector2f>(window.getSize()));
 		}
 		window.clear();
 		windowManager.draw(window);

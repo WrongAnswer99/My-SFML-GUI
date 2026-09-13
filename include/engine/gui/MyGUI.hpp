@@ -819,6 +819,12 @@ namespace gui {
 		}
 		sf::Vector2i getMouseDragScrollable() const { return mouseDragScrollable; }
 		sf::Vector2i getMouseWheelScrollable() const { return mouseWheelScrollable; }
+		sf::Vector2f getScroll() const { return scroll; }
+		AreaObject& setScroll(sf::Vector2f value) {
+			scroll = value;
+			scrollVelocity = sf::Vector2f();
+			return *this;
+		}
 	protected:
 		void updateOption() {
 			if (option!="") {
@@ -840,6 +846,15 @@ namespace gui {
 			}
 			if (-scroll.y > scrollLimit.position.y + scrollLimit.size.y) {
 				scroll.y = -(scrollLimit.position.y + scrollLimit.size.y);
+			}
+		}
+		void updateLayout(sf::Vector2f fatherSize) {
+			updatePosRect(fatherSize);
+			for (auto& elem : sub.iterate()) {
+				if (auto* area = sub.find<AreaObject>(elem))
+					area->updateLayout(posRect.size);
+				else
+					elem->updatePosRect(posRect.size);
 			}
 		}
 		void updateScroll(UIwindowManager& windowManager);
@@ -1460,8 +1475,10 @@ namespace gui {
 			}
 			return false;
 		}
-		// Advances all time-based UI state by exactly one game tick.
-		void update() {
+		// Recomputes layout, then advances all time-based UI state by one game tick.
+		void update(sf::Vector2f viewportSize) {
+			for (auto& elem : layer.iterate())
+				elem->updateLayout(viewportSize);
 			if (layer.size() >= 1) {
 				if (objectPathVisit(focus) == nullptr)
 					focus.clear();
@@ -1474,12 +1491,8 @@ namespace gui {
 			for (auto& elem : layer)
 				elem->updateScroll(*this);
 		}
-		// Draws current UI state without advancing time-based behavior.
+		// Draws the layout produced by update() without mutating it.
 		void draw(sf::RenderTarget& drawTarget) {
-			//更新所有子对象的位置
-			for (auto& elem : layer.iterate()) {
-				elem->updatePosRect(static_cast<sf::Vector2f>(drawTarget.getSize()));
-			}
 			for (auto& elem : layer) {
 				elem->draw(drawTarget, sf::FloatRect(sf::Vector2f(), static_cast<sf::Vector2f>(drawTarget.getSize())), *this);
 			}

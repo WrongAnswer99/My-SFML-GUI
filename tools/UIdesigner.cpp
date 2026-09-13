@@ -3116,6 +3116,8 @@ int main() {
 	menuManager.open("main",Main);
 	menu.create(sf::VideoMode(sf::Vector2u(windowWidth, windowHeight)), L"WindowDesigner", sf::Style::Close, sf::State::Windowed);
 	menu.setFramerateLimit(144);
+	menuManager.update(static_cast<sf::Vector2f>(menu.getSize()));
+	previewManager.update(static_cast<sf::Vector2f>(preview.getSize()));
 	
 	TickManager tickManager;
 	while (true) {
@@ -3829,8 +3831,8 @@ int main() {
 			menuManager.path_at<gui::TextObject>("main.mouseCoordY").setText(L"y:" + std::to_wstring(mousePos.y)).setSizeAuto();
 		}
 		
-			menuManager.update();
-			previewManager.update();
+			menuManager.update(static_cast<sf::Vector2f>(menu.getSize()));
+			previewManager.update(static_cast<sf::Vector2f>(preview.getSize()));
 		}
 		menu.clear();
 		menuManager.draw(menu);

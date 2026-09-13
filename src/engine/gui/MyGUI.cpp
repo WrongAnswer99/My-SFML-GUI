@@ -167,10 +167,6 @@ namespace gui {
 		if (!posRect.findIntersection(displayArea))
 			return;
 		UIBase::draw(r, displayArea, windowManager);
-		//更新所有子对象的位置
-		for (auto& elem : sub.iterate()) {
-			elem->updatePosRect(posRect.size);
-		}
 		sf::FloatRect displayAreaCur(-scroll, posRect.size);
 		sf::RenderTexture rCur(static_cast<sf::Vector2u>(posRect.size));
 		rCur.clear(sf::Color::Transparent);
