@@ -34,7 +34,7 @@ public:
 		this->DataContainer.reserve(other.DataContainer.size());
 		std::unordered_map<Base*, Base*> PointerMap{};
 		for (const auto& TypeElem : other.DataContainer) {
-			publicTypeOperation.Operation[TypeElem.first].DeepCopyHelper(*this->pool, this->DataContainer[TypeElem.first], TypeElem.second, this->DataFinder, other.DataFinder, PointerMap, true);
+			publicTypeOperation.Operation.at(TypeElem.first).DeepCopyHelper(*this->pool, this->DataContainer[TypeElem.first], TypeElem.second, this->DataFinder, other.DataFinder, PointerMap, true);
 		}
 		for (const auto& KeyElem : other.Key) {
 			this->Key.emplace(KeyElem.first, PointerMap.at(KeyElem.second));
@@ -160,13 +160,78 @@ private:
 		
 		class OperationStruct {
 			friend class VarianTmap;
-			std::function<void(std::any&, std::any&)>Destructor;
-			std::function<void(std::pmr::unsynchronized_pool_resource&, std::any&, const std::any&, std::unordered_map<Base*, DataPointerStruct>&, const std::unordered_map<Base*, DataPointerStruct>&, std::unordered_map<Base*, Base*>&, bool)>DeepCopyHelper;
-			std::function<void(std::any&, std::any&, std::any&, std::unordered_map<Base*, DataPointerStruct>&, std::pmr::list<Base*>&, const std::string&, Base*&)>MoveExtract;
-			std::function<void(std::pmr::unsynchronized_pool_resource&, std::any&)>CreateEmpty;
+			using DestructorFunc = void(*)(std::any&, std::any&);
+			using DeepCopyHelperFunc = void(*)(std::pmr::unsynchronized_pool_resource&, std::any&, const std::any&, std::unordered_map<Base*, DataPointerStruct>&, const std::unordered_map<Base*, DataPointerStruct>&, std::unordered_map<Base*, Base*>&, bool);
+			using MoveExtractFunc = void(*)(std::any&, std::any&, std::any&, std::unordered_map<Base*, DataPointerStruct>&, std::pmr::list<Base*>&, const std::string&, Base*&);
+			using CreateEmptyFunc = void(*)(std::pmr::unsynchronized_pool_resource&, std::any&);
+
+			/*
+			* 学习记录：原实现使用 std::function 是合法且合理的。std::function 能统一保存
+			* 普通函数、lambda 和函数对象等 callable，并提供 callable type erasure。
+			* 这里实际注册的 callable 全部是无捕获 lambda，而无捕获 lambda 可以直接转换为
+			* 普通函数指针；因此改用函数指针只是减少一层不必要的抽象，并非原实现有误。
+			*
+			* 原实现：
+			* std::function<void(std::any&, std::any&)> Destructor;
+			* std::function<void(std::pmr::unsynchronized_pool_resource&, std::any&, const std::any&, std::unordered_map<Base*, DataPointerStruct>&, const std::unordered_map<Base*, DataPointerStruct>&, std::unordered_map<Base*, Base*>&, bool)> DeepCopyHelper;
+			* std::function<void(std::any&, std::any&, std::any&, std::unordered_map<Base*, DataPointerStruct>&, std::pmr::list<Base*>&, const std::string&, Base*&)> MoveExtract;
+			* std::function<void(std::pmr::unsynchronized_pool_resource&, std::any&)> CreateEmpty;
+			*/
+			DestructorFunc Destructor = nullptr;
+			DeepCopyHelperFunc DeepCopyHelper = nullptr;
+			MoveExtractFunc MoveExtract = nullptr;
+			CreateEmptyFunc CreateEmpty = nullptr;
 		public:
 			OperationStruct() = default;
 		};
+
+		template<typename T>
+		static void destructorImpl(std::any& Data, std::any& Iter) {
+			auto& DataList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(Data);
+			DataList.erase(std::any_cast<typename std::pmr::list<T>::iterator&>(Iter));
+		}
+
+		template<typename T>
+		static void createEmptyImpl(std::pmr::unsynchronized_pool_resource& pool, std::any& Data) {
+			Data = std::make_shared<std::pmr::list<T>>(
+				std::pmr::polymorphic_allocator<T>(static_cast<std::pmr::memory_resource*>(&pool))
+			);
+		}
+
+		template<typename T>
+		static void deepCopyHelperImpl(std::pmr::unsynchronized_pool_resource& pool, std::any& DstData, const std::any& SrcData, std::unordered_map<Base*, DataPointerStruct>& DstFinder, const std::unordered_map<Base*, DataPointerStruct>& SrcFinder, std::unordered_map<Base*, Base*>& PointerMap, bool CreateNew) {
+			const auto& SrcList = *std::any_cast<const std::shared_ptr<std::pmr::list<T>>&>(SrcData);
+			if (CreateNew)
+				DstData = std::make_shared<std::pmr::list<T>>(
+					std::pmr::polymorphic_allocator<T>(static_cast<std::pmr::memory_resource*>(&pool))
+				);
+			auto& DstList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DstData);
+			for (auto& elem : SrcList) {
+				DstList.push_back(elem);
+				typename std::pmr::list<T>::iterator DstIter = std::prev(DstList.end());
+				Base* SrcBasePointer = const_cast<T*>(std::addressof(elem));
+				Base* DstBasePointer = static_cast<Base*>(std::addressof(*DstIter));
+				const DataPointerStruct& SrcDataPointer = SrcFinder.at(SrcBasePointer);
+				DstFinder.emplace(DstBasePointer, DataPointerStruct(std::type_index(typeid(T)), SrcDataPointer.Key, DstIter));
+				PointerMap.emplace(SrcBasePointer, DstBasePointer);
+			}
+		}
+
+		template<typename T>
+		static void moveExtractImpl(std::any& SrcData, std::any& SrcIter, std::any& DstData, std::unordered_map<Base*, DataPointerStruct>& DstFinder, std::pmr::list<Base*>& DstOrder, const std::string& Key, Base*& OutNewBase) {
+			auto& SrcList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(SrcData);
+			auto& SrcDataIter = std::any_cast<typename std::pmr::list<T>::iterator&>(SrcIter);
+			auto& DstList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DstData);
+			DstList.push_back(std::move(*SrcDataIter));
+			SrcList.erase(SrcDataIter);
+			typename std::pmr::list<T>::iterator DstIter = std::prev(DstList.end());
+			T* DstTyped = std::addressof(*DstIter);
+			Base* DstBase = static_cast<Base*>(DstTyped);
+			DstOrder.push_back(DstBase);
+			typename std::pmr::list<Base*>::iterator DstOrderIter = std::prev(DstOrder.end());
+			DstFinder.emplace(DstBase, DataPointerStruct(std::type_index(typeid(T)), Key, DstIter, DstOrderIter));
+			OutNewBase = DstBase;
+		}
 	public:
 		std::unordered_map<std::type_index,OperationStruct>Operation;
 
@@ -175,47 +240,11 @@ private:
 			std::type_index TypeIndex = std::type_index(typeid(T));
 			auto iter = Operation.find(TypeIndex);
 			if (iter == Operation.end()) {
-				Operation[TypeIndex].Destructor = [](std::any& Data, std::any& Iter) {
-					auto& DataList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(Data);
-					DataList.erase(std::any_cast<typename std::pmr::list<T>::iterator&>(Iter));
-					return;
-					};
-				Operation[TypeIndex].CreateEmpty = [](std::pmr::unsynchronized_pool_resource& pool, std::any& Data) {
-					Data = std::make_shared<std::pmr::list<T>>(
-						std::pmr::polymorphic_allocator<T>(static_cast<std::pmr::memory_resource*>(&pool))
-					);
-					};
-				Operation[TypeIndex].DeepCopyHelper = [](std::pmr::unsynchronized_pool_resource& pool, std::any& DstData, const std::any& SrcData, std::unordered_map<Base*, DataPointerStruct>& DstFinder, const std::unordered_map<Base*, DataPointerStruct>& SrcFinder, std::unordered_map<Base*, Base*>& PointerMap, bool CreateNew) {
-					const auto& SrcList = *std::any_cast<const std::shared_ptr<std::pmr::list<T>>&>(SrcData);
-					if (CreateNew)
-						DstData = std::make_shared<std::pmr::list<T>>(
-							std::pmr::polymorphic_allocator<T>(static_cast<std::pmr::memory_resource*>(&pool))
-						);
-					auto& DstList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DstData);
-					for (auto& elem : SrcList) {
-						DstList.push_back(elem);
-						typename std::pmr::list<T>::iterator DstIter = std::prev(DstList.end());
-						Base* SrcBasePointer = const_cast<T*>(std::addressof(elem));
-						Base* DstBasePointer = static_cast<Base*>(std::addressof(*DstIter));
-						const DataPointerStruct& SrcDataPointer = SrcFinder.at(SrcBasePointer);
-						DstFinder.emplace(DstBasePointer, DataPointerStruct(std::type_index(typeid(T)), SrcDataPointer.Key, DstIter));
-						PointerMap.emplace(SrcBasePointer, DstBasePointer);
-					}
-					};
-				Operation[TypeIndex].MoveExtract = [](std::any& SrcData, std::any& SrcIter, std::any& DstData, std::unordered_map<Base*, DataPointerStruct>& DstFinder, std::pmr::list<Base*>& DstOrder, const std::string& Key, Base*& OutNewBase) {
-					auto& SrcList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(SrcData);
-					auto& SrcDataIter = std::any_cast<typename std::pmr::list<T>::iterator&>(SrcIter);
-					auto& DstList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DstData);
-					DstList.push_back(std::move(*SrcDataIter));
-					SrcList.erase(SrcDataIter);
-					typename std::pmr::list<T>::iterator DstIter = std::prev(DstList.end());
-					T* DstTyped = std::addressof(*DstIter);
-					Base* DstBase = static_cast<Base*>(DstTyped);
-					DstOrder.push_back(DstBase);
-					typename std::pmr::list<Base*>::iterator DstOrderIter = std::prev(DstOrder.end());
-					DstFinder.emplace(DstBase, DataPointerStruct(std::type_index(typeid(T)), Key, DstIter, DstOrderIter));
-					OutNewBase = DstBase;
-					};
+				auto& op = Operation[TypeIndex];
+				op.Destructor = &destructorImpl<T>;
+				op.CreateEmpty = &createEmptyImpl<T>;
+				op.DeepCopyHelper = &deepCopyHelperImpl<T>;
+				op.MoveExtract = &moveExtractImpl<T>;
 			}
 		}
 	};
@@ -237,7 +266,9 @@ private:
 
 	void ensureTypeRegistered(const std::type_index& TypeIndex) {
 		if (DataContainer.find(TypeIndex) == DataContainer.end()) {
-			publicTypeOperation.Operation[TypeIndex].CreateEmpty(*pool, DataContainer[TypeIndex]);
+			std::any NewData;
+			publicTypeOperation.Operation.at(TypeIndex).CreateEmpty(*pool, NewData);
+			DataContainer.emplace(TypeIndex, std::move(NewData));
 		}
 	}
 
@@ -256,6 +287,29 @@ public:
 	//插入、添加数据
 
 private:
+	template<typename Rollback>
+	class RollbackGuard {
+		Rollback rollback;
+		bool active = true;
+	public:
+		explicit RollbackGuard(Rollback&& rollback) : rollback(std::move(rollback)) {}
+		RollbackGuard(const RollbackGuard&) = delete;
+		RollbackGuard& operator=(const RollbackGuard&) = delete;
+
+		~RollbackGuard() noexcept {
+			if (active)
+				rollback();
+		}
+
+		void release() noexcept {
+			active = false;
+		}
+	};
+
+	template<typename Rollback>
+	static auto makeRollbackGuard(Rollback&& rollback) {
+		return RollbackGuard<std::decay_t<Rollback>>(std::forward<Rollback>(rollback));
+	}
 
 	void checkInsertable(auto_cast_pointer& Where) {
 		if (Where.pointer != nullptr) {
@@ -281,15 +335,21 @@ private:
 		if (Key.count(key)) {
 			throw std::runtime_error("[VarianTmap::insert] Key already exists.\n  Key: "s + key + "\n");
 		}
-		auto& list_ptr = std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DataContainer[TypeIndex]);
+		auto& list_ptr = std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DataContainer.at(TypeIndex));
 		std::pmr::list<T>& DataList = *list_ptr;
 		const typename std::pmr::list<T>::iterator DataIter = insertDataFunc(DataList);
+		auto DataRollback = makeRollbackGuard([&]() noexcept { DataList.erase(DataIter); });
 		T* TypedPointer = std::addressof(*DataIter);
 		Base* BasePointer = static_cast<Base*>(TypedPointer);
 		typename std::pmr::list<Base*>::iterator OrderPointer = insertOrderFunc(BasePointer);
+		auto OrderRollback = makeRollbackGuard([&]() noexcept { Order.erase(OrderPointer); });
 		DataFinder.emplace(BasePointer, DataPointerStruct(TypeIndex, key, DataIter, OrderPointer));
+		auto FinderRollback = makeRollbackGuard([&]() noexcept { DataFinder.erase(BasePointer); });
 		if (key != "")
 			Key.emplace(key, BasePointer);
+		FinderRollback.release();
+		OrderRollback.release();
+		DataRollback.release();
 		return TypedPointer;
 	}
 
@@ -302,7 +362,7 @@ private:
 		for (const auto& TypeElem : other.DataContainer) {
 			const std::type_index& TypeIndex = TypeElem.first;
 			bool NeedCreate = !isTypeRegistered(TypeIndex);
-			publicTypeOperation.Operation[TypeIndex].DeepCopyHelper(*this->pool, this->DataContainer[TypeIndex], TypeElem.second, this->DataFinder, other.DataFinder, PointerMap, NeedCreate);
+			publicTypeOperation.Operation.at(TypeIndex).DeepCopyHelper(*this->pool, this->DataContainer[TypeIndex], TypeElem.second, this->DataFinder, other.DataFinder, PointerMap, NeedCreate);
 		}
 		for (auto& KeyElem : other.Key) {
 			this->Key.emplace(KeyElem.first, PointerMap.at(KeyElem.second));
@@ -333,14 +393,7 @@ public:
 
 	template<typename U = void, typename V>
 	auto insert(auto_cast_pointer Where, const std::string& key, V&& value) {
-		using RawType = std::remove_cvref_t<V>;
-		using T = std::conditional_t<std::is_same_v<U, void>,
-			std::conditional_t<std::is_same_v<RawType, std::unique_ptr<typename std::unique_ptr<RawType>::element_type>>,
-				typename std::unique_ptr<RawType>::element_type,
-				std::conditional_t<std::is_same_v<RawType, std::shared_ptr<typename std::shared_ptr<RawType>::element_type>>,
-					typename std::shared_ptr<RawType>::element_type,
-					RawType>>,
-			U>;
+		using T = std::conditional_t<std::is_same_v<U, void>, std::remove_cvref_t<V>, U>;
 		return insertHelper<T>(
 			key,
 			[&](std::pmr::list<T>& DataList)->typename std::pmr::list<T>::iterator {
@@ -414,6 +467,9 @@ public:
 	}
 
 	void merge(const VarianTmap<Base>& other) {
+		if (this == &other) {
+			throw std::runtime_error("[VarianTmap::merge] Cannot merge a VarianTmap with itself.\n");
+		}
 		std::unordered_map<Base*, Base*> PointerMap{};
 		mergeHelper(other, PointerMap);
 		for (auto& elem : other.Order) {
@@ -424,6 +480,9 @@ public:
 	}
 
 	void merge(auto_cast_pointer Where, const VarianTmap<Base>& other) {
+		if (this == &other) {
+			throw std::runtime_error("[VarianTmap::merge] Cannot merge a VarianTmap with itself.\n");
+		}
 		checkInsertable(Where);
 		std::unordered_map<Base*, Base*> PointerMap{};
 		mergeHelper(other, PointerMap);
@@ -458,11 +517,33 @@ public:
 		return std::views::reverse(Order);
 	}
 
+	template<
+		typename Compare,
+		typename = std::enable_if_t<
+			std::is_invocable_r_v<bool, Compare&, Base*, Base*>
+		>
+	>
+	void sort(Compare&& comp) {
+		// std::list::sort 只重排节点，不会使 DataFinder 保存的 Order iterator 失效。
+		Order.sort(std::forward<Compare>(comp));
+	}
+
+	void reverse() noexcept {
+		// std::list::reverse 只重排节点，不会使 DataFinder 保存的 Order iterator 失效。
+		Order.reverse();
+	}
+
+	/*
+	* iterate<T>() 是有意保留的 O(1) 低层接口：允许遍历并修改已有元素内容。
+	* 不要通过返回的 list 直接调用 push_back、push_front、insert、erase、clear、splice
+	* 等改变容器结构的操作，否则会绕过 VarianTmap 的维护逻辑，导致 DataContainer、
+	* DataFinder、Order 和 Key 失去同步。这是该接口明确接受的 trade-off。
+	*/
 	template<typename T>
 	std::pmr::list<T>& iterate() {
 		ensureTypeRegistered<T>();
 		std::type_index TypeIndex = std::type_index(typeid(T));
-		return *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DataContainer[TypeIndex]);
+		return *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DataContainer.at(TypeIndex));
 	}
 
 	template<typename T>
@@ -697,7 +778,7 @@ public:
 		std::type_index TypeIndex = DataPointer.TypeIndex;
 		Order.erase(DataPointer.Order);
 		Key.erase(KeyFindIter);
-		publicTypeOperation.Operation[TypeIndex].Destructor(DataContainer[TypeIndex], DataPointer.Data);
+		publicTypeOperation.Operation.at(TypeIndex).Destructor(DataContainer.at(TypeIndex), DataPointer.Data);
 		DataFinder.erase(BasePointer);
 	}
 
@@ -717,7 +798,7 @@ public:
 		if (DataPointer.Key != "") {
 			Key.erase(DataPointer.Key);
 		}
-		publicTypeOperation.Operation[TypeIndex].Destructor(DataContainer[TypeIndex], DataPointer.Data);
+		publicTypeOperation.Operation.at(TypeIndex).Destructor(DataContainer.at(TypeIndex), DataPointer.Data);
 		DataFinder.erase(iter);
 	}
 
@@ -741,9 +822,9 @@ public:
 			result.ensureTypeRegistered(TypeIndex);
 			// 在 result 中分配空间
 			Base* NewBase = nullptr;
-			publicTypeOperation.Operation[TypeIndex].MoveExtract(
-				DataContainer[TypeIndex], CurrentData.Data,
-				result.DataContainer[TypeIndex],
+			publicTypeOperation.Operation.at(TypeIndex).MoveExtract(
+				DataContainer.at(TypeIndex), CurrentData.Data,
+				result.DataContainer.at(TypeIndex),
 				result.DataFinder, result.Order,
 				CurrentData.Key, NewBase
 			);
@@ -775,9 +856,9 @@ public:
 				std::type_index TypeIndex = CurrentData.TypeIndex;
 				result.ensureTypeRegistered(TypeIndex);
 				Base* NewBase = nullptr;
-				publicTypeOperation.Operation[TypeIndex].MoveExtract(
-					DataContainer[TypeIndex], CurrentData.Data,
-					result.DataContainer[TypeIndex],
+				publicTypeOperation.Operation.at(TypeIndex).MoveExtract(
+					DataContainer.at(TypeIndex), CurrentData.Data,
+					result.DataContainer.at(TypeIndex),
 					result.DataFinder, result.Order,
 					CurrentData.Key, NewBase
 				);
@@ -819,7 +900,7 @@ public:
 		if (!isTypeRegistered<T>()) {
 			return;
 		}
-		auto& DataList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DataContainer[TypeIndex]);
+		auto& DataList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DataContainer.at(TypeIndex));
 		for (auto& elem : DataList) {
 			auto iter = DataFinder.find(&elem);
 			Order.erase(iter->second.Order);

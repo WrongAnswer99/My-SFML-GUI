@@ -20,6 +20,34 @@ struct TestB : TestBase {
     std::string name() const override { return "B"; }
 };
 
+bool compareTestAAscending(TestBase* lhs, TestBase* rhs) {
+    return static_cast<TestA*>(lhs)->value < static_cast<TestA*>(rhs)->value;
+}
+
+struct CompareTestADescending {
+    bool operator()(TestBase* lhs, TestBase* rhs) const {
+        return static_cast<TestA*>(lhs)->value > static_cast<TestA*>(rhs)->value;
+    }
+};
+
+struct InvalidComparator {
+    bool operator()(int, int) const {
+        return false;
+    }
+};
+
+template<typename Map, typename Compare, typename = void>
+struct CanSort : std::false_type {};
+
+template<typename Map, typename Compare>
+struct CanSort<Map, Compare, std::void_t<
+    decltype(std::declval<Map&>().sort(std::declval<Compare>()))
+>> : std::true_type {};
+
+static_assert(CanSort<VarianTmap<TestBase>, decltype(&compareTestAAscending)>::value);
+static_assert(CanSort<VarianTmap<TestBase>, CompareTestADescending>::value);
+static_assert(!CanSort<VarianTmap<TestBase>, InvalidComparator>::value);
+
 int main() {
     // ===== 1. 插入 =====
     {
@@ -76,6 +104,18 @@ int main() {
         assert(a->value == 99);
         assert(map.size() == 1);
         std::cout << "Test 1.6 passed: emplace." << std::endl;
+    }
+    {
+        VarianTmap<TestBase> map;
+        TestA external{7};
+        bool caught = false;
+        try { map.insert(&external, "invalid", TestA{8}); }
+        catch (const std::runtime_error&) { caught = true; }
+        assert(caught);
+        assert(map.empty());
+        assert(map.iterate<TestA>().empty());
+        assert(map.find("invalid") == nullptr);
+        std::cout << "Test 1.7 passed: failed insert rolls back DataList." << std::endl;
     }
 
     // ===== 2. 查找 =====
@@ -212,6 +252,58 @@ int main() {
         assert(map1.find<TestA>("m1") != nullptr);
         assert(map1.find<TestB>("m2") != nullptr);
         std::cout << "Test 9.1 passed: merge." << std::endl;
+    }
+    {
+        VarianTmap<TestBase> map;
+        map.push_back<TestA>("self", TestA{1});
+
+        bool directCaught = false;
+        try { map.merge(map); } catch (const std::runtime_error&) { directCaught = true; }
+        assert(directCaught);
+        assert(map.size() == 1);
+        assert(map.find<TestA>("self") != nullptr);
+
+        bool positionedCaught = false;
+        try { map.merge(map.end(), map); } catch (const std::runtime_error&) { positionedCaught = true; }
+        assert(positionedCaught);
+        assert(map.size() == 1);
+        std::cout << "Test 9.2 passed: self merge throws without mutation." << std::endl;
+    }
+
+    // ===== 9A. sort / reverse =====
+    {
+        VarianTmap<TestBase> map;
+        auto* three = map.push_back<TestA>("three", TestA{3});
+        auto* one = map.push_back<TestA>("one", TestA{1});
+        auto* two = map.push_back<TestA>("two", TestA{2});
+        const auto threeIter = map.find_order("three");
+        const auto oneIter = map.find_order("one");
+        const auto twoIter = map.find_order("two");
+
+        map.sort(compareTestAAscending);
+        assert(map.order().front() == one);
+        assert(map.order().back() == three);
+        assert(map.find_order("three") == threeIter);
+        assert(map.find_order("one") == oneIter);
+        assert(map.find_order("two") == twoIter);
+
+        map.sort([](TestBase* lhs, TestBase* rhs) {
+            return static_cast<TestA*>(lhs)->value > static_cast<TestA*>(rhs)->value;
+        });
+        assert(map.order().front() == three);
+        assert(map.order().back() == one);
+
+        map.sort(CompareTestADescending{});
+        assert(map.order().front() == three);
+        assert(map.order().back() == one);
+
+        map.reverse();
+        assert(map.order().front() == one);
+        assert(map.order().back() == three);
+        assert(map.find_order("three") == threeIter);
+        assert(map.find_order("one") == oneIter);
+        assert(map.find_order("two") == twoIter);
+        std::cout << "Test 9A.1 passed: sort/reverse comparators + iterator stability." << std::endl;
     }
 
     // ===== 10. 拷贝/移动 =====
