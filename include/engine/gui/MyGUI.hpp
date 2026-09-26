@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/tick/Tick.hpp"
 #include <set>
+#include <vector>
 #include "engine/event/Event.hpp"
 #include "engine/resource/Resources.hpp"
 #include "engine/data/VarianTmap.hpp"
@@ -98,6 +99,12 @@ namespace gui {
 		friend class AreaObject;
 		friend class UIwindowManager;
 	public:
+		enum DirtyFlag : std::uint8_t {
+			DirtyNone = 0,
+			DirtyLayout = 1 << 0,
+			DirtyTextMetrics = 1 << 1,
+			DirtyContentBounds = 1 << 2
+		};
 		enum class Anchor {
 			Left = 0, Right = 2, Width = 3,
 			Top = 0, Bottom = 2, Height = 3,
@@ -162,28 +169,83 @@ namespace gui {
 		Style styles[3];
 		int currentStatu = gui::UIBase::Normal;
 		bool isShow = true;
-		virtual void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
+		std::uint8_t dirtyFlags = DirtyLayout | DirtyContentBounds;
+		sf::Vector2f cachedFatherSize;
+		bool hasCachedFatherSize = false;
+		virtual void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager);
+		void markDirty(DirtyFlag flag) {
+			dirtyFlags |= static_cast<std::uint8_t>(flag);
+		}
+		void clearDirty(DirtyFlag flag) {
+			dirtyFlags &= ~static_cast<std::uint8_t>(flag);
+		}
+		bool isDirty(DirtyFlag flag) const {
+			return (dirtyFlags & static_cast<std::uint8_t>(flag)) != 0;
+		}
+		void copyConfigurationFrom(const UIBase& other) {
+			relativePosition = other.relativePosition;
+			for (int i = 0; i < 3; ++i)
+				styles[i] = other.styles[i];
+			currentStatu = other.currentStatu;
+			isShow = other.isShow;
+		}
+		void invalidateAllCaches() {
+			dirtyFlags = DirtyLayout | DirtyTextMetrics | DirtyContentBounds;
+			cachedFatherSize = {};
+			hasCachedFatherSize = false;
+		}
 		//std::set<std::string> linkList;
 	public:
+		UIBase() = default;
+		UIBase(const UIBase& other) {
+			copyConfigurationFrom(other);
+			invalidateAllCaches();
+		}
+		UIBase& operator=(const UIBase& other) {
+			if (this != &other) {
+				// Keep this object's previous posRect until the next layout pass so
+				// its parent can observe whether the assigned layout changed bounds.
+				copyConfigurationFrom(other);
+				invalidateAllCaches();
+			}
+			return *this;
+		}
+		UIBase(UIBase&& other) noexcept {
+			copyConfigurationFrom(other);
+			invalidateAllCaches();
+			other.invalidateAllCaches();
+		}
+		UIBase& operator=(UIBase&& other) noexcept {
+			if (this != &other) {
+				copyConfigurationFrom(other);
+				invalidateAllCaches();
+				other.invalidateAllCaches();
+			}
+			return *this;
+		}
 		enum Statu { Normal = 0, Over = 1, Focus = 2 };
 		UIBase& setPosition(sf::Vector2f _position) {
 			relativePosition.x.first = {UIBase::Anchor::Left, UIBase::Relative::LeftEdge, _position.x};
 			relativePosition.y.first = {UIBase::Anchor::Top, UIBase::Relative::TopEdge, _position.y};
+			markDirty(DirtyLayout);
 			return *this;
 		}
 		UIBase& setPosition(sf::Vector2f _position, sf::Vector2<Anchor> _anchor) {
 			relativePosition.x.first = {_anchor.x, UIBase::Relative::LeftEdge, _position.x};
 			relativePosition.y.first = {_anchor.y, UIBase::Relative::TopEdge, _position.y};
+			markDirty(DirtyLayout);
 			return *this;
 		}
 		UIBase& setPosition(sf::Vector2f _position, sf::Vector2<Anchor> _anchor, sf::Vector2<Relative> _relative) {
 			relativePosition.x.first = {_anchor.x, _relative.x, _position.x};
 			relativePosition.y.first = {_anchor.y, _relative.y, _position.y};
+			markDirty(DirtyLayout);
 			return *this;
 		}
 		UIBase& setSize(sf::Vector2f _size) {
 			if (relativePosition.x.second.isSize()) relativePosition.x.second = {UIBase::Anchor::Size, _size.x};
 			if (relativePosition.y.second.isSize()) relativePosition.y.second = {UIBase::Anchor::Size, _size.y};
+			markDirty(DirtyLayout);
 			return *this;
 		}
 		UIBase& setPositionRelative(std::initializer_list<UIBase::DynamicPosition> xRelative, std::initializer_list<UIBase::DynamicPosition> yRelative) {
@@ -217,6 +279,7 @@ namespace gui {
 					relativePosition.y.first = second;relativePosition.y.second = first;
 				}
 			}
+			markDirty(DirtyLayout);
 			return *this;
 		setRelativeIllegal:;
 			throw std::runtime_error("[UIBase::setRelative] Illegal relative position\n");
@@ -284,6 +347,16 @@ namespace gui {
 			posRect.position.x = relativePosition.x.first.calcRelative(fatherSize.x) - (relativePosition.x.first.getAnchor()) / 2.f * posRect.size.x;
 			posRect.position.y = relativePosition.y.first.calcRelative(fatherSize.y) - (relativePosition.y.first.getAnchor()) / 2.f * posRect.size.y;
 		}
+		bool updateLayoutIfNeeded(sf::Vector2f fatherSize, bool force = false) {
+			if (!force && !isDirty(DirtyLayout) && hasCachedFatherSize && cachedFatherSize == fatherSize)
+				return false;
+			const sf::FloatRect oldRect = posRect;
+			updatePosRect(fatherSize);
+			cachedFatherSize = fatherSize;
+			hasCachedFatherSize = true;
+			clearDirty(DirtyLayout);
+			return oldRect != posRect;
+		}
 		void setStatu(int statu, bool force = false) {
 			if (force || currentStatu != gui::UIBase::Focus) {
 				currentStatu = statu;
@@ -318,7 +391,7 @@ namespace gui {
 		sf::Vector2i align = { static_cast<int>(gui::UIBase::Align::Mid), static_cast<int>(gui::UIBase::Align::Mid) };
 		sf::Vector2f scale = sf::Vector2f(1, 1);
 		sf::Color imageColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
-		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
+		void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager);
 	public:
 		ImageObject& setImageColor(const sf::Color& _normalColor, const sf::Color& _overColor, const sf::Color& _focusColor) {
 			imageColors[gui::UIBase::Normal] = _normalColor;
@@ -375,6 +448,7 @@ namespace gui {
 			textStyles[gui::UIBase::Normal].set(sf::Color::Black, sf::Color::Black);
 			textStyles[gui::UIBase::Over].set(sf::Color::Black, sf::Color::Black);
 			textStyles[gui::UIBase::Focus].set(sf::Color::Black, sf::Color::Black);
+			markDirty(DirtyTextMetrics);
 		}
 		TextObject& setTextStyle(const TextStyle& _normalStyle, const TextStyle& _overStyle, const TextStyle& _focusStyle) {
 			textStyles[gui::UIBase::Normal] = _normalStyle;
@@ -394,19 +468,8 @@ namespace gui {
 		//use this setter
 		//after : setFont() , setText() , setCharacterSize()
 		TextObject& setSizeAuto() {
-			textRender.setCharacterSize(characterSize);
-			textRender.setLineSpacing(lineSpacing);
-			textRender.setLetterSpacing(letterSpacing);
-			textRender.setString(text);
-			textRender.setPosition({ 0, 0 });
-			sf::Vector2f size;
-			size.x = 0;
-			for (int i = 0; i <= text.getSize(); i++) {
-				if (textRender.findCharacterPos(i).x > size.x)
-					size.x = textRender.findCharacterPos(i).x;
-			}
-			size.y = textRender.findCharacterPos(textRender.getString().getSize()).y + characterSize;
-			setSize(size);
+			updateTextMetrics();
+			setSize(textRect.size);
 			return *this;
 		}
 	protected:
@@ -417,22 +480,32 @@ namespace gui {
 		sf::Text textRender{ fontManager[font] };
 		sf::FloatRect textRect;
 		sf::Vector2f textRenderOffsetFix;
+		std::vector<sf::Vector2f> characterPositions;
 		sf::Vector2i align = { static_cast<int>(gui::UIBase::Align::Mid), static_cast<int>(gui::UIBase::Align::Mid) };
 		TextStyle textStyles[3];
-		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
+		void updateTextMetrics();
+		sf::Vector2f getCharacterPosition(size_t index) const {
+			if (characterPositions.empty())
+				return {};
+			return characterPositions[std::min(index, characterPositions.size() - 1)];
+		}
+		void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager);
 	public:
 		TextObject& setFont(const std::string& _font) {
 			font = _font;
 			textRender.setFont(fontManager[font]);
+			markDirty(DirtyTextMetrics);
 			return *this;
 		}
 		TextObject& setCharacterSize(int _characterSize) {
 			characterSize = _characterSize;
+			markDirty(DirtyTextMetrics);
 			return *this;
 		}
 		TextObject& setSpacing(float _letterSpacing, float _lineSpacing) {
 			letterSpacing = _letterSpacing;
 			lineSpacing = _lineSpacing;
+			markDirty(DirtyTextMetrics);
 			return *this;
 		}
 		TextObject& setAlign(gui::UIBase::Align xAlign, gui::UIBase::Align yAlign) {
@@ -442,12 +515,14 @@ namespace gui {
 		}
 		TextObject& setText(sf::String _text) {
 			text = _text;
+			markDirty(DirtyTextMetrics);
 			return *this;
 		}
-		sf::String& getText() {
+		const sf::String& getText() const {
 			return text;
 		}
-		const sf::String& getText() const {
+		sf::String& editText() {
+			markDirty(DirtyTextMetrics);
 			return text;
 		}
 		const std::string& getFont() const { return font; }
@@ -552,7 +627,7 @@ namespace gui {
 		sf::Vector2f scroll;
 		sf::Vector2f updateTextLayout();
 		void ensureCursorVisible();
-		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
+		void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager);
 		inline void insert(char32_t ch) {
 			if (text.getSize() >= sizeLimit)return;
 			if (typeLimit == gui::InputObject::Int) {
@@ -560,6 +635,7 @@ namespace gui {
 					(ch >= '0' && ch <= '9' && (text.getSize() == 0 || text[0] != '-' || cursor != 0))) {
 					text.insert(cursor, ch);
 					cursor++;
+					markDirty(DirtyTextMetrics);
 				}
 			}
 			else if (typeLimit == gui::InputObject::Float) {
@@ -568,12 +644,14 @@ namespace gui {
 					(ch == '.' && (text.getSize() == 0 || text[0] != '-' || cursor != 0) && text.find('.') == sf::String::InvalidPos)) {
 					text.insert(cursor, ch);
 					cursor++;
+					markDirty(DirtyTextMetrics);
 				}
 			}
 			else {
 				if (inputLimit.isLegal(ch)) {
 					text.insert(cursor, ch);
 					cursor++;
+					markDirty(DirtyTextMetrics);
 				}
 			}
 		}
@@ -591,6 +669,7 @@ namespace gui {
 				if (sizeLimit - text.getSize() > 0) {
 					text.insert(cursor, st.substring(0, std::min(remainSize, realSize)));
 					cursor += std::min(remainSize, realSize);
+					markDirty(DirtyTextMetrics);
 				}
 			}
 		}
@@ -599,11 +678,13 @@ namespace gui {
 				if (text.getSize() > 0 && cursor > 0) {
 					text.erase(cursor - 1);
 					cursor--;
+					markDirty(DirtyTextMetrics);
 				}
 			}
 			else {
 				if (text.getSize() > 0 && cursor < text.getSize()) {
 					text.erase(cursor);
+					markDirty(DirtyTextMetrics);
 				}
 			}
 		}
@@ -620,11 +701,11 @@ namespace gui {
 			}
 		}
 		void updateCursorByMousePos(sf::Vector2f mousePos) {
+			updateTextLayout();
 			size_t bestCursor = 0;
 			float minDist = std::numeric_limits<float>::max();
 			for (size_t i = 0; i <= text.getSize(); i++) {
-				sf::Vector2f charPos = textRender.findCharacterPos(i);
-				charPos += textRenderOffsetFix;
+				sf::Vector2f charPos = getCharacterPosition(i) + textRender.getPosition() + textRenderOffsetFix;
 				float distX = std::abs(charPos.x - mousePos.x);
 				float distY = std::abs((charPos.y + characterSize / 2.f) - mousePos.y);
 				float dist = distX * distX + distY * distY;
@@ -663,6 +744,7 @@ namespace gui {
 		InputObject& setText(sf::String _text) {
 			text = _text;
 			cursor = text.getSize();
+			markDirty(DirtyTextMetrics);
 			return *this;
 		}
 		void onFocusLose(EventQueue& event, const std::string& path, const std::string& name, AreaObject&, bool focusChanged) override;
@@ -690,22 +772,24 @@ namespace gui {
 				cursor = (pos == sf::String::InvalidPos) ? text.getSize() : pos;
 			}
 			else if (key == sf::Keyboard::Key::Up) {
+				updateTextLayout();
 				if (cursor == 0) return;
-				float currentY = textRender.findCharacterPos(cursor).y;
+				float currentY = getCharacterPosition(cursor).y;
 				// find the previous line's y
 				float prevLineY = currentY;
 				for (auto i = cursor; i > 0; i--) {
-					float y = textRender.findCharacterPos(i - 1).y;
+					float y = getCharacterPosition(i - 1).y;
 					if (y < currentY) { prevLineY = y; break; }
 				}
 				if (prevLineY == currentY) { cursor = 0; return; }
 				// find closest x on the previous line
-				float targetX = textRender.findCharacterPos(cursor).x + textRenderOffsetFix.x;
+				float targetX = getCharacterPosition(cursor).x;
 				float minDist = std::numeric_limits<float>::max();
 				size_t bestCursor = 0;
 				for (auto i = 0u; i <= text.getSize(); i++) {
-					if (textRender.findCharacterPos(i).y == prevLineY) {
-						float dist = std::abs((textRender.findCharacterPos(i).x + textRenderOffsetFix.x) - targetX);
+					const sf::Vector2f charPos = getCharacterPosition(i);
+					if (charPos.y == prevLineY) {
+						float dist = std::abs(charPos.x - targetX);
 						if (dist < minDist) {
 							minDist = dist;
 							bestCursor = i;
@@ -715,22 +799,24 @@ namespace gui {
 				cursor = bestCursor;
 			}
 			else if (key == sf::Keyboard::Key::Down) {
+				updateTextLayout();
 				if (cursor == text.getSize()) return;
-				float currentY = textRender.findCharacterPos(cursor).y;
+				float currentY = getCharacterPosition(cursor).y;
 				// find the next line's y
 				float nextLineY = currentY;
 				for (auto i = cursor; i <= text.getSize(); i++) {
-					float y = textRender.findCharacterPos(i).y;
+					float y = getCharacterPosition(i).y;
 					if (y > currentY) { nextLineY = y; break; }
 				}
 				if (nextLineY == currentY) { cursor = text.getSize(); return; }
 				// find closest x on the next line
-				float targetX = textRender.findCharacterPos(cursor).x + textRenderOffsetFix.x;
+				float targetX = getCharacterPosition(cursor).x;
 				float minDist = std::numeric_limits<float>::max();
 				size_t bestCursor = text.getSize();
 				for (auto i = 0u; i <= text.getSize(); i++) {
-					if (textRender.findCharacterPos(i).y == nextLineY) {
-						float dist = std::abs((textRender.findCharacterPos(i).x + textRenderOffsetFix.x) - targetX);
+					const sf::Vector2f charPos = getCharacterPosition(i);
+					if (charPos.y == nextLineY) {
+						float dist = std::abs(charPos.x - targetX);
 						if (dist < minDist) {
 							minDist = dist;
 							bestCursor = i;
@@ -765,6 +851,7 @@ namespace gui {
 		AreaObject& setScrollable(sf::Vector2i _mouseDragScrollable, sf::Vector2i _mouseWheelScrollable) {
 			mouseDragScrollable = _mouseDragScrollable;
 			mouseWheelScrollable = _mouseWheelScrollable;
+			markDirty(DirtyContentBounds);
 			return *this;
 		}
 	protected:
@@ -791,6 +878,7 @@ namespace gui {
 				addPoint(scrollLimit, elem->posRect.position + elem->posRect.size);
 			}
 			scrollLimit.size -= posRect.size;
+			clearDirty(DirtyContentBounds);
 			return *this;
 		}
 	public:
@@ -838,7 +926,8 @@ namespace gui {
 			}
 		}
 		void ensureScrollLimit() {
-			setScrollLimitAuto();
+			if (isDirty(DirtyContentBounds))
+				setScrollLimitAuto();
 			if (-scroll.x < scrollLimit.position.x) {
 				scroll.x = -(scrollLimit.position.x);
 			}
@@ -852,17 +941,26 @@ namespace gui {
 				scroll.y = -(scrollLimit.position.y + scrollLimit.size.y);
 			}
 		}
-		void updateLayout(sf::Vector2f fatherSize) {
-			updatePosRect(fatherSize);
+		bool updateLayout(sf::Vector2f fatherSize, bool force = false) {
+			const sf::Vector2f oldSize = posRect.size;
+			const bool selfChanged = updateLayoutIfNeeded(fatherSize, force);
+			const bool sizeChanged = oldSize != posRect.size;
+			const bool structureChanged = sub.isStructureChanged();
+			bool childChanged = structureChanged;
 			for (auto& elem : sub.iterate()) {
 				if (auto* area = sub.find<AreaObject>(elem))
-					area->updateLayout(posRect.size);
+					childChanged = area->updateLayout(posRect.size, sizeChanged) || childChanged;
 				else
-					elem->updatePosRect(posRect.size);
+					childChanged = elem->updateLayoutIfNeeded(posRect.size, sizeChanged) || childChanged;
 			}
+			if (structureChanged)
+				sub.clearStructureChangeFlag();
+			if (selfChanged || childChanged)
+				markDirty(DirtyContentBounds);
+			return selfChanged || childChanged;
 		}
 		void updateScroll(UIwindowManager& windowManager);
-		void draw(sf::RenderTarget& r, sf::FloatRect displayArea, UIwindowManager& windowManager);
+		void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager);
 	public:
 		void onDragScroll(sf::Vector2f delta) { scroll += delta; }
 		void onInertialScrollStart(sf::Vector2f velocity) override { scrollVelocity = velocity; }
@@ -1508,8 +1606,12 @@ namespace gui {
 		}
 		// Draws the layout produced by update() without mutating it.
 		void draw(sf::RenderTarget& drawTarget) {
+			const sf::View& view = drawTarget.getView();
+			const sf::FloatRect clipArea(
+				view.getCenter() - view.getSize() / 2.f,
+				view.getSize());
 			for (auto& elem : layer) {
-				elem->draw(drawTarget, sf::FloatRect(sf::Vector2f(), static_cast<sf::Vector2f>(drawTarget.getSize())), *this);
+				elem->draw(drawTarget, sf::Vector2f(), clipArea, *this);
 			}
 		}
 	};

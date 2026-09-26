@@ -565,6 +565,48 @@ int main() {
         std::cout << "Test 16.3 passed: extract + merge at position." << std::endl;
     }
 
+    // ===== 17. structure change flag =====
+    {
+        VarianTmap<TestBase> map;
+        assert(!map.isStructureChanged());
+
+        auto* first = map.push_back<TestA>("first", TestA{2});
+        assert(map.isStructureChanged());
+        map.clearStructureChangeFlag();
+        assert(!map.isStructureChanged());
+
+        map.push_back<TestA>("second", TestA{1});
+        map.clearStructureChangeFlag();
+        map.sort(compareTestAAscending);
+        assert(map.isStructureChanged());
+        map.clearStructureChangeFlag();
+
+        map.rename(first, "renamed");
+        assert(map.isStructureChanged());
+        map.clearStructureChangeFlag();
+
+        auto extracted = map.extract("renamed", 1);
+        assert(map.isStructureChanged());
+        assert(extracted.isStructureChanged());
+        map.clearStructureChangeFlag();
+
+        map.merge(extracted);
+        assert(map.isStructureChanged());
+        map.clearStructureChangeFlag();
+
+        map.erase("renamed");
+        assert(map.isStructureChanged());
+        map.clearStructureChangeFlag();
+
+        map.clear();
+        assert(map.isStructureChanged());
+        map.clearStructureChangeFlag();
+        map.clear();
+        assert(!map.isStructureChanged());
+
+        std::cout << "Test 17 passed: structure change flag." << std::endl;
+    }
+
     std::cout << "All tests passed!" << std::endl;
     return 0;
 }

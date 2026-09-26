@@ -30,6 +30,14 @@ class VarianTmap {
 public:
 	VarianTmap() : pool(std::make_unique<std::pmr::unsynchronized_pool_resource>()) {}
 
+	bool isStructureChanged() const noexcept {
+		return structureChanged;
+	}
+
+	void clearStructureChangeFlag() noexcept {
+		structureChanged = false;
+	}
+
 	void copyHelper(const VarianTmap<Base>& other) {
 		this->DataContainer.reserve(other.DataContainer.size());
 		std::unordered_map<Base*, Base*> PointerMap{};
@@ -44,6 +52,8 @@ public:
 			this->Order.push_back(NewBasePointer);
 			this->DataFinder.at(NewBasePointer).Order = std::prev(this->Order.end());
 		}
+		if (!other.Order.empty())
+			structureChanged = true;
 	}
 
 	VarianTmap(const VarianTmap<Base>& other) : pool(std::make_unique<std::pmr::unsynchronized_pool_resource>()) {
@@ -64,6 +74,8 @@ public:
 		this->Key = std::move(other.Key);
 		this->DataFinder = std::move(other.DataFinder);
 		this->DataContainer = std::move(other.DataContainer);
+		structureChanged = true;
+		other.structureChanged = true;
 	}
 
 	VarianTmap(VarianTmap<Base>&& other) noexcept {
@@ -93,6 +105,7 @@ private:
 	static constexpr bool isDerivedType = std::is_base_of_v<Base, T>;
 
 	std::unique_ptr<std::pmr::unsynchronized_pool_resource> pool;
+	bool structureChanged = false;
 
 	class auto_cast_pointer {
 		friend class VarianTmap;
@@ -350,6 +363,7 @@ private:
 		FinderRollback.release();
 		OrderRollback.release();
 		DataRollback.release();
+		structureChanged = true;
 		return TypedPointer;
 	}
 
@@ -470,6 +484,8 @@ public:
 		if (this == &other) {
 			throw std::runtime_error("[VarianTmap::merge] Cannot merge a VarianTmap with itself.\n");
 		}
+		if (!other.Order.empty())
+			structureChanged = true;
 		std::unordered_map<Base*, Base*> PointerMap{};
 		mergeHelper(other, PointerMap);
 		for (auto& elem : other.Order) {
@@ -484,6 +500,8 @@ public:
 			throw std::runtime_error("[VarianTmap::merge] Cannot merge a VarianTmap with itself.\n");
 		}
 		checkInsertable(Where);
+		if (!other.Order.empty())
+			structureChanged = true;
 		std::unordered_map<Base*, Base*> PointerMap{};
 		mergeHelper(other, PointerMap);
 		typename std::pmr::list<Base*>::iterator OrderIter;
@@ -526,11 +544,15 @@ public:
 	void sort(Compare&& comp) {
 		// std::list::sort 只重排节点，不会使 DataFinder 保存的 Order iterator 失效。
 		Order.sort(std::forward<Compare>(comp));
+		if (Order.size() > 1)
+			structureChanged = true;
 	}
 
 	void reverse() noexcept {
 		// std::list::reverse 只重排节点，不会使 DataFinder 保存的 Order iterator 失效。
 		Order.reverse();
+		if (Order.size() > 1)
+			structureChanged = true;
 	}
 
 	/*
@@ -740,6 +762,7 @@ public:
 		auto node = Key.extract(KeyFindIter);
 		node.key() = NewKey;
 		Key.insert(std::move(node));
+		structureChanged = true;
 	}
 
 	void rename(auto_cast_pointer Pointer, const std::string& NewKey) {
@@ -764,6 +787,7 @@ public:
 			Key.emplace(NewKey, Pointer.pointer);
 		}
 		DataPointer.Key = NewKey;
+		structureChanged = true;
 	}
 
 	//删除数据
@@ -780,6 +804,7 @@ public:
 		Key.erase(KeyFindIter);
 		publicTypeOperation.Operation.at(TypeIndex).Destructor(DataContainer.at(TypeIndex), DataPointer.Data);
 		DataFinder.erase(BasePointer);
+		structureChanged = true;
 	}
 
 	void erase(auto_cast_pointer Pointer) {
@@ -800,6 +825,7 @@ public:
 		}
 		publicTypeOperation.Operation.at(TypeIndex).Destructor(DataContainer.at(TypeIndex), DataPointer.Data);
 		DataFinder.erase(iter);
+		structureChanged = true;
 	}
 
 
@@ -834,6 +860,10 @@ public:
 			}
 			OrderIter = Order.erase(OrderIter);
 			DataFinder.erase(CurrentPointer);
+		}
+		if (!result.empty()) {
+			structureChanged = true;
+			result.structureChanged = true;
 		}
 		return result;
 	}
@@ -870,6 +900,10 @@ public:
 				DataFinder.erase(CurrentPointer);
 			}
 		}
+		if (!result.empty()) {
+			structureChanged = true;
+			result.structureChanged = true;
+		}
 		return result;
 	}
 /*
@@ -888,10 +922,13 @@ public:
 	}
 
 	void clear() {
+		const bool hadElements = !Order.empty();
 		this->Order.clear();
 		this->Key.clear();
 		this->DataFinder.clear();
 		this->DataContainer.clear();
+		if (hadElements)
+			structureChanged = true;
 	}
 	
 	template<typename T>
@@ -901,6 +938,7 @@ public:
 			return;
 		}
 		auto& DataList = *std::any_cast<std::shared_ptr<std::pmr::list<T>>&>(DataContainer.at(TypeIndex));
+		const bool hadElements = !DataList.empty();
 		for (auto& elem : DataList) {
 			auto iter = DataFinder.find(&elem);
 			Order.erase(iter->second.Order);
@@ -908,5 +946,7 @@ public:
 			DataFinder.erase(iter);
 		}
 		DataList.clear();
+		if (hadElements)
+			structureChanged = true;
 	}
 };

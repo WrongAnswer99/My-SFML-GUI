@@ -758,7 +758,8 @@ static void init() {
 
 	Init::addSimpleText(Open, "filepathText", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * OpenLine)));
 
-	Init::addSimpleInput(Open, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * OpenLine)), sf::Vector2f(600 - 160, 40), L"");
+	Init::addSimpleInput(Open, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * OpenLine)), sf::Vector2f(600 - 160, 40), L"")
+		.setStringTypeLimit(false, {'\r', '\n'}, {});
 	OpenLine++;
 
 	Open.path_get<gui::ButtonObject>("importToCurrentText")
@@ -803,7 +804,8 @@ static void init() {
 
 	Init::addSimpleText(Save, "filepathText", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * SaveLine)));
 
-	Init::addSimpleInput(Save, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * SaveLine)), sf::Vector2f(600 - 160, 40), L"");
+	Init::addSimpleInput(Save, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * SaveLine)), sf::Vector2f(600 - 160, 40), L"")
+		.setStringTypeLimit(false, {'\r', '\n'}, {});
 	SaveLine++;
 
 	Init::addSimpleText(Save, "windowToSaveText", L"要保存的窗口：", sf::Vector2f(0, static_cast<float>(40 * SaveLine)));
@@ -832,7 +834,8 @@ static void init() {
 
 	Init::addSimpleText(ExportReflection, "filepathText", L"文件名：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
 
-	Init::addSimpleInput(ExportReflection, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * ExportReflectionLine)), sf::Vector2f(600 - 160, 40), L"");
+	Init::addSimpleInput(ExportReflection, "filepath", gui::InputObject::String, sf::Vector2f(160, static_cast<float>(40 * ExportReflectionLine)), sf::Vector2f(600 - 160, 40), L"")
+		.setStringTypeLimit(false, {'\r', '\n'}, {});
 	ExportReflectionLine++;
 
 	Init::addSimpleText(ExportReflection, "windowToExportText", L"要导出的窗口：", sf::Vector2f(0, static_cast<float>(40 * ExportReflectionLine)));
@@ -3283,6 +3286,12 @@ int main() {
 					std::string format = menuManager.path_at<gui::AreaObject>("open").getOption();
 					bool importToCurrent = menuManager.path_at<gui::TextObject>(attr::gtext::open_importToCurrent).getShow();
 					if (!filepath.empty() && !format.empty()) {
+						std::error_code fileError;
+						if (!std::filesystem::is_regular_file(resolvedFilepath, fileError) || fileError) {
+							std::cerr << "Open failed: file does not exist: " << resolvedFilepath << std::endl;
+							continue;
+						}
+
 						gui::AreaObject loadedData;
 						if (format == "binary") {
 							BinaryFileStream bf(resolvedFilepath);
