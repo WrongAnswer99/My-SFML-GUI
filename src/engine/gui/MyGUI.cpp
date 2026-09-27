@@ -86,27 +86,31 @@ namespace gui {
 		);
 	}
 
-	void ImageObject::draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager) {
-		if (!isShow)
+	void ImageFeature::drawImage(UIBase& object, sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea) {
+		if (!object.isShow)
 			return;
-		const sf::FloatRect absoluteRect = offsetRect(posRect, drawOffset);
+		const sf::FloatRect absoluteRect = offsetRect(object.posRect, drawOffset);
 		if (!absoluteRect.findIntersection(clipArea))
 			return;
-		UIBase::draw(r, drawOffset, clipArea, windowManager);
 
 		const sf::Vector2f imgSize = static_cast<sf::Vector2f>(imageManager[imageId].getSize());
 		sf::Vector2f realScale = scale;
-		if (realScale.x < 0) realScale.x = posRect.size.x / imgSize.x;
-		if (realScale.y < 0) realScale.y = posRect.size.y / imgSize.y;
+		if (realScale.x < 0) realScale.x = object.posRect.size.x / imgSize.x;
+		if (realScale.y < 0) realScale.y = object.posRect.size.y / imgSize.y;
 		sf::Sprite imageRender(imageManager[imageId]);
-		imageRender.setPosition(absoluteRect.position + ((posRect.size - imgSize.componentWiseMul(realScale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)));
+		imageRender.setPosition(absoluteRect.position + ((object.posRect.size - imgSize.componentWiseMul(realScale)) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align)));
 		imageRender.setScale(realScale);
-		imageRender.setColor(imageColors[currentStatu]);
+		imageRender.setColor(imageColors[object.currentStatu]);
 		r.draw(imageRender);
 	}
 
-	void TextObject::updateTextMetrics() {
-		if (!isDirty(DirtyTextMetrics))
+	void ImageObject::draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager) {
+		UIBase::draw(r, drawOffset, clipArea, windowManager);
+		drawImage(*this, r, drawOffset, clipArea);
+	}
+
+	void TextFeature::updateTextMetrics(UIBase& object) {
+		if (!object.isDirty(UIBase::DirtyTextMetrics))
 			return;
 
 		// Keep the existing per-character measurement workaround. SFML's
@@ -163,33 +167,32 @@ namespace gui {
 				textRect.size.x = position.x;
 		}
 		textRect.size.y = characterPositions.back().y + characterSize;
-		clearDirty(DirtyTextMetrics);
+		object.clearDirty(UIBase::DirtyTextMetrics);
 	}
 
-	void TextObject::draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager) {
-		if (!isShow)
+	void TextFeature::drawText(UIBase& object, sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea) {
+		if (!object.isShow)
 			return;
-		const sf::FloatRect absoluteRect = offsetRect(posRect, drawOffset);
-		updateTextMetrics();
-		textRender.setFillColor(textStyles[currentStatu].fillColor);
-		textRender.setOutlineColor(textStyles[currentStatu].outlineColor);
-		const sf::Vector2f alignedOffset = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));
-		textRect.position = posRect.position + alignedOffset;
+		const sf::FloatRect absoluteRect = offsetRect(object.posRect, drawOffset);
+		updateTextMetrics(object);
+		textRender.setFillColor(textStyles[object.currentStatu].fillColor);
+		textRender.setOutlineColor(textStyles[object.currentStatu].outlineColor);
+		const sf::Vector2f alignedOffset = ((object.posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));
+		textRect.position = object.posRect.position + alignedOffset;
 		const sf::FloatRect absoluteTextRect(textRect.position + drawOffset, textRect.size);
-		const bool rectVisible = absoluteRect.findIntersection(clipArea).has_value();
-		const bool textVisible = absoluteTextRect.findIntersection(clipArea).has_value();
-		if (!rectVisible && !textVisible)
-			return;
-		if (rectVisible)
-			UIBase::draw(r, drawOffset, clipArea, windowManager);
-		if (!textVisible)
+		if (!absoluteTextRect.findIntersection(clipArea))
 			return;
 		textRender.setPosition(absoluteRect.position - textRenderOffsetFix + alignedOffset);
 		r.draw(textRender);
 	}
 
+	void TextObject::draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager) {
+		UIBase::draw(r, drawOffset, clipArea, windowManager);
+		drawText(*this, r, drawOffset, clipArea);
+	}
+
 	sf::Vector2f InputObject::updateTextLayout() {
-		updateTextMetrics();
+		updateTextMetrics(*this);
 		textRender.setFillColor(textStyles[currentStatu].fillColor);
 		textRender.setOutlineColor(textStyles[currentStatu].outlineColor);
 		const sf::Vector2f alignedOffset = ((posRect.size - textRect.size) / 2.f).componentWiseMul(static_cast<sf::Vector2f>(align));

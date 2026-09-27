@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/tick/Tick.hpp"
 #include <set>
+#include <utility>
 #include <vector>
 #include "engine/event/Event.hpp"
 #include "engine/resource/Resources.hpp"
@@ -84,20 +85,28 @@ namespace gui {
 		}
 	}
 	class UIwindowManager;
+	class TextFeature;
+	class ImageFeature;
+	class ClickableFeature;
 	class Style {
 	public:
 		sf::Color backgroundColor = sf::Color(0, 0, 0, 0), outlineColor = sf::Color(0, 0, 0, 0);
 		float outlineThickness = 1;
-		void set(sf::Color _backgroundColor, sf::Color _outlineColor, float _outlineThickness) {
-			backgroundColor = _backgroundColor;
-			outlineColor = _outlineColor;
-			outlineThickness = _outlineThickness;
+		template<typename Self>
+		Self&& set(this Self&& self, sf::Color _backgroundColor, sf::Color _outlineColor, float _outlineThickness) {
+			self.backgroundColor = _backgroundColor;
+			self.outlineColor = _outlineColor;
+			self.outlineThickness = _outlineThickness;
+			return std::forward<Self>(self);
 		}
 	};
 	class AreaObject;
 	class UIBase {
 		friend class AreaObject;
 		friend class UIwindowManager;
+		friend class TextFeature;
+		friend class ImageFeature;
+		friend class ClickableFeature;
 	public:
 		enum DirtyFlag : std::uint8_t {
 			DirtyNone = 0,
@@ -135,17 +144,20 @@ namespace gui {
 			bool isNormal () const{
 				return type == ((static_cast<int>(Anchor::Top) << 2) | static_cast<int>(Relative::TopEdge));
 			}
-			DynamicPosition& setRelative (Relative _relative){
-				type = (type & 0b111100) | static_cast<int>(_relative);
-				return *this;
+			template<typename Self>
+			Self&& setRelative(this Self&& self, Relative _relative) {
+				self.type = (self.type & 0b111100) | static_cast<int>(_relative);
+				return std::forward<Self>(self);
 			}
-			DynamicPosition& setAnchor (Anchor _anchor){
-				type = (type & 0b000011) | (static_cast<int>(_anchor) << 2);
-				return *this;
+			template<typename Self>
+			Self&& setAnchor(this Self&& self, Anchor _anchor) {
+				self.type = (self.type & 0b000011) | (static_cast<int>(_anchor) << 2);
+				return std::forward<Self>(self);
 			}
-			DynamicPosition& setValue (float _value){
-				value = _value;
-				return *this;
+			template<typename Self>
+			Self&& setValue(this Self&& self, float _value) {
+				self.value = _value;
+				return std::forward<Self>(self);
 			}
 			int getRelative () const{
 				return type & 0b000011;
@@ -169,7 +181,7 @@ namespace gui {
 		Style styles[3];
 		int currentStatu = gui::UIBase::Normal;
 		bool isShow = true;
-		std::uint8_t dirtyFlags = DirtyLayout | DirtyContentBounds;
+		std::uint8_t dirtyFlags = DirtyLayout | DirtyTextMetrics | DirtyContentBounds;
 		sf::Vector2f cachedFatherSize;
 		bool hasCachedFatherSize = false;
 		virtual void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager);
@@ -224,63 +236,68 @@ namespace gui {
 			return *this;
 		}
 		enum Statu { Normal = 0, Over = 1, Focus = 2 };
-		UIBase& setPosition(sf::Vector2f _position) {
-			relativePosition.x.first = {UIBase::Anchor::Left, UIBase::Relative::LeftEdge, _position.x};
-			relativePosition.y.first = {UIBase::Anchor::Top, UIBase::Relative::TopEdge, _position.y};
-			markDirty(DirtyLayout);
-			return *this;
+		template<typename Self>
+		Self&& setPosition(this Self&& self, sf::Vector2f _position) {
+			self.relativePosition.x.first = {UIBase::Anchor::Left, UIBase::Relative::LeftEdge, _position.x};
+			self.relativePosition.y.first = {UIBase::Anchor::Top, UIBase::Relative::TopEdge, _position.y};
+			self.markDirty(DirtyLayout);
+			return std::forward<Self>(self);
 		}
-		UIBase& setPosition(sf::Vector2f _position, sf::Vector2<Anchor> _anchor) {
-			relativePosition.x.first = {_anchor.x, UIBase::Relative::LeftEdge, _position.x};
-			relativePosition.y.first = {_anchor.y, UIBase::Relative::TopEdge, _position.y};
-			markDirty(DirtyLayout);
-			return *this;
+		template<typename Self>
+		Self&& setPosition(this Self&& self, sf::Vector2f _position, sf::Vector2<Anchor> _anchor) {
+			self.relativePosition.x.first = {_anchor.x, UIBase::Relative::LeftEdge, _position.x};
+			self.relativePosition.y.first = {_anchor.y, UIBase::Relative::TopEdge, _position.y};
+			self.markDirty(DirtyLayout);
+			return std::forward<Self>(self);
 		}
-		UIBase& setPosition(sf::Vector2f _position, sf::Vector2<Anchor> _anchor, sf::Vector2<Relative> _relative) {
-			relativePosition.x.first = {_anchor.x, _relative.x, _position.x};
-			relativePosition.y.first = {_anchor.y, _relative.y, _position.y};
-			markDirty(DirtyLayout);
-			return *this;
+		template<typename Self>
+		Self&& setPosition(this Self&& self, sf::Vector2f _position, sf::Vector2<Anchor> _anchor, sf::Vector2<Relative> _relative) {
+			self.relativePosition.x.first = {_anchor.x, _relative.x, _position.x};
+			self.relativePosition.y.first = {_anchor.y, _relative.y, _position.y};
+			self.markDirty(DirtyLayout);
+			return std::forward<Self>(self);
 		}
-		UIBase& setSize(sf::Vector2f _size) {
-			if (relativePosition.x.second.isSize()) relativePosition.x.second = {UIBase::Anchor::Size, _size.x};
-			if (relativePosition.y.second.isSize()) relativePosition.y.second = {UIBase::Anchor::Size, _size.y};
-			markDirty(DirtyLayout);
-			return *this;
+		template<typename Self>
+		Self&& setSize(this Self&& self, sf::Vector2f _size) {
+			if (self.relativePosition.x.second.isSize()) self.relativePosition.x.second = {UIBase::Anchor::Size, _size.x};
+			if (self.relativePosition.y.second.isSize()) self.relativePosition.y.second = {UIBase::Anchor::Size, _size.y};
+			self.markDirty(DirtyLayout);
+			return std::forward<Self>(self);
 		}
-		UIBase& setPositionRelative(std::initializer_list<UIBase::DynamicPosition> xRelative, std::initializer_list<UIBase::DynamicPosition> yRelative) {
+		template<typename Self>
+		Self&& setPositionRelative(this Self&& self, std::initializer_list<UIBase::DynamicPosition> xRelative, std::initializer_list<UIBase::DynamicPosition> yRelative) {
 			if (xRelative.size() == 1){
 				auto& first = *xRelative.begin();
 				if (first.isSize()) goto setRelativeIllegal;
-				relativePosition.x.first = first;
+				self.relativePosition.x.first = first;
 			}
 			else{
 				auto & first = *xRelative.begin(),&second = *std::next(xRelative.begin());
 				if (first.getAnchor() == second.getAnchor()) goto setRelativeIllegal;
 				if (first.getAnchor() < second.getAnchor()){
-					relativePosition.x.first = first;relativePosition.x.second = second;
+					self.relativePosition.x.first = first;self.relativePosition.x.second = second;
 				}
 				else{
-					relativePosition.x.first = second;relativePosition.x.second = first;
+					self.relativePosition.x.first = second;self.relativePosition.x.second = first;
 				}
 			}
 			if (yRelative.size() == 1){
 				auto& first = *yRelative.begin();
 				if (first.isSize()) goto setRelativeIllegal;
-				relativePosition.y.first = first;
+				self.relativePosition.y.first = first;
 			}
 			else{
 				auto & first = *yRelative.begin(),&second = *std::next(yRelative.begin());
 				if (first.getAnchor() == second.getAnchor()) goto setRelativeIllegal;
 				if (first.getAnchor() < second.getAnchor()){
-					relativePosition.y.first = first;relativePosition.y.second = second;
+					self.relativePosition.y.first = first;self.relativePosition.y.second = second;
 				}
 				else{
-					relativePosition.y.first = second;relativePosition.y.second = first;
+					self.relativePosition.y.first = second;self.relativePosition.y.second = first;
 				}
 			}
-			markDirty(DirtyLayout);
-			return *this;
+			self.markDirty(DirtyLayout);
+			return std::forward<Self>(self);
 		setRelativeIllegal:;
 			throw std::runtime_error("[UIBase::setRelative] Illegal relative position\n");
 		}
@@ -304,11 +321,12 @@ namespace gui {
 		sf::FloatRect getPosRect() const {
 			return posRect;
 		}
-		UIBase& setStyle(const Style& _normalStyle, const Style& _overStyle, const Style& _focusStyle) {
-			styles[gui::UIBase::Normal] = _normalStyle;
-			styles[gui::UIBase::Over] = _overStyle;
-			styles[gui::UIBase::Focus] = _focusStyle;
-			return *this;
+		template<typename Self>
+		Self&& setStyle(this Self&& self, const Style& _normalStyle, const Style& _overStyle, const Style& _focusStyle) {
+			self.styles[gui::UIBase::Normal] = _normalStyle;
+			self.styles[gui::UIBase::Over] = _overStyle;
+			self.styles[gui::UIBase::Focus] = _focusStyle;
+			return std::forward<Self>(self);
 		}
 		Style& style(int id) {
 			return styles[id];
@@ -325,13 +343,15 @@ namespace gui {
 		bool getShow() const {
 			return isShow;
 		}
-		UIBase& setShow(bool _isShow){
-			isShow = _isShow;
-			return *this;
+		template<typename Self>
+		Self&& setShow(this Self&& self, bool _isShow) {
+			self.isShow = _isShow;
+			return std::forward<Self>(self);
 		}
-		UIBase& toggleShow() {
-			isShow = !isShow;
-			return *this;
+		template<typename Self>
+		Self&& toggleShow(this Self&& self) {
+			self.isShow = !self.isShow;
+			return std::forward<Self>(self);
 		}
 	protected:
 		void updatePosRect(sf::Vector2f fatherSize) {
@@ -357,10 +377,12 @@ namespace gui {
 			clearDirty(DirtyLayout);
 			return oldRect != posRect;
 		}
-		void setStatu(int statu, bool force = false) {
-			if (force || currentStatu != gui::UIBase::Focus) {
-				currentStatu = statu;
+		template<typename Self>
+		Self&& setStatu(this Self&& self, int statu, bool force = false) {
+			if (force || self.currentStatu != gui::UIBase::Focus) {
+				self.currentStatu = statu;
 			}
+			return std::forward<Self>(self);
 		}
 	public:
 		virtual void onFocusLose(EventQueue&, const std::string&, const std::string&, AreaObject&, bool) { setStatu(Normal, true); }
@@ -376,85 +398,106 @@ namespace gui {
 		virtual void onInertialScrollStart(sf::Vector2f) {}
 		virtual bool isInteractive() { return false; }
 	};
-	class ImageObject :public UIBase {
-		friend class UIwindowManager;
-	public:
-		ImageObject() {}
-		//use this setter
-		//after : setImage() , setScale() , setScaleTo()
-		ImageObject& setSizeAuto() {
-			setSize(static_cast<sf::Vector2f>(imageManager[imageId].getSize()).componentWiseMul(scale));
-			return *this;
-		}
+	class ImageFeature {
 	protected:
 		std::string imageId;
 		sf::Vector2i align = { static_cast<int>(gui::UIBase::Align::Mid), static_cast<int>(gui::UIBase::Align::Mid) };
 		sf::Vector2f scale = sf::Vector2f(1, 1);
 		sf::Color imageColors[3] = { sf::Color::White,sf::Color::White ,sf::Color::White };
-		void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager);
+		void drawImage(UIBase& object, sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea);
 	public:
-		ImageObject& setImageColor(const sf::Color& _normalColor, const sf::Color& _overColor, const sf::Color& _focusColor) {
-			imageColors[gui::UIBase::Normal] = _normalColor;
-			imageColors[gui::UIBase::Over] = _overColor;
-			imageColors[gui::UIBase::Focus] = _focusColor;
-			return *this;
+		//use this setter
+		//after : setImageId() , setScale() , setScaleAuto()
+		template<typename Self>
+		Self&& setImageSizeAuto(this Self&& self) {
+			self.setSize(static_cast<sf::Vector2f>(imageManager[self.imageId].getSize()).componentWiseMul(self.scale));
+			return std::forward<Self>(self);
+		}
+		template<typename Self>
+		Self&& setImageColor(this Self&& self, const sf::Color& _normalColor, const sf::Color& _overColor, const sf::Color& _focusColor) {
+			self.imageColors[gui::UIBase::Normal] = _normalColor;
+			self.imageColors[gui::UIBase::Over] = _overColor;
+			self.imageColors[gui::UIBase::Focus] = _focusColor;
+			return std::forward<Self>(self);
 		}
 		sf::Color& imageColor(int id) {
 			return imageColors[id];
 		}
-		ImageObject& setAlign(gui::UIBase::Align xAlign, gui::UIBase::Align yAlign) {
-			align.x = static_cast<int>(xAlign);
-			align.y = static_cast<int>(yAlign);
-			return *this;
+		template<typename Self>
+		Self&& setImageAlign(this Self&& self, gui::UIBase::Align xAlign, gui::UIBase::Align yAlign) {
+			self.align.x = static_cast<int>(xAlign);
+			self.align.y = static_cast<int>(yAlign);
+			return std::forward<Self>(self);
 		}
-		ImageObject& setScale(sf::Vector2f _scale) {
-			scale = _scale;
-			return *this;
+		template<typename Self>
+		Self&& setScale(this Self&& self, sf::Vector2f _scale) {
+			self.scale = _scale;
+			return std::forward<Self>(self);
 		}
 		//use this setter
 		//after : setImage()
 		//设置自动缩放，autoAxes的x/y为true时对应轴实时根据posRect自动缩放
-		ImageObject& setScaleAuto(sf::Vector2i _autoScalable = { 1, 1 }) {
+		template<typename Self>
+		Self&& setScaleAuto(this Self&& self, sf::Vector2i _autoScalable = { 1, 1 }) {
 			if (_autoScalable.x)
-				scale.x = -1.f;
+				self.scale.x = -1.f;
 			if (_autoScalable.y)
-				scale.y = -1.f;
-			return *this;
+				self.scale.y = -1.f;
+			return std::forward<Self>(self);
 		}
-		ImageObject& setImageId(const std::string& _imageId) {
-			imageId = _imageId;
-			return *this;
+		template<typename Self>
+		Self&& setImageId(this Self&& self, const std::string& _imageId) {
+			self.imageId = _imageId;
+			return std::forward<Self>(self);
 		}
 		const std::string& getImageId() const { return imageId; }
 		sf::Vector2f getScale() const { return scale; }
-		sf::Vector2<Align> getAlign() const {
-			return static_cast<sf::Vector2<Align>>(align);
+		sf::Vector2<UIBase::Align> getImageAlign() const {
+			return static_cast<sf::Vector2<UIBase::Align>>(align);
 		}
 		const sf::Color& getImageColor(int id) const { return imageColors[id]; }
+	};
+	class ImageObject :public UIBase, public ImageFeature {
+		friend class UIwindowManager;
+	protected:
+		void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager) override;
+	public:
+		template<typename Self>
+		Self&& setSizeAuto(this Self&& self) {
+			return std::forward<Self>(self).setImageSizeAuto();
+		}
+		template<typename Self>
+		Self&& setAlign(this Self&& self, gui::UIBase::Align xAlign, gui::UIBase::Align yAlign) {
+			return std::forward<Self>(self).setImageAlign(xAlign, yAlign);
+		}
+		sf::Vector2<UIBase::Align> getAlign() const {
+			return getImageAlign();
+		}
 	};
 	class TextStyle{
 	public:
 		sf::Color fillColor;
 		sf::Color outlineColor;
-		void set(sf::Color _fillColor, sf::Color _outlineColor) {
-			fillColor = _fillColor;
-			outlineColor = _outlineColor;
+		template<typename Self>
+		Self&& set(this Self&& self, sf::Color _fillColor, sf::Color _outlineColor) {
+			self.fillColor = _fillColor;
+			self.outlineColor = _outlineColor;
+			return std::forward<Self>(self);
 		}
 	};
-	class TextObject :public UIBase {
-		friend class UIwindowManager;
+	class TextFeature {
 	public:
-		TextObject() {
+		TextFeature() {
 			textStyles[gui::UIBase::Normal].set(sf::Color::Black, sf::Color::Black);
 			textStyles[gui::UIBase::Over].set(sf::Color::Black, sf::Color::Black);
 			textStyles[gui::UIBase::Focus].set(sf::Color::Black, sf::Color::Black);
-			markDirty(DirtyTextMetrics);
 		}
-		TextObject& setTextStyle(const TextStyle& _normalStyle, const TextStyle& _overStyle, const TextStyle& _focusStyle) {
-			textStyles[gui::UIBase::Normal] = _normalStyle;
-			textStyles[gui::UIBase::Over] = _overStyle;
-			textStyles[gui::UIBase::Focus] = _focusStyle;
-			return *this;
+		template<typename Self>
+		Self&& setTextStyle(this Self&& self, const TextStyle& _normalStyle, const TextStyle& _overStyle, const TextStyle& _focusStyle) {
+			self.textStyles[gui::UIBase::Normal] = _normalStyle;
+			self.textStyles[gui::UIBase::Over] = _overStyle;
+			self.textStyles[gui::UIBase::Focus] = _focusStyle;
+			return std::forward<Self>(self);
 		}
 		TextStyle& textStyle(int id) {
 			return textStyles[id];
@@ -467,10 +510,11 @@ namespace gui {
 		}
 		//use this setter
 		//after : setFont() , setText() , setCharacterSize()
-		TextObject& setSizeAuto() {
-			updateTextMetrics();
-			setSize(textRect.size);
-			return *this;
+		template<typename Self>
+		Self&& setTextSizeAuto(this Self&& self) {
+			self.updateTextMetrics(static_cast<UIBase&>(self));
+			self.setSize(self.textRect.size);
+			return std::forward<Self>(self);
 		}
 	protected:
 		std::string font = "";
@@ -483,74 +527,109 @@ namespace gui {
 		std::vector<sf::Vector2f> characterPositions;
 		sf::Vector2i align = { static_cast<int>(gui::UIBase::Align::Mid), static_cast<int>(gui::UIBase::Align::Mid) };
 		TextStyle textStyles[3];
-		void updateTextMetrics();
+		void updateTextMetrics(UIBase& object);
 		sf::Vector2f getCharacterPosition(size_t index) const {
 			if (characterPositions.empty())
 				return {};
 			return characterPositions[std::min(index, characterPositions.size() - 1)];
 		}
-		void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager);
+		void drawText(UIBase& object, sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea);
 	public:
-		TextObject& setFont(const std::string& _font) {
-			font = _font;
-			textRender.setFont(fontManager[font]);
-			markDirty(DirtyTextMetrics);
-			return *this;
+		template<typename Self>
+		Self&& setFont(this Self&& self, const std::string& _font) {
+			self.font = _font;
+			self.textRender.setFont(fontManager[self.font]);
+			self.markDirty(UIBase::DirtyTextMetrics);
+			return std::forward<Self>(self);
 		}
-		TextObject& setCharacterSize(int _characterSize) {
-			characterSize = _characterSize;
-			markDirty(DirtyTextMetrics);
-			return *this;
+		template<typename Self>
+		Self&& setCharacterSize(this Self&& self, int _characterSize) {
+			self.characterSize = _characterSize;
+			self.markDirty(UIBase::DirtyTextMetrics);
+			return std::forward<Self>(self);
 		}
-		TextObject& setSpacing(float _letterSpacing, float _lineSpacing) {
-			letterSpacing = _letterSpacing;
-			lineSpacing = _lineSpacing;
-			markDirty(DirtyTextMetrics);
-			return *this;
+		template<typename Self>
+		Self&& setSpacing(this Self&& self, float _letterSpacing, float _lineSpacing) {
+			self.letterSpacing = _letterSpacing;
+			self.lineSpacing = _lineSpacing;
+			self.markDirty(UIBase::DirtyTextMetrics);
+			return std::forward<Self>(self);
 		}
-		TextObject& setAlign(gui::UIBase::Align xAlign, gui::UIBase::Align yAlign) {
-			align.x = static_cast<int>(xAlign);
-			align.y = static_cast<int>(yAlign);
-			return *this;
+		template<typename Self>
+		Self&& setTextAlign(this Self&& self, gui::UIBase::Align xAlign, gui::UIBase::Align yAlign) {
+			self.align.x = static_cast<int>(xAlign);
+			self.align.y = static_cast<int>(yAlign);
+			return std::forward<Self>(self);
 		}
-		TextObject& setText(sf::String _text) {
-			text = _text;
-			markDirty(DirtyTextMetrics);
-			return *this;
+		template<typename Self>
+		Self&& setText(this Self&& self, sf::String _text) {
+			self.text = _text;
+			self.markDirty(UIBase::DirtyTextMetrics);
+			return std::forward<Self>(self);
 		}
 		const sf::String& getText() const {
 			return text;
 		}
-		sf::String& editText() {
-			markDirty(DirtyTextMetrics);
-			return text;
+		template<typename Self>
+		sf::String& editText(this Self& self) {
+			self.markDirty(UIBase::DirtyTextMetrics);
+			return self.text;
 		}
 		const std::string& getFont() const { return font; }
 		unsigned int getCharacterSize() const { return characterSize; }
 		float getLetterSpacing() const { return letterSpacing; }
 		float getLineSpacing() const { return lineSpacing; }
-		sf::Vector2i getAlign() const { return align; }
+		sf::Vector2i getTextAlign() const { return align; }
 	};
-	class ButtonObject :public TextObject {
+	class TextObject :public UIBase, public TextFeature {
+		friend class UIwindowManager;
+	protected:
+		void draw(sf::RenderTarget& r, sf::Vector2f drawOffset, sf::FloatRect clipArea, UIwindowManager& windowManager) override;
+	public:
+		template<typename Self>
+		Self&& setSizeAuto(this Self&& self) {
+			return std::forward<Self>(self).setTextSizeAuto();
+		}
+		template<typename Self>
+		Self&& setAlign(this Self&& self, gui::UIBase::Align xAlign, gui::UIBase::Align yAlign) {
+			return std::forward<Self>(self).setTextAlign(xAlign, yAlign);
+		}
+		sf::Vector2i getAlign() const {
+			return getTextAlign();
+		}
+	};
+	class ClickableFeature {
+	protected:
+		void initializeClickable(UIBase& object) {
+			object.styles[gui::UIBase::Normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
+			object.styles[gui::UIBase::Over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
+			object.styles[gui::UIBase::Focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
+		}
+		void releaseClickable(UIBase& object, bool isOver, bool isDragScrolling, EventQueue& event, const std::string& path, const std::string& name) {
+			if (isOver && !isDragScrolling)
+				event.push(gui::Events::ButtonPressed{ {.path = path,.name = name} });
+			object.setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
+		}
+		void updateClickableDrag(UIBase& object, bool isOver, bool isDragScrolling) {
+			if (isDragScrolling)
+				object.setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
+			else
+				object.setStatu(isOver ? gui::UIBase::Focus : gui::UIBase::Over, true);
+		}
+	};
+	class ButtonObject :public TextObject, public ClickableFeature {
 		friend class UIwindowManager;
 	public:
 		ButtonObject() {
-			styles[gui::UIBase::Normal].set(sf::Color(250, 250, 250), sf::Color(200, 200, 200), 2);
-			styles[gui::UIBase::Over].set(sf::Color(220, 220, 220), sf::Color(200, 200, 200), 2);
-			styles[gui::UIBase::Focus].set(sf::Color(200, 200, 200), sf::Color(150, 150, 150), 2);
+			initializeClickable(*this);
 		}
 		void onRelease(bool isOver, bool isDragScrolling, EventQueue& event, const std::string& path, const std::string& name, AreaObject&) override {
-			if (isOver && !isDragScrolling)
-				event.push(gui::Events::ButtonPressed{ {.path = path,.name = name} });
-			setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
+			releaseClickable(*this, isOver, isDragScrolling, event, path, name);
 		}
 		bool isDragScrollImmediate() override { return false; }
 		bool isInteractive() override { return true; }
 		void onDragUpdate(bool isOver, bool isDragScrolling) override {
-			if (isDragScrolling)
-				setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
-			else
-				setStatu(isOver ? gui::UIBase::Focus : gui::UIBase::Over, true);
+			updateClickableDrag(*this, isOver, isDragScrolling);
 		}
 	};
 	class OptionObject :public ButtonObject {
@@ -581,22 +660,25 @@ namespace gui {
 					if (elem.first > elem.second)
 						std::swap(elem.first, elem.second);
 			}
-			InputLimit& setIsAllowList(bool value) {
-				isAllowList = value;
-				return *this;
+			template<typename Self>
+			Self&& setIsAllowList(this Self&& self, bool value) {
+				self.isAllowList = value;
+				return std::forward<Self>(self);
 			}
 			bool getIsAllowList() const { return isAllowList; }
-			InputLimit& setSingle(const std::vector<char32_t>& value) {
-				single = value;
-				return *this;
+			template<typename Self>
+			Self&& setSingle(this Self&& self, const std::vector<char32_t>& value) {
+				self.single = value;
+				return std::forward<Self>(self);
 			}
 			const std::vector<char32_t>& getSingle() const { return single; }
-			InputLimit& setRange(const std::vector<std::pair<char32_t, char32_t>>& value) {
-				range = value;
-				for (auto& elem : range)
+			template<typename Self>
+			Self&& setRange(this Self&& self, const std::vector<std::pair<char32_t, char32_t>>& value) {
+				self.range = value;
+				for (auto& elem : self.range)
 					if (elem.first > elem.second)
 						std::swap(elem.first, elem.second);
-				return *this;
+				return std::forward<Self>(self);
 			}
 			const std::vector<std::pair<char32_t, char32_t>>& getRange() const { return range; }
 			bool isLegal(char32_t ch) {
@@ -718,20 +800,23 @@ namespace gui {
 		}
 	public:
 		enum InputType { String = 0, Int = 1, Float = 2 };
-		InputObject& setSizeLimit(int _sizeLimit) {
-			sizeLimit = _sizeLimit;
-			return *this;
+		template<typename Self>
+		Self&& setSizeLimit(this Self&& self, int _sizeLimit) {
+			self.sizeLimit = _sizeLimit;
+			return std::forward<Self>(self);
 		}
 		size_t getSizeLimit() const { return sizeLimit; }
-		InputObject& setTypeLimit(gui::InputObject::InputType _typeLimit) {
-			typeLimit = _typeLimit;
-			return *this;
+		template<typename Self>
+		Self&& setTypeLimit(this Self&& self, gui::InputObject::InputType _typeLimit) {
+			self.typeLimit = _typeLimit;
+			return std::forward<Self>(self);
 		}
 		int getTypeLimit() const { return typeLimit; }
-		InputObject& setStringTypeLimit(bool _isAllowList, const std::vector<char32_t>& _single, const std::vector<std::pair<char32_t, char32_t>>& _range) {
-			typeLimit = gui::InputObject::String;
-			inputLimit.setIsAllowList(_isAllowList).setSingle(_single).setRange(_range);
-			return *this;
+		template<typename Self>
+		Self&& setStringTypeLimit(this Self&& self, bool _isAllowList, const std::vector<char32_t>& _single, const std::vector<std::pair<char32_t, char32_t>>& _range) {
+			self.typeLimit = gui::InputObject::String;
+			self.inputLimit.setIsAllowList(_isAllowList).setSingle(_single).setRange(_range);
+			return std::forward<Self>(self);
 		}
 		std::optional<InputLimit> getStringTypeLimit() const {
 			if (typeLimit != gui::InputObject::String)return {};
@@ -741,11 +826,12 @@ namespace gui {
 			if (typeLimit != gui::InputObject::String)return {};
 			return inputLimit;
 		}
-		InputObject& setText(sf::String _text) {
-			text = _text;
-			cursor = text.getSize();
-			markDirty(DirtyTextMetrics);
-			return *this;
+		template<typename Self>
+		Self&& setText(this Self&& self, sf::String _text) {
+			self.text = _text;
+			self.cursor = self.text.getSize();
+			self.markDirty(DirtyTextMetrics);
+			return std::forward<Self>(self);
 		}
 		void onFocusLose(EventQueue& event, const std::string& path, const std::string& name, AreaObject&, bool focusChanged) override;
 		void onFocusGain(EventQueue& event, const std::string& path, const std::string& name,
@@ -848,11 +934,12 @@ namespace gui {
 			styles[gui::UIBase::Focus].set(sf::Color::White, sf::Color(200, 200, 200), 2);
 		}
 		VarianTmap<UIBase>sub;
-		AreaObject& setScrollable(sf::Vector2i _mouseDragScrollable, sf::Vector2i _mouseWheelScrollable) {
-			mouseDragScrollable = _mouseDragScrollable;
-			mouseWheelScrollable = _mouseWheelScrollable;
-			markDirty(DirtyContentBounds);
-			return *this;
+		template<typename Self>
+		Self&& setScrollable(this Self&& self, sf::Vector2i _mouseDragScrollable, sf::Vector2i _mouseWheelScrollable) {
+			self.mouseDragScrollable = _mouseDragScrollable;
+			self.mouseWheelScrollable = _mouseWheelScrollable;
+			self.markDirty(DirtyContentBounds);
+			return std::forward<Self>(self);
 		}
 	protected:
 		inline static void addPoint(sf::FloatRect& rect, sf::Vector2f point) {
@@ -871,37 +958,40 @@ namespace gui {
 				rect.size.y = point.y - rect.position.y;
 			}
 		}
-		AreaObject& setScrollLimitAuto() {
-			scrollLimit = sf::FloatRect(sf::Vector2f(), posRect.size);
-			for (auto& elem : sub) {
-				addPoint(scrollLimit, elem->posRect.position);
-				addPoint(scrollLimit, elem->posRect.position + elem->posRect.size);
+		template<typename Self>
+		Self&& setScrollLimitAuto(this Self&& self) {
+			self.scrollLimit = sf::FloatRect(sf::Vector2f(), self.posRect.size);
+			for (auto& elem : self.sub) {
+				addPoint(self.scrollLimit, elem->posRect.position);
+				addPoint(self.scrollLimit, elem->posRect.position + elem->posRect.size);
 			}
-			scrollLimit.size -= posRect.size;
-			clearDirty(DirtyContentBounds);
-			return *this;
+			self.scrollLimit.size -= self.posRect.size;
+			self.clearDirty(DirtyContentBounds);
+			return std::forward<Self>(self);
 		}
 	public:
-		AreaObject& setOption(const std::string& key) {
-			if (option!="") {
-				if (auto ptr = sub.find<OptionObject>(option))
+		template<typename Self>
+		Self&& setOption(this Self&& self, const std::string& key) {
+			if (self.option!="") {
+				if (auto ptr = self.sub.template find<OptionObject>(self.option))
 					ptr->setStatu(gui::UIBase::Normal, true);
-				else option = "";
+				else self.option = "";
 			}
-			option = key;
-			if (auto ptr = sub.find<OptionObject>(key)) {
+			self.option = key;
+			if (auto ptr = self.sub.template find<OptionObject>(key)) {
 				ptr->setStatu(gui::UIBase::Focus);
 			}
-			return *this;
+			return std::forward<Self>(self);
 		}
-		AreaObject& setOption() {
-			if (option != "") {
-				if (auto ptr = sub.find<OptionObject>(option))
+		template<typename Self>
+		Self&& setOption(this Self&& self) {
+			if (self.option != "") {
+				if (auto ptr = self.sub.template find<OptionObject>(self.option))
 					ptr->setStatu(gui::UIBase::Normal, true);
-				else option = "";
+				else self.option = "";
 			}
-			option = "";
-			return *this;
+			self.option = "";
+			return std::forward<Self>(self);
 		}
 		std::string getOption() {
 			return option;
@@ -912,10 +1002,11 @@ namespace gui {
 		sf::Vector2i getMouseDragScrollable() const { return mouseDragScrollable; }
 		sf::Vector2i getMouseWheelScrollable() const { return mouseWheelScrollable; }
 		sf::Vector2f getScroll() const { return scroll; }
-		AreaObject& setScroll(sf::Vector2f value) {
-			scroll = value;
-			scrollVelocity = sf::Vector2f();
-			return *this;
+		template<typename Self>
+		Self&& setScroll(this Self&& self, sf::Vector2f value) {
+			self.scroll = value;
+			self.scrollVelocity = sf::Vector2f();
+			return std::forward<Self>(self);
 		}
 	protected:
 		void updateOption() {
@@ -1029,10 +1120,7 @@ namespace gui {
 		parent.updateOption();
 	}
 	inline void OptionObject::onDragUpdate(bool isOver, bool isDragScrolling) {
-		if (isDragScrolling)
-			setStatu(isOver ? gui::UIBase::Over : gui::UIBase::Normal, true);
-		else
-			setStatu(isOver ? gui::UIBase::Focus : gui::UIBase::Over, true);
+		updateClickableDrag(*this, isOver, isDragScrolling);
 	}
 	inline void InputObject::onFocusLose(EventQueue& event, const std::string& path, const std::string& name, AreaObject&, bool focusChanged) {
 		setStatu(gui::UIBase::Normal, true);
@@ -1056,11 +1144,14 @@ namespace gui {
 		UIwindowManager(const UIwindowManager&) = delete;
 		UIwindowManager& operator=(const UIwindowManager&) = delete;
 		size_t getCursorBlinkRate() const { return cursorBlinkRate; }
-		UIwindowManager& setCursorBlinkRate(size_t rate) { cursorBlinkRate = rate; return *this; }
+		template<typename Self>
+		Self&& setCursorBlinkRate(this Self&& self, size_t rate) { self.cursorBlinkRate = rate; return std::forward<Self>(self); }
 		float getScrollResistance() const { return scrollResistance; }
-		UIwindowManager& setScrollResistance(float resistance) { scrollResistance = resistance; return *this; }
+		template<typename Self>
+		Self&& setScrollResistance(this Self&& self, float resistance) { self.scrollResistance = resistance; return std::forward<Self>(self); }
 		float getMouseWheelScrollRate() const { return mouseWheelScrollRate; }
-		UIwindowManager& setMouseWheelScrollRate(float rate) { mouseWheelScrollRate = rate; return *this; }
+		template<typename Self>
+		Self&& setMouseWheelScrollRate(this Self&& self, float rate) { self.mouseWheelScrollRate = rate; return std::forward<Self>(self); }
 		void simulatePress(const std::string& path) {
 			size_t lastSep = path.find_last_of("._");
 			if (lastSep == std::string::npos) return;
@@ -1179,12 +1270,15 @@ namespace gui {
 			std::optional<std::type_index> type;
 			std::string path;
 			std::string name;
-			template<typename T>
-			void setType() {
-				type = std::type_index(typeid(T));
+			template<typename T, typename Self>
+			Self&& setType(this Self&& self) {
+				self.type = std::type_index(typeid(T));
+				return std::forward<Self>(self);
 			}
-			void setType(std::type_index type) {
-				this->type = type;
+			template<typename Self>
+			Self&& setType(this Self&& self, std::type_index type) {
+				self.type = type;
+				return std::forward<Self>(self);
 			}
 			template<typename T>
 			bool is() const {

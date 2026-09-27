@@ -5,6 +5,38 @@
 #include "engine/serialization/BinaryFileStream.hpp"
 #include "engine/serialization/JsonExtensions.hpp"
 #include <fstream>
+#include <type_traits>
+#include <utility>
+
+class FeatureCompositionProbe :
+	public gui::UIBase,
+	public gui::TextFeature,
+	public gui::ImageFeature,
+	public gui::ClickableFeature {
+protected:
+	void draw(sf::RenderTarget& target, sf::Vector2f drawOffset, sf::FloatRect clipArea, gui::UIwindowManager& windowManager) override {
+		gui::UIBase::draw(target, drawOffset, clipArea, windowManager);
+		drawImage(*this, target, drawOffset, clipArea);
+		drawText(*this, target, drawOffset, clipArea);
+	}
+public:
+	FeatureCompositionProbe() { initializeClickable(*this); }
+	void onRelease(bool isOver, bool isDragScrolling, EventQueue& event, const std::string& path, const std::string& name, gui::AreaObject&) override {
+		releaseClickable(*this, isOver, isDragScrolling, event, path, name);
+	}
+	bool isDragScrollImmediate() override { return false; }
+	bool isInteractive() override { return true; }
+	void onDragUpdate(bool isOver, bool isDragScrolling) override { updateClickableDrag(*this, isOver, isDragScrolling); }
+};
+
+static_assert(std::is_convertible_v<FeatureCompositionProbe*, gui::UIBase*>);
+static_assert(std::is_same_v<decltype(FeatureCompositionProbe{}.setSize({}).setText(L"").setTextAlign(gui::UIBase::Align::Left, gui::UIBase::Align::Mid).setImageId("").setImageAlign(gui::UIBase::Align::Mid, gui::UIBase::Align::Mid).setShow(true)), FeatureCompositionProbe&&>);
+static_assert(std::is_same_v<decltype(std::declval<VarianTmap<gui::UIBase>&>().push_back("", FeatureCompositionProbe{}.setText(L"").setImageId(""))), FeatureCompositionProbe*>);
+static_assert(std::is_same_v<decltype(std::declval<gui::InputObject*>()->setSize({}).setTypeLimit(gui::InputObject::String).setPosition({}).setText(L"").setFont("default").setShow(true)), gui::InputObject&>);
+static_assert(std::is_same_v<decltype(std::declval<VarianTmap<gui::UIBase>&>().find<gui::InputObject>("")->setSize({}).setTypeLimit(gui::InputObject::String).setFont("default")), gui::InputObject&>);
+static_assert(std::is_same_v<decltype(gui::InputObject{}.setSize({}).setTypeLimit(gui::InputObject::String).setText(L"").setFont("default")), gui::InputObject&&>);
+static_assert(std::is_same_v<decltype(std::declval<VarianTmap<gui::UIBase>&>().push_back("", gui::InputObject{}.setSize({}).setText(L""))), gui::InputObject*>);
+
 gui::Style panelStyle;
 gui::Style optionNormalStyle;
 gui::Style optionOverStyle;
